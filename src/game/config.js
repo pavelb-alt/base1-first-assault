@@ -80,7 +80,8 @@ export const SOLDIER = {
   spawnPosition: [-35, 0, 35],
   scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
   moveSpeed: 8,
-  jumpForce: 9,
+  jumpForce: 11,
+  gravity: -28,           // snappier fall for responsive feel
   maxJumps: 2,            // ground jump + 1 air jump (double jump)
   colliderHalfHeight: 0.5,
   colliderRadius: 0.4,

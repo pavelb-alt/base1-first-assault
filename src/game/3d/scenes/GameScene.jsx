@@ -7,6 +7,7 @@ import { Soldier } from '@/game/3d/objects/Soldier';
 import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { gameState } from '@/game/3d/world';
+import { SOLDIER } from '@/game/config';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -58,7 +59,7 @@ export function GameScene() {
       <CameraRig />
 
       <Suspense fallback={null}>
-        <Physics gravity={[0, -20, 0]}>
+        <Physics gravity={[0, SOLDIER.gravity, 0]}>
           <Battlefield />
           <Soldier />
           <NpcManager />

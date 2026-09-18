@@ -172,13 +172,9 @@ function SoldierModel() {
         if (grounded) playAnimation('Idle');
       }
 
-      // Airborne animation overrides
-      if (!grounded) {
-        if (vel.y > 0.5) {
-          playAnimation('Jump');
-        } else if (vel.y < -0.5) {
-          playAnimation('Idle');
-        }
+      // Airborne: keep jump animation through full arc (don't cut to Idle mid-air)
+      if (!grounded && currentAnim.current !== 'Jump' && currentAnim.current !== 'DoubleJump') {
+        playAnimation('Jump');
       }
     } else {
       playAnimation('Idle');
