@@ -102,6 +102,50 @@ export const NPCS = {
   friendlyColor: '#22c55e',
   enemySpawn: [36, 0, -36],
   friendlySpawn: [-36, 0, 36],
+  eyeDroneChance: 0.3,    // probability of spawning EyeDrone vs QuadShell
+};
+
+// --- Enemy model types -----------------------------------------------------
+export const ENEMY_TYPES = {
+  quadshell: {
+    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/c36cd53cd_48bb754a2_Enemy_QuadShell.glb',
+    scale: 1,
+    hoverHeight: 0,        // ground unit
+    colliderHalfHeight: 0.4,
+    colliderRadius: 0.35,
+    colliderY: 0.9,
+    facingOffset: 0,
+    animIdle: 'Idle',
+    animMove: 'Walk',
+    animRun: 'Run',
+    animAttack: 'Attack',
+  },
+  eyedrone: {
+    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/81e26c82f_108af050f_Enemy_EyeDrone.glb',
+    scale: 1,
+    hoverHeight: 3,        // flying unit
+    colliderHalfHeight: 0.3,
+    colliderRadius: 0.3,
+    colliderY: 0.6,
+    facingOffset: 0,
+    animIdle: 'Idle',
+    animMove: 'Idle',      // no Walk/Run clip — hovers
+    animAttack: 'Attack',
+  },
+  trilobite: {
+    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/257cba8bf_6d96b7d31_Enemy_Trilobite.glb',
+    scale: 1.2,            // commander is larger
+    hoverHeight: 0,        // ground unit
+    colliderHalfHeight: 0.5,
+    colliderRadius: 0.4,
+    colliderY: 1.0,
+    facingOffset: 0,
+    animIdle: 'Idle',
+    animMove: 'Walk',
+    animRun: 'Run',
+    animAttack: 'Attack',
+    animAttackAlt: 'AttackAuto',
+  },
 };
 
 // --- Camera config ----------------------------------------------------------
