@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { RigidBody } from '@react-three/rapier';
+import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { MAP, BASES, LANES, OBSTACLES } from '@/game/config';
 import { EventBus } from '@/game/EventBus';
@@ -70,12 +70,12 @@ export function Battlefield() {
   const obstacleGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const obstacleMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#6b7280', roughness: 0.8 }), []);
 
-  // Boundary walls (invisible colliders)
+  // Boundary walls — explicit colliders, tall enough to block jumps
   const walls = useMemo(() => [
-    { pos: [0, 1, -MAP.HALF], size: [MAP.SIZE, 4, 1] },
-    { pos: [0, 1, MAP.HALF], size: [MAP.SIZE, 4, 1] },
-    { pos: [-MAP.HALF, 1, 0], size: [1, 4, MAP.SIZE] },
-    { pos: [MAP.HALF, 1, 0], size: [1, 4, MAP.SIZE] },
+    { pos: [0, 4, -MAP.HALF], args: [MAP.HALF, 4, 1] },   // North
+    { pos: [0, 4, MAP.HALF], args: [MAP.HALF, 4, 1] },     // South
+    { pos: [-MAP.HALF, 4, 0], args: [1, 4, MAP.HALF] },     // West
+    { pos: [MAP.HALF, 4, 0], args: [1, 4, MAP.HALF] },      // East
   ], []);
 
   return (
@@ -124,12 +124,10 @@ export function Battlefield() {
         </RigidBody>
       ))}
 
-      {/* Boundary walls */}
+      {/* Boundary walls — invisible explicit colliders */}
       {walls.map((w, i) => (
-        <RigidBody key={`wall-${i}`} type="fixed" colliders="cuboid">
-          <mesh position={w.pos} visible={false}>
-            <boxGeometry args={w.size} />
-          </mesh>
+        <RigidBody key={`wall-${i}`} type="fixed" colliders={false}>
+          <CuboidCollider args={w.args} position={w.pos} />
         </RigidBody>
       ))}
     </group>
