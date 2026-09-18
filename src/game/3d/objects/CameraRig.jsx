@@ -24,8 +24,8 @@ export function CameraRig() {
       const dz = enemy[2] - pos.z;
       // Camera looks toward enemy base
       thirdPersonYaw.current = Math.atan2(dx, dz);
-      // Soldier faces enemy base
-      EventBus.emit('set-soldier-rotation', Math.atan2(dx, -dz));
+      // Soldier faces enemy base (model forward is +Z)
+      EventBus.emit('set-soldier-rotation', Math.atan2(dx, dz));
       EventBus.emit('mode-changed', 'third_person');
       // Request pointer lock (slight delay so React processes the mode change first)
       setTimeout(() => { gl.domElement.requestPointerLock?.(); }, 50);
@@ -114,7 +114,7 @@ export function CameraRig() {
       if (input.mouseDelta.x !== 0 || input.mouseDelta.y !== 0) {
         thirdPersonYaw.current -= input.mouseDelta.x * CAMERA.thirdPerson.mouseSensitivity;
         thirdPersonPitch.current = THREE.MathUtils.clamp(
-          thirdPersonPitch.current - input.mouseDelta.y * CAMERA.thirdPerson.mouseSensitivity,
+          thirdPersonPitch.current + input.mouseDelta.y * CAMERA.thirdPerson.mouseSensitivity,
           CAMERA.thirdPerson.minPitch,
           CAMERA.thirdPerson.maxPitch,
         );

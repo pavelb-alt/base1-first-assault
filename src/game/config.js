@@ -80,12 +80,12 @@ export const OBSTACLES = [
 export const SOLDIER = {
   modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/ae76acb3d_RobotExpressive.glb',
   spawnPosition: [-17, 0, 17],
-  scale: 1.0,
+  scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
   moveSpeed: 8,
   colliderHalfHeight: 0.5,
   colliderRadius: 0.4,
   colliderY: 0.9,
-  initialFacing: Math.PI / 4, // faces toward enemy base
+  initialFacing: (3 * Math.PI) / 4, // model faces +Z; rotate to face enemy base
 };
 
 // --- NPC config -------------------------------------------------------------

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
 import { SOLDIER } from '@/game/config';
 import { gameState } from '@/game/3d/world';
@@ -51,9 +52,9 @@ function SoldierModel() {
   const currentAnim = useRef('Idle');
   const targetRotation = useRef(SOLDIER.initialFacing);
 
-  // Clone so we don't mutate the cached original scene
+  // Clone with SkeletonUtils to preserve skeleton/bone bindings (prevents detached hands)
   const clonedScene = useMemo(() => {
-    const clone = scene.clone(true);
+    const clone = cloneSkeleton(scene);
     clone.traverse((obj) => {
       if (obj.isMesh) {
         obj.castShadow = true;
@@ -139,7 +140,7 @@ function SoldierModel() {
           { x: mx * SOLDIER.moveSpeed, y: vel.y, z: mz * SOLDIER.moveSpeed },
           true,
         );
-        targetRotation.current = Math.atan2(mx, -mz);
+        targetRotation.current = Math.atan2(mx, mz);
         playAnimation('Running');
       } else {
         const vel = bodyRef.current.linvel();
