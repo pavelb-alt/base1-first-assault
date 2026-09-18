@@ -6,17 +6,12 @@ export const input = {
   wheelDelta: 0,
 };
 
-export function setControl(code, pressed) {
-  input.keys[code] = !!pressed;
-}
-
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && e.target === document.body) e.preventDefault();
-    setControl(e.code, true);
+    input.keys[e.code] = true;
   });
   window.addEventListener('keyup', (e) => {
-    setControl(e.code, false);
+    input.keys[e.code] = false;
   });
   window.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement) {

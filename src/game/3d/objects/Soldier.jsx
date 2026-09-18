@@ -1,7 +1,7 @@
 import { Suspense, useRef, useEffect, useMemo, Component } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
-import { RigidBody, CapsuleCollider } from '@react-three/rapier';
+import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
@@ -53,7 +53,7 @@ function SoldierModel() {
   const targetRotation = useRef(SOLDIER.initialFacing);
   const prevSpace = useRef(false);
   const jumpsRemaining = useRef(SOLDIER.maxJumps);
-  const readyFrames = useRef(0);
+  const { world } = useRapier();
 
   // Clone with SkeletonUtils to preserve skeleton/bone bindings (prevents detached hands)
   const clonedScene = useMemo(() => {
@@ -100,8 +100,6 @@ function SoldierModel() {
       if (groupRef.current) groupRef.current.rotation.y = SOLDIER.initialFacing;
       jumpsRemaining.current = SOLDIER.maxJumps;
       prevSpace.current = false;
-      readyFrames.current = 0;
-      if (window.game) window.game.ready = false;
     };
     EventBus.on('reset-game', onReset);
     return () => EventBus.off('reset-game', onReset);
@@ -123,7 +121,7 @@ function SoldierModel() {
     gameState.soldierPosition.set(pos.x, pos.y, pos.z);
 
     // Ground detection: low position + low vertical velocity
-    let grounded = pos.y < SOLDIER.groundThreshold && Math.abs(vel.y) < 0.5;
+    const grounded = pos.y < SOLDIER.groundThreshold && Math.abs(vel.y) < 0.5;
     if (grounded) {
       jumpsRemaining.current = SOLDIER.maxJumps;
     }
@@ -135,9 +133,10 @@ function SoldierModel() {
       // --- Jump (edge-press on Space) ---
       const spacePressed = !!keys.Space;
       if (spacePressed && !prevSpace.current && jumpsRemaining.current > 0) {
-        // Apply movement and jump together below; never restore the pre-jump Y velocity.
-        vel.y = SOLDIER.jumpForce;
-        grounded = false;
+        bodyRef.current.setLinvel(
+          { x: vel.x, y: SOLDIER.jumpForce, z: vel.z },
+          true,
+        );
         jumpsRemaining.current--;
         // Try "Jump" for first jump, "DoubleJump" for second; fall back to "Jump"
         const isDouble = jumpsRemaining.current === SOLDIER.maxJumps - 2;
@@ -173,22 +172,17 @@ function SoldierModel() {
         if (grounded) playAnimation('Idle');
       }
 
-      // Airborne: keep jump animation through full arc (don't cut to Idle mid-air)
-      if (!grounded && currentAnim.current !== 'Jump' && currentAnim.current !== 'DoubleJump') {
-        playAnimation('Jump');
+      // Airborne animation overrides
+      if (!grounded) {
+        if (vel.y > 0.5) {
+          playAnimation('Jump');
+        } else if (vel.y < -0.5) {
+          playAnimation('Idle');
+        }
       }
     } else {
       playAnimation('Idle');
     }
-
-    gameState.soldierJump = {
-      grounded,
-      jumpsRemaining: jumpsRemaining.current,
-      verticalVelocity: bodyRef.current.linvel().y,
-      animation: currentAnim.current,
-    };
-    // The model and physics are mounted; allow one full frame before signaling ready.
-    if (gameState.loaded && ++readyFrames.current >= 2 && window.game) window.game.ready = true;
 
     // Smooth rotation toward target
     if (groupRef.current) {
