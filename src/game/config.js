@@ -76,7 +76,7 @@ export const OBSTACLES = [
 
 // --- Soldier config ---------------------------------------------------------
 export const SOLDIER = {
-  modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/fef532487_30e0580a4_orange-guardian-animated.glb',
+  modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/affec41bd_8994d7574_orange-guardian-animated-jumps.glb',
   spawnPosition: [-35, 0, 35],
   scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
   moveSpeed: 8,
