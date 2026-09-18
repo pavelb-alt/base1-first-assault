@@ -1,7 +1,7 @@
 import { Suspense, useRef, useEffect, useMemo, Component } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
-import { RigidBody, CapsuleCollider } from '@react-three/rapier';
+import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
@@ -51,6 +51,9 @@ function SoldierModel() {
 
   const currentAnim = useRef('Idle');
   const targetRotation = useRef(SOLDIER.initialFacing);
+  const prevSpace = useRef(false);
+  const jumpsRemaining = useRef(SOLDIER.maxJumps);
+  const { world } = useRapier();
 
   // Clone with SkeletonUtils to preserve skeleton/bone bindings (prevents detached hands)
   const clonedScene = useMemo(() => {
@@ -64,16 +67,15 @@ function SoldierModel() {
     return clone;
   }, [scene]);
 
-  // Play an animation with smooth fade
+  // Play an animation with smooth fade (silently skips unknown names)
   const playAnimation = (name) => {
     if (currentAnim.current === name) return;
-    const old = actions[currentAnim.current];
     const next = actions[name];
+    if (!next) return;           // don't fade out current if target doesn't exist
+    const old = actions[currentAnim.current];
     if (old) old.fadeOut(0.2);
-    if (next) {
-      next.reset().fadeIn(0.2).play();
-      currentAnim.current = name;
-    }
+    next.reset().fadeIn(0.2).play();
+    currentAnim.current = name;
   };
 
   // Initialize: play idle, emit loaded
@@ -96,6 +98,8 @@ function SoldierModel() {
       }
       targetRotation.current = SOLDIER.initialFacing;
       if (groupRef.current) groupRef.current.rotation.y = SOLDIER.initialFacing;
+      jumpsRemaining.current = SOLDIER.maxJumps;
+      prevSpace.current = false;
     };
     EventBus.on('reset-game', onReset);
     return () => EventBus.off('reset-game', onReset);
@@ -113,11 +117,33 @@ function SoldierModel() {
 
     // Sync game state with body position
     const pos = bodyRef.current.translation();
+    const vel = bodyRef.current.linvel();
     gameState.soldierPosition.set(pos.x, pos.y, pos.z);
+
+    // Ground detection: low position + low vertical velocity
+    const grounded = pos.y < SOLDIER.groundThreshold && Math.abs(vel.y) < 0.5;
+    if (grounded) {
+      jumpsRemaining.current = SOLDIER.maxJumps;
+    }
 
     if (gameState.mode === 'third_person') {
       const keys = input.keys;
       const yaw = gameState.cameraYaw;
+
+      // --- Jump (edge-press on Space) ---
+      const spacePressed = !!keys.Space;
+      if (spacePressed && !prevSpace.current && jumpsRemaining.current > 0) {
+        bodyRef.current.setLinvel(
+          { x: vel.x, y: SOLDIER.jumpForce, z: vel.z },
+          true,
+        );
+        jumpsRemaining.current--;
+        // Try "Jump" for first jump, "DoubleJump" for second; fall back to "Jump"
+        const isDouble = jumpsRemaining.current === SOLDIER.maxJumps - 2;
+        const jumpAnim = isDouble ? (actions.DoubleJump ? 'DoubleJump' : 'Jump') : 'Jump';
+        playAnimation(jumpAnim);
+      }
+      prevSpace.current = spacePressed;
 
       // Camera-relative movement axes
       _forward.set(Math.sin(yaw), 0, Math.cos(yaw));
@@ -135,17 +161,24 @@ function SoldierModel() {
         const len = Math.sqrt(mx * mx + mz * mz);
         mx /= len; mz /= len;
 
-        const vel = bodyRef.current.linvel();
         bodyRef.current.setLinvel(
           { x: mx * SOLDIER.moveSpeed, y: vel.y, z: mz * SOLDIER.moveSpeed },
           true,
         );
         targetRotation.current = Math.atan2(mx, mz);
-        playAnimation('Running');
+        if (grounded) playAnimation('Running');
       } else {
-        const vel = bodyRef.current.linvel();
         bodyRef.current.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
-        playAnimation('Idle');
+        if (grounded) playAnimation('Idle');
+      }
+
+      // Airborne animation overrides
+      if (!grounded) {
+        if (vel.y > 0.5) {
+          playAnimation('Jump');
+        } else if (vel.y < -0.5) {
+          playAnimation('Idle');
+        }
       }
     } else {
       playAnimation('Idle');
