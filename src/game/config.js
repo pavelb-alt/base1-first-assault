@@ -7,23 +7,23 @@ export const GAME_PERSPECTIVE = 'top-down';
 
 // --- Map dimensions ---------------------------------------------------------
 export const MAP = {
-  SIZE: 40,
-  HALF: 20,
-  GROUND_COLOR: '#1a1f2e',
-  LANE_WIDTH: 3,
+  SIZE: 80,
+  HALF: 40,
+  GROUND_COLOR: '#b4bdca',
+  LANE_WIDTH: 5,
 };
 
 // --- Base positions (opposite corners) --------------------------------------
 // Friendly = bottom-left,  Enemy = top-right  (in XZ plane, -Z is "north")
 export const BASES = {
   friendly: {
-    position: [-18, 0, 18],
+    position: [-36, 0, 36],
     color: '#22c55e',
     accentColor: '#16a34a',
     label: 'FRIENDLY',
   },
   enemy: {
-    position: [18, 0, -18],
+    position: [36, 0, -36],
     color: '#ef4444',
     accentColor: '#dc2626',
     label: 'ENEMY',
@@ -38,48 +38,46 @@ export const LANES = {
   top: {
     name: 'TOP',
     waypoints: [
-      [-18, 0, 18], [-18, 0, 6], [-18, 0, -6], [-18, 0, -18],
-      [-6, 0, -18], [6, 0, -18], [18, 0, -18],
+      [-36, 0, 36], [-36, 0, 12], [-36, 0, -12], [-36, 0, -36],
+      [-12, 0, -36], [12, 0, -36], [36, 0, -36],
     ],
     color: '#3b82f6',
   },
   mid: {
     name: 'MID',
     waypoints: [
-      [-18, 0, 18], [-12, 0, 12], [-6, 0, 6], [0, 0, 0],
-      [6, 0, -6], [12, 0, -12], [18, 0, -18],
+      [-36, 0, 36], [-24, 0, 24], [-12, 0, 12], [0, 0, 0],
+      [12, 0, -12], [24, 0, -24], [36, 0, -36],
     ],
     color: '#f59e0b',
   },
   bot: {
     name: 'BOT',
     waypoints: [
-      [-18, 0, 18], [-6, 0, 18], [6, 0, 18], [18, 0, 18],
-      [18, 0, 6], [18, 0, -6], [18, 0, -18],
+      [-36, 0, 36], [-12, 0, 36], [12, 0, 36], [36, 0, 36],
+      [36, 0, 12], [36, 0, -12], [36, 0, -36],
     ],
     color: '#a855f7',
   },
 };
 
 // --- Obstacles between lanes (raised terrain blocks) ------------------------
+// Central scatter blocks REMOVED — they blocked the mid-lane corridor.
 export const OBSTACLES = [
   // Between top & mid (upper-left quadrant)
-  { pos: [-12, 0.75, -4], size: [3, 1.5, 4] },
-  { pos: [-8, 0.75, -10], size: [4, 1.5, 3] },
-  { pos: [-14, 1.0, 2], size: [2, 2, 3] },
+  { pos: [-24, 0.75, -8], size: [3, 1.5, 4] },
+  { pos: [-16, 0.75, -20], size: [4, 1.5, 3] },
+  { pos: [-28, 1.0, 4], size: [2, 2, 3] },
   // Between mid & bot (lower-right quadrant)
-  { pos: [12, 0.75, 4], size: [3, 1.5, 4] },
-  { pos: [8, 0.75, 10], size: [4, 1.5, 3] },
-  { pos: [14, 1.0, -2], size: [2, 2, 3] },
-  // Central scatter
-  { pos: [-4, 0.5, 4], size: [2, 1, 2] },
-  { pos: [4, 0.5, -4], size: [2, 1, 2] },
+  { pos: [24, 0.75, 8], size: [3, 1.5, 4] },
+  { pos: [16, 0.75, 20], size: [4, 1.5, 3] },
+  { pos: [28, 1.0, -4], size: [2, 2, 3] },
 ];
 
 // --- Soldier config ---------------------------------------------------------
 export const SOLDIER = {
   modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/ae76acb3d_RobotExpressive.glb',
-  spawnPosition: [-17, 0, 17],
+  spawnPosition: [-35, 0, 35],
   scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
   moveSpeed: 8,
   colliderHalfHeight: 0.5,
@@ -99,19 +97,19 @@ export const NPCS = {
   attackCooldown: 1.5,
   enemyColor: '#ef4444',
   friendlyColor: '#22c55e',
-  enemySpawn: [18, 0, -18],
-  friendlySpawn: [-18, 0, 18],
+  enemySpawn: [36, 0, -36],
+  friendlySpawn: [-36, 0, 36],
 };
 
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
     initialTarget: [0, 0, 0],
-    initialDistance: 42,
-    minDistance: 18,
-    maxDistance: 65,
+    initialDistance: 80,
+    minDistance: 30,
+    maxDistance: 130,
     angle: Math.PI / 3.2, // pitch from horizontal
-    panSpeed: 30,
+    panSpeed: 50,
   },
   thirdPerson: {
     distance: 7,

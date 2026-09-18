@@ -45,7 +45,7 @@ function Base({ position, color, accentColor }) {
     <group position={position}>
       <mesh position={[0, 0.1, 0]} receiveShadow castShadow>
         <boxGeometry args={[7, 0.2, 7]} />
-        <meshStandardMaterial color="#2a2f3e" />
+        <meshStandardMaterial color="#4a5568" />
       </mesh>
       <mesh position={[0, 0.16, 0]} receiveShadow>
         <boxGeometry args={[7.3, 0.12, 7.3]} />
@@ -68,7 +68,7 @@ function Base({ position, color, accentColor }) {
 // --- Full battlefield -------------------------------------------------------
 export function Battlefield() {
   const obstacleGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  const obstacleMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#252a38', roughness: 0.8 }), []);
+  const obstacleMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#6b7280', roughness: 0.8 }), []);
 
   // Boundary walls (invisible colliders)
   const walls = useMemo(() => [
@@ -94,7 +94,7 @@ export function Battlefield() {
       </RigidBody>
 
       {/* Grid overlay */}
-      <gridHelper args={[MAP.SIZE, 20, '#334155', '#1e293b']} position={[0, 0.01, 0]} />
+      <gridHelper args={[MAP.SIZE, 40, '#64748b', '#94a3b8']} position={[0, 0.01, 0]} />
 
       {/* Lane strips */}
       <LaneStrip waypoints={LANES.top.waypoints} color={LANES.top.color} width={MAP.LANE_WIDTH} />

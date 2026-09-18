@@ -36,22 +36,22 @@ export function GameScene() {
 
   return (
     <>
-      <color attach="background" args={['#0a0e1a']} />
-      <fog attach="fog" args={['#0a0e1a', 50, 100]} />
+      <color attach="background" args={['#87ceeb']} />
+      <fog attach="fog" args={['#87ceeb', 90, 180]} />
 
-      <ambientLight intensity={0.4} />
-      <hemisphereLight intensity={0.3} groundColor="#1a1a2a" color="#4a6a9a" />
+      <ambientLight intensity={0.6} />
+      <hemisphereLight intensity={0.5} groundColor="#8a9a6a" color="#b0d0ff" />
       <directionalLight
         castShadow
-        position={[15, 30, 10]}
-        intensity={1.2}
+        position={[30, 50, 20]}
+        intensity={1.5}
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-25}
-        shadow-camera-right={25}
-        shadow-camera-top={25}
-        shadow-camera-bottom={-25}
+        shadow-camera-left={-45}
+        shadow-camera-right={45}
+        shadow-camera-top={45}
+        shadow-camera-bottom={-45}
         shadow-camera-near={1}
-        shadow-camera-far={80}
+        shadow-camera-far={120}
         shadow-bias={-0.0005}
       />
 
