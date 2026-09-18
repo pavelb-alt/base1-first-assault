@@ -70,12 +70,12 @@ export function Battlefield() {
   const obstacleGeo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   const obstacleMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#6b7280', roughness: 0.8 }), []);
 
-  // Boundary walls — explicit colliders, tall enough to block jumps
+  // Boundary walls — just outside the walkable area, explicit colliders
   const walls = useMemo(() => [
-    { pos: [0, 4, -MAP.HALF], args: [MAP.HALF, 4, 1] },   // North
-    { pos: [0, 4, MAP.HALF], args: [MAP.HALF, 4, 1] },     // South
-    { pos: [-MAP.HALF, 4, 0], args: [1, 4, MAP.HALF] },     // West
-    { pos: [MAP.HALF, 4, 0], args: [1, 4, MAP.HALF] },      // East
+    { pos: [0, 4, -MAP.HALF - 1], args: [MAP.HALF, 4, 1] },   // North
+    { pos: [0, 4, MAP.HALF + 1], args: [MAP.HALF, 4, 1] },     // South
+    { pos: [-MAP.HALF - 1, 4, 0], args: [1, 4, MAP.HALF] },     // West
+    { pos: [MAP.HALF + 1, 4, 0], args: [1, 4, MAP.HALF] },      // East
   ], []);
 
   return (
