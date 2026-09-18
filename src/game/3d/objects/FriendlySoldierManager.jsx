@@ -5,9 +5,10 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
-import { SOLDIER, LANES, NPCS, FRIENDLY } from '@/game/config';
+import { SOLDIER, LANES, NPCS, FRIENDLY, COMBAT } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
+import { combat, findNearestEnemy } from '@/game/3d/combat';
 
 // Start downloading the model as soon as the module loads
 useGLTF.preload(SOLDIER.modelUrl);
@@ -67,6 +68,8 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
   const prevSpace = useRef(false);
   const jumpsRemaining = useRef(SOLDIER.maxJumps);
   const wasPossessed = useRef(false);
+  const combatEntryRef = useRef(null);
+  const attackTimer = useRef(0);
 
   const lane = friendlyLanePaths[laneIndex];
 
@@ -129,6 +132,25 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
     return () => EventBus.off('set-soldier-rotation', onSetRotation);
   }, [id]);
 
+  // Register in combat system
+  useEffect(() => {
+    const entry = {
+      id,
+      team: 'friendly',
+      bodyRef,
+      health: COMBAT.maxHealth,
+      maxHealth: COMBAT.maxHealth,
+      alive: true,
+    };
+    combat.units.push(entry);
+    combatEntryRef.current = entry;
+    return () => {
+      const idx = combat.units.indexOf(entry);
+      if (idx >= 0) combat.units.splice(idx, 1);
+      combatEntryRef.current = null;
+    };
+  }, [id]);
+
   // Listen for reset
   useEffect(() => {
     const onReset = () => {
@@ -144,6 +166,7 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
       jumpsRemaining.current = SOLDIER.maxJumps;
       prevSpace.current = false;
       wasPossessed.current = false;
+      attackTimer.current = 0;
     };
     EventBus.on('reset-game', onReset);
     return () => EventBus.off('reset-game', onReset);
@@ -230,35 +253,68 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
         else if (vel.y < -0.5) playAnimation('Idle');
       }
     } else {
-      // --- AI movement: follow lane waypoints toward enemy base ---
-      const target = lane.points[wpIndex.current];
-      if (!target) return;
+      // --- AI mode: combat + lane movement ---
+      const entry = combatEntryRef.current;
 
-      _dir.set(target.x - pos.x, 0, target.z - pos.z);
-      const dist = _dir.length();
-
-      let moving = false;
-
-      if (dist < 1.2) {
-        wpIndex.current++;
-        if (wpIndex.current >= lane.points.length) {
-          onDespawn(id);
-          return;
-        }
-      } else {
-        _dir.normalize();
-        moving = true;
-        body.setLinvel(
-          { x: _dir.x * FRIENDLY.moveSpeed, y: vel.y, z: _dir.z * FRIENDLY.moveSpeed },
-          true,
-        );
-        targetRotation.current = Math.atan2(_dir.x, _dir.z);
+      // Check if dead
+      if (entry && !entry.alive) {
+        onDespawn(id);
+        return;
       }
 
-      if (moving) {
-        playAnimation('Running');
+      // Find nearest enemy within attack range
+      const enemy = entry ? findNearestEnemy(entry, COMBAT.attackRange) : null;
+
+      if (enemy) {
+        // In range — stop and attack
+        body.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
+        const enemyPos = enemy.bodyRef.current.translation();
+        targetRotation.current = Math.atan2(enemyPos.x - pos.x, enemyPos.z - pos.z);
+
+        attackTimer.current -= delta;
+        if (attackTimer.current <= 0) {
+          attackTimer.current = COMBAT.attackCooldown;
+          playAnimation(SOLDIER.animAttack || 'Attack');
+          combat.pendingProjectiles.push({
+            origin: [pos.x, pos.y + 1.0, pos.z],
+            targetId: enemy.id,
+            damage: COMBAT.projectileDamage,
+            team: 'friendly',
+          });
+        } else {
+          playAnimation('Idle');
+        }
       } else {
-        playAnimation('Idle');
+        // No enemy in range — continue lane movement
+        const target = lane.points[wpIndex.current];
+        if (!target) return;
+
+        _dir.set(target.x - pos.x, 0, target.z - pos.z);
+        const dist = _dir.length();
+
+        let moving = false;
+
+        if (dist < 1.2) {
+          wpIndex.current++;
+          if (wpIndex.current >= lane.points.length) {
+            onDespawn(id);
+            return;
+          }
+        } else {
+          _dir.normalize();
+          moving = true;
+          body.setLinvel(
+            { x: _dir.x * FRIENDLY.moveSpeed, y: vel.y, z: _dir.z * FRIENDLY.moveSpeed },
+            true,
+          );
+          targetRotation.current = Math.atan2(_dir.x, _dir.z);
+        }
+
+        if (moving) {
+          playAnimation('Running');
+        } else {
+          playAnimation('Idle');
+        }
       }
     }
 

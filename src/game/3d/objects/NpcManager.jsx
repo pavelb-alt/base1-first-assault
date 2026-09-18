@@ -4,8 +4,9 @@ import { useGLTF, useAnimations } from '@react-three/drei';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { LANES, NPCS, ENEMY_TYPES } from '@/game/config';
+import { LANES, NPCS, ENEMY_TYPES, COMBAT } from '@/game/config';
 import { EventBus } from '@/game/EventBus';
+import { combat, findNearestEnemy } from '@/game/3d/combat';
 
 // Preload all enemy models at module scope (loaded once, cached by URL)
 Object.values(ENEMY_TYPES).forEach((t) => useGLTF.preload(t.modelUrl));
@@ -50,6 +51,8 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
   const wpIndex = useRef(0);
   const spawned = useRef(false);
   const currentAnim = useRef(null);
+  const combatEntryRef = useRef(null);
+  const attackTimer = useRef(0);
 
   const lane = lanePaths[laneIndex];
   const isFlying = config.hoverHeight > 0;
@@ -89,6 +92,25 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
     }
   }, [actions, config]);
 
+  // Register in combat system
+  useEffect(() => {
+    const entry = {
+      id,
+      team: 'enemy',
+      bodyRef,
+      health: COMBAT.maxHealth,
+      maxHealth: COMBAT.maxHealth,
+      alive: true,
+    };
+    combat.units.push(entry);
+    combatEntryRef.current = entry;
+    return () => {
+      const idx = combat.units.indexOf(entry);
+      if (idx >= 0) combat.units.splice(idx, 1);
+      combatEntryRef.current = null;
+    };
+  }, [id]);
+
   // Set initial spawn position once the body exists
   useEffect(() => {
     if (bodyRef.current && !spawned.current) {
@@ -106,10 +128,45 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
     const group = groupRef.current;
     if (!body || !group) return;
 
+    const pos = body.translation();
+
+    // Check if dead
+    const entry = combatEntryRef.current;
+    if (entry && !entry.alive) {
+      onDespawn(id);
+      return;
+    }
+
+    // Find nearest enemy (friendly) within attack range
+    const enemy = entry ? findNearestEnemy(entry, COMBAT.attackRange) : null;
+
+    if (enemy) {
+      // In range — stop and attack
+      const vel = body.linvel();
+      body.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
+      const enemyPos = enemy.bodyRef.current.translation();
+      group.rotation.y = Math.atan2(enemyPos.x - pos.x, enemyPos.z - pos.z) + config.facingOffset;
+
+      attackTimer.current -= delta;
+      if (attackTimer.current <= 0) {
+        attackTimer.current = COMBAT.attackCooldown;
+        playAnimation(config.animAttack);
+        combat.pendingProjectiles.push({
+          origin: [pos.x, pos.y + 1.0, pos.z],
+          targetId: enemy.id,
+          damage: COMBAT.projectileDamage,
+          team: 'enemy',
+        });
+      } else {
+        playAnimation(config.animIdle);
+      }
+      return;
+    }
+
+    // No enemy in range — continue lane movement
     const target = lane.points[wpIndex.current];
     if (!target) return;
 
-    const pos = body.translation();
     _dir.set(target.x - pos.x, 0, target.z - pos.z);
     const dist = _dir.length();
 

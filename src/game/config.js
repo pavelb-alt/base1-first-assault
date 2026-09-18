@@ -87,6 +87,7 @@ export const SOLDIER = {
   colliderY: 0.9,
   groundThreshold: 0.35,  // body Y below this + low vertical velocity = grounded
   initialFacing: (3 * Math.PI) / 4, // model faces +Z; rotate to face enemy base
+  animAttack: 'Attack',
 };
 
 // --- NPC config -------------------------------------------------------------
@@ -154,6 +155,16 @@ export const FRIENDLY = {
   maxAlive: 30,          // cap on living friendly soldiers (including possessed)
   moveSpeed: 3,          // AI movement speed (matches NPCS.moveSpeed)
   staggerOffset: 1.5,    // perpendicular offset between soldiers in a lane
+};
+
+// --- Combat config ----------------------------------------------------------
+export const COMBAT = {
+  attackRange: 15,          // range at which units start attacking
+  attackCooldown: 1.5,      // seconds between attacks
+  projectileSpeed: 20,      // units per second
+  projectileDamage: 10,     // damage per hit
+  maxHealth: 100,           // health for all units
+  projectileLifetime: 3,    // max seconds a projectile exists
 };
 
 // --- Camera config ----------------------------------------------------------

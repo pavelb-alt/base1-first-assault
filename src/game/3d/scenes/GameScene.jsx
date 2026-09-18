@@ -6,7 +6,9 @@ import { Battlefield } from '@/game/3d/objects/Battlefield';
 import { FriendlySoldierManager, friendlyRegistry } from '@/game/3d/objects/FriendlySoldierManager';
 import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
+import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
 import { gameState } from '@/game/3d/world';
+import { combat } from '@/game/3d/combat';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -37,6 +39,8 @@ export function GameScene() {
       },
       possess: () => EventBus.emit('possess-soldier'),
       release: () => EventBus.emit('release-soldier'),
+      getEnemyCount: () => combat.units.filter((u) => u.team === 'enemy' && u.alive).length,
+      getFriendlyCombatCount: () => combat.units.filter((u) => u.team === 'friendly' && u.alive).length,
     };
 
     const onLoaded = () => { if (window.game) window.game.ready = true; };
@@ -68,6 +72,7 @@ export function GameScene() {
       />
 
       <CameraRig />
+      <ProjectileManager />
 
       <Suspense fallback={null}>
         <Physics gravity={[0, -20, 0]}>
