@@ -8,4 +8,4 @@
 // into GameContainer's #game-container div, calls onReady once the engine is
 // live, and emits 'current-scene-ready' on the EventBus once the scene is.
 // Only the flavor imported here ends up in the production bundle.
-export { default } from '@/game/2d/Game';
+export { default } from '@/game/3d/Game';

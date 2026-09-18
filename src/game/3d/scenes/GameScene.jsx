@@ -1,60 +1,65 @@
 import { Suspense, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import { Physics, RigidBody } from '@react-three/rapier';
+import { Physics } from '@react-three/rapier';
 import { EventBus } from '@/game/EventBus';
+import { Battlefield } from '@/game/3d/objects/Battlefield';
+import { Soldier } from '@/game/3d/objects/Soldier';
+import { CameraRig } from '@/game/3d/objects/CameraRig';
+import { gameState } from '@/game/3d/world';
 
-/**
- * Intentionally minimal starter scene — replace its contents when building a
- * real game. It demonstrates the three building blocks of the 3D stack:
- *   - three.js objects as JSX (lights, meshes) via React Three Fiber
- *   - camera interaction via drei (<OrbitControls />)
- *   - physics via rapier: the cube falls and settles on the fixed ground
- * Per-frame gameplay logic goes in child components via useFrame((state, delta) => ...).
- */
 export function GameScene() {
   const scene = useThree((state) => state.scene);
 
+  // Scene-ready signal
   useEffect(() => {
-    // Same contract as the 2D flavor: tell React the scene is live.
     EventBus.emit('current-scene-ready', scene);
   }, [scene]);
 
+  // window.game API for verification
+  useEffect(() => {
+    window.game = {
+      ready: false,
+      getMode: () => gameState.mode,
+      getSoldierPosition: () => ({
+        x: gameState.soldierPosition.x,
+        y: gameState.soldierPosition.y,
+        z: gameState.soldierPosition.z,
+      }),
+      isSelected: () => gameState.selected,
+      possess: () => EventBus.emit('possess-soldier'),
+      release: () => EventBus.emit('release-soldier'),
+    };
+    const id = setTimeout(() => { if (window.game) window.game.ready = true; }, 1000);
+    return () => { clearTimeout(id); delete window.game; };
+  }, []);
+
   return (
     <>
-      <ambientLight intensity={0.6} />
-      {/* shadow-camera-* uses R3F's dashed "pierced props" syntax; the default
-          10-unit shadow frustum is smaller than the 12×12 ground, so widen it. */}
+      <color attach="background" args={['#0a0e1a']} />
+      <fog attach="fog" args={['#0a0e1a', 50, 100]} />
+
+      <ambientLight intensity={0.4} />
+      <hemisphereLight intensity={0.3} groundColor="#1a1a2a" color="#4a6a9a" />
       <directionalLight
         castShadow
-        position={[5, 10, 5]}
-        intensity={1.5}
+        position={[15, 30, 10]}
+        intensity={1.2}
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={10}
+        shadow-camera-left={-25}
+        shadow-camera-right={25}
+        shadow-camera-top={25}
+        shadow-camera-bottom={-25}
+        shadow-camera-near={1}
+        shadow-camera-far={80}
+        shadow-bias={-0.0005}
       />
-      <OrbitControls makeDefault />
 
-      {/* Physics suspends while the rapier WASM module initializes. */}
+      <CameraRig />
+
       <Suspense fallback={null}>
-        <Physics>
-          {/* Fixed ground; colliders are auto-generated from meshes ("cuboid" by default). */}
-          <RigidBody type="fixed">
-            <mesh receiveShadow position={[0, -0.5, 0]}>
-              <boxGeometry args={[12, 1, 12]} />
-              <meshStandardMaterial color="#1e293b" />
-            </mesh>
-          </RigidBody>
-
-          {/* Dynamic cube that tumbles onto the ground. */}
-          <RigidBody position={[0, 4, 0]} rotation={[0.4, 0.2, 0]}>
-            <mesh castShadow>
-              <boxGeometry args={[1, 1, 1]} />
-              <meshStandardMaterial color="#38bdf8" />
-            </mesh>
-          </RigidBody>
+        <Physics gravity={[0, -20, 0]}>
+          <Battlefield />
+          <Soldier />
         </Physics>
       </Suspense>
     </>
