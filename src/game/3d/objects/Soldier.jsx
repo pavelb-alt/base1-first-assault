@@ -1,7 +1,7 @@
 import { Suspense, useRef, useEffect, useMemo, Component } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
-import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
+import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
@@ -53,7 +53,6 @@ function SoldierModel() {
   const targetRotation = useRef(SOLDIER.initialFacing);
   const prevSpace = useRef(false);
   const jumpsRemaining = useRef(SOLDIER.maxJumps);
-  const { world } = useRapier();
 
   // Clone with SkeletonUtils to preserve skeleton/bone bindings (prevents detached hands)
   const clonedScene = useMemo(() => {
@@ -132,16 +131,13 @@ function SoldierModel() {
 
       // --- Jump (edge-press on Space) ---
       const spacePressed = !!keys.Space;
+      let verticalVelocity = vel.y;
+      let jumpAnimation = null;
       if (spacePressed && !prevSpace.current && jumpsRemaining.current > 0) {
-        bodyRef.current.setLinvel(
-          { x: vel.x, y: SOLDIER.jumpForce, z: vel.z },
-          true,
-        );
+        const isDouble = jumpsRemaining.current === SOLDIER.maxJumps - 1;
+        verticalVelocity = SOLDIER.jumpForce;
         jumpsRemaining.current--;
-        // Try "Jump" for first jump, "DoubleJump" for second; fall back to "Jump"
-        const isDouble = jumpsRemaining.current === SOLDIER.maxJumps - 2;
-        const jumpAnim = isDouble ? (actions.DoubleJump ? 'DoubleJump' : 'Jump') : 'Jump';
-        playAnimation(jumpAnim);
+        jumpAnimation = isDouble ? 'DoubleJump' : 'Jump';
       }
       prevSpace.current = spacePressed;
 
@@ -162,23 +158,22 @@ function SoldierModel() {
         mx /= len; mz /= len;
 
         bodyRef.current.setLinvel(
-          { x: mx * SOLDIER.moveSpeed, y: vel.y, z: mz * SOLDIER.moveSpeed },
+          { x: mx * SOLDIER.moveSpeed, y: verticalVelocity, z: mz * SOLDIER.moveSpeed },
           true,
         );
         targetRotation.current = Math.atan2(mx, mz);
-        if (grounded) playAnimation('Running');
+        if (grounded && !jumpAnimation) playAnimation('Running');
       } else {
-        bodyRef.current.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
-        if (grounded) playAnimation('Idle');
+        bodyRef.current.setLinvel({ x: 0, y: verticalVelocity, z: 0 }, true);
+        if (grounded && !jumpAnimation) playAnimation('Idle');
       }
 
-      // Airborne animation overrides
-      if (!grounded) {
-        if (vel.y > 0.5) {
-          playAnimation('Jump');
-        } else if (vel.y < -0.5) {
-          playAnimation('Idle');
-        }
+      // A triggered jump has animation priority for this frame.
+      if (jumpAnimation) {
+        playAnimation(jumpAnimation);
+      } else if (!grounded) {
+        if (vel.y > 0.5) playAnimation('Jump');
+        else if (vel.y < -0.5) playAnimation('Idle');
       }
     } else {
       playAnimation('Idle');
