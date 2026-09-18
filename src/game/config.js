@@ -148,6 +148,14 @@ export const ENEMY_TYPES = {
   },
 };
 
+// --- Friendly soldier wave config ------------------------------------------
+export const FRIENDLY = {
+  perLane: 3,            // soldiers per lane per wave (9 total across 3 lanes)
+  maxAlive: 30,          // cap on living friendly soldiers (including possessed)
+  moveSpeed: 3,          // AI movement speed (matches NPCS.moveSpeed)
+  staggerOffset: 1.5,    // perpendicular offset between soldiers in a lane
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {

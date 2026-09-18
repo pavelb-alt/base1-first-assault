@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { EventBus } from '@/game/EventBus';
 import { Battlefield } from '@/game/3d/objects/Battlefield';
-import { Soldier } from '@/game/3d/objects/Soldier';
+import { FriendlySoldierManager, friendlyRegistry } from '@/game/3d/objects/FriendlySoldierManager';
 import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { gameState } from '@/game/3d/world';
@@ -26,12 +26,24 @@ export function GameScene() {
         y: gameState.soldierPosition.y,
         z: gameState.soldierPosition.z,
       }),
-      isSelected: () => gameState.selected,
+      isSelected: () => gameState.selectedSoldierId !== null,
+      getSelectedId: () => gameState.selectedSoldierId,
+      getPossessedId: () => gameState.possessedSoldierId,
+      getSoldierCount: () => friendlyRegistry.soldiers.length,
+      getSoldierIds: () => friendlyRegistry.soldiers.map((s) => s.id),
+      selectSoldier: (id) => {
+        gameState.selectedSoldierId = id;
+        EventBus.emit('soldier-selected');
+      },
       possess: () => EventBus.emit('possess-soldier'),
       release: () => EventBus.emit('release-soldier'),
     };
-    const id = setTimeout(() => { if (window.game) window.game.ready = true; }, 1000);
-    return () => { clearTimeout(id); delete window.game; };
+
+    const onLoaded = () => { if (window.game) window.game.ready = true; };
+    EventBus.on('soldier-loaded', onLoaded);
+
+    const id = setTimeout(() => { if (window.game) window.game.ready = true; }, 3000);
+    return () => { clearTimeout(id); EventBus.off('soldier-loaded', onLoaded); delete window.game; };
   }, []);
 
   return (
@@ -60,7 +72,7 @@ export function GameScene() {
       <Suspense fallback={null}>
         <Physics gravity={[0, -20, 0]}>
           <Battlefield />
-          <Soldier />
+          <FriendlySoldierManager />
           <NpcManager />
         </Physics>
       </Suspense>

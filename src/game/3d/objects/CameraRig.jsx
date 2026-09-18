@@ -24,8 +24,8 @@ export function CameraRig() {
       const dz = enemy[2] - pos.z;
       // Camera looks toward enemy base
       thirdPersonYaw.current = Math.atan2(dx, dz);
-      // Soldier faces enemy base (model forward is +Z)
-      EventBus.emit('set-soldier-rotation', Math.atan2(dx, dz));
+      // Soldier faces enemy base (model forward is +Z) — include ID so only the possessed soldier applies it
+      EventBus.emit('set-soldier-rotation', { id: gameState.selectedSoldierId, rotation: Math.atan2(dx, dz) });
       EventBus.emit('mode-changed', 'third_person');
       // Request pointer lock (slight delay so React processes the mode change first)
       setTimeout(() => { gl.domElement.requestPointerLock?.(); }, 50);
@@ -33,7 +33,8 @@ export function CameraRig() {
 
     const onRelease = () => {
       gameState.mode = 'strategic';
-      gameState.selected = false;
+      gameState.selectedSoldierId = null;
+      gameState.possessedSoldierId = null;
       // Re-center strategic camera on the soldier's current position
       strategicTarget.current.copy(gameState.soldierPosition);
       EventBus.emit('mode-changed', 'strategic');

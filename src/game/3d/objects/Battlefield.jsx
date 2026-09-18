@@ -83,8 +83,8 @@ export function Battlefield() {
       {/* Ground plane — click to deselect soldier */}
       <RigidBody type="fixed" colliders="cuboid">
         <mesh position={[0, -0.5, 0]} receiveShadow onClick={() => {
-          if (gameState.mode === 'strategic' && gameState.selected) {
-            gameState.selected = false;
+          if (gameState.mode === 'strategic' && gameState.selectedSoldierId !== null) {
+            gameState.selectedSoldierId = null;
             EventBus.emit('soldier-deselected');
           }
         }}>

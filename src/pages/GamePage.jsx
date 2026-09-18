@@ -45,7 +45,8 @@ export default function GamePage() {
 
   const handleReset = () => {
     gameState.mode = 'strategic';
-    gameState.selected = false;
+    gameState.selectedSoldierId = null;
+    gameState.possessedSoldierId = null;
     EventBus.emit('reset-game');
     EventBus.emit('mode-changed', 'strategic');
     setMode('strategic');
