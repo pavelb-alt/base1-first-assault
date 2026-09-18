@@ -121,7 +121,7 @@ function SoldierModel() {
 
       // Camera-relative movement axes
       _forward.set(Math.sin(yaw), 0, Math.cos(yaw));
-      _right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+      _right.set(-Math.cos(yaw), 0, Math.sin(yaw));
 
       let mx = 0, mz = 0;
       if (keys.KeyW) { mx += _forward.x; mz += _forward.z; }
