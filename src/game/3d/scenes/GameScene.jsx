@@ -8,6 +8,7 @@ import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { gameState } from '@/game/3d/world';
 import { SOLDIER } from '@/game/config';
+import { setControl } from '@/game/3d/input';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -27,12 +28,13 @@ export function GameScene() {
         y: gameState.soldierPosition.y,
         z: gameState.soldierPosition.z,
       }),
+      getJumpState: () => ({ ...gameState.soldierJump }),
+      setControl,
       isSelected: () => gameState.selected,
       possess: () => EventBus.emit('possess-soldier'),
       release: () => EventBus.emit('release-soldier'),
     };
-    const id = setTimeout(() => { if (window.game) window.game.ready = true; }, 1000);
-    return () => { clearTimeout(id); delete window.game; };
+    return () => { delete window.game; };
   }, []);
 
   return (
