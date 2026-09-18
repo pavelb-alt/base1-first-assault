@@ -31,3 +31,4 @@ dist-ssr
 .vite
 
 .playwright.mcp
+base44/.app.jsonc
