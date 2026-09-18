@@ -88,6 +88,21 @@ export const SOLDIER = {
   initialFacing: Math.PI / 4, // faces toward enemy base
 };
 
+// --- NPC config -------------------------------------------------------------
+export const NPCS = {
+  spawnInterval: 6,        // seconds between spawns per lane
+  maxPerLane: 3,           // max concurrent NPCs per lane
+  moveSpeed: 3,
+  maxHealth: 100,
+  damage: 10,
+  attackRange: 2,
+  attackCooldown: 1.5,
+  enemyColor: '#ef4444',
+  friendlyColor: '#22c55e',
+  enemySpawn: [18, 0, -18],
+  friendlySpawn: [-18, 0, 18],
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {

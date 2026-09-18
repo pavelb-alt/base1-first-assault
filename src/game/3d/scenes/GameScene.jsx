@@ -5,6 +5,7 @@ import { EventBus } from '@/game/EventBus';
 import { Battlefield } from '@/game/3d/objects/Battlefield';
 import { Soldier } from '@/game/3d/objects/Soldier';
 import { CameraRig } from '@/game/3d/objects/CameraRig';
+import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { gameState } from '@/game/3d/world';
 
 export function GameScene() {
@@ -60,6 +61,7 @@ export function GameScene() {
         <Physics gravity={[0, -20, 0]}>
           <Battlefield />
           <Soldier />
+          <NpcManager />
         </Physics>
       </Suspense>
     </>
