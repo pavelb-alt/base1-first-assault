@@ -180,7 +180,8 @@ export const CAMERA = {
   thirdPerson: {
     distance: 7,
     height: 2.5,
-    minPitch: 0.15,
+    shoulder: 0.55, // screen-right offset; existing model/movement forward is +Z
+    minPitch: -0.85,
     maxPitch: 1.3,
     initialPitch: 0.4,
     mouseSensitivity: 0.0022,

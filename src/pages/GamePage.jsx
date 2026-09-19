@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { GameContainer } from '@/components/game/GameContainer';
 import { EventBus } from '@/game/EventBus';
-import { gameState } from '@/game/3d/world';
+import AimOverlay from '@/components/AimOverlay';
 
 export default function GamePage() {
   const [mode, setMode] = useState('strategic');
@@ -44,9 +44,6 @@ export default function GamePage() {
   }, [mode, selected]);
 
   const handleReset = () => {
-    gameState.mode = 'strategic';
-    gameState.selectedSoldierId = null;
-    gameState.possessedSoldierId = null;
     EventBus.emit('reset-game');
     EventBus.emit('mode-changed', 'strategic');
     setMode('strategic');
@@ -58,6 +55,7 @@ export default function GamePage() {
       <div className="game-frame">
         <GameContainer />
         <div className="absolute inset-0 pointer-events-none select-none">
+          {mode === 'third_person' && <AimOverlay />}
           {/* Mode indicator */}
           <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
             <div className="text-white font-bold text-sm tracking-wider">

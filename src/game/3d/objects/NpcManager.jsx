@@ -7,6 +7,11 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { LANES, NPCS, ENEMY_TYPES, COMBAT } from '@/game/config';
 import { EventBus } from '@/game/EventBus';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
+import { fireShot } from '@/game/3d/ballistics';
+import { random } from '@/game/3d/random';
+import { gameState } from '@/game/3d/world';
+const shotOrigin = new THREE.Vector3();
+const shotAim = new THREE.Vector3();
 
 // Preload all enemy models at module scope (loaded once, cached by URL)
 Object.values(ENEMY_TYPES).forEach((t) => useGLTF.preload(t.modelUrl));
@@ -97,7 +102,7 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
     const entry = {
       id,
       team: 'enemy',
-      bodyRef,
+      bodyRef, aimHeight: config.colliderY,
       health: COMBAT.maxHealth,
       maxHealth: COMBAT.maxHealth,
       alive: true,
@@ -124,6 +129,7 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
   }, [lane, isFlying, config]);
 
   useFrame((_state, delta) => {
+    if (gameState.paused) return;
     const body = bodyRef.current;
     const group = groupRef.current;
     if (!body || !group) return;
@@ -151,12 +157,9 @@ function NpcBody({ id, laneIndex, type, onDespawn }) {
       if (attackTimer.current <= 0) {
         attackTimer.current = COMBAT.attackCooldown;
         playAnimation(config.animAttack);
-        combat.pendingProjectiles.push({
-          origin: [pos.x, pos.y + 1.0, pos.z],
-          targetId: enemy.id,
-          damage: COMBAT.projectileDamage,
-          team: 'enemy',
-        });
+        shotOrigin.set(pos.x, pos.y + 1, pos.z);
+        shotAim.set(enemyPos.x, enemyPos.y + enemy.aimHeight, enemyPos.z);
+        fireShot(entry, shotOrigin, shotAim);
       } else {
         playAnimation(config.animIdle);
       }
@@ -266,6 +269,7 @@ export function NpcManager() {
 
   // Spawn loop — per-lane timers, type distribution, one commander per wave
   useFrame((_state, delta) => {
+    if (gameState.paused) return;
     const current = npcsRef.current;
     let spawned = false;
 
@@ -285,7 +289,7 @@ export function NpcManager() {
           commanderLane.current++;
         } else {
           // Regular enemy: mostly QuadShell, sometimes EyeDrone
-          type = Math.random() < NPCS.eyeDroneChance ? 'eyedrone' : 'quadshell';
+          type = random() < NPCS.eyeDroneChance ? 'eyedrone' : 'quadshell';
         }
 
         current.push({ id: nextId.current, laneIndex: i, type });

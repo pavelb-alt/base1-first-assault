@@ -42,7 +42,7 @@ function LaneStrip({ waypoints, color, width }) {
 // --- Faction base platform --------------------------------------------------
 function Base({ position, color, accentColor }) {
   return (
-    <group position={position}>
+    <group position={position} userData={{ shotCover: true }}>
       <mesh position={[0, 0.1, 0]} receiveShadow castShadow>
         <boxGeometry args={[7, 0.2, 7]} />
         <meshStandardMaterial color="#4a5568" />

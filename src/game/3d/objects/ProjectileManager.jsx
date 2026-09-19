@@ -1,118 +1,55 @@
 import { useRef, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { useRapier } from '@react-three/rapier';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
 import { COMBAT } from '@/game/config';
+import { AIM } from '@/game/3d/weapons';
 import { combat } from '@/game/3d/combat';
+import { gameState } from '@/game/3d/world';
+import { trace, applyImpact } from '@/game/3d/ballistics';
 
-const POOL_SIZE = 50;
-
+const geometry = new THREE.SphereGeometry(.2, 8, 8);
+const material = new THREE.MeshStandardMaterial({ color: '#ffd700', emissive: '#ff6600', emissiveIntensity: .8 });
 export function ProjectileManager() {
-  const projectiles = useRef(
-    Array.from({ length: POOL_SIZE }, () => ({
-      active: false,
-      position: new THREE.Vector3(),
-      direction: new THREE.Vector3(),
-      targetId: null,
-      damage: 0,
-      lifetime: 0,
-    }))
-  );
-  const meshRefs = useRef([]);
-
-  // Reset on game reset
+  const { world, rapier } = useRapier();
+  const scene = useThree(s => s.scene);
+  const projectiles = useRef(Array.from({ length: AIM.poolSize }, () => ({ active: false, position: new THREE.Vector3(), direction: new THREE.Vector3(), lifetime: 0 })));
+  const meshes = useRef([]);
   useEffect(() => {
-    const onReset = () => {
+    const cover = []; scene.traverse(o => { if (o.userData.shotCover) cover.push(o); });
+    combat.physics = { world, rapier, cover }; combat.projectiles = projectiles.current;
+    const reset = () => {
       combat.pendingProjectiles.length = 0;
-      for (const p of projectiles.current) p.active = false;
+      projectiles.current.forEach((p,i) => { p.active = false; if (meshes.current[i]) meshes.current[i].visible = false; });
+      combat.stats = { shots: 0, playerShots: 0, hits: 0, coverHits: 0, damage: 0 };
+      combat.lastShot = null; combat.lastImpact = null;
     };
-    EventBus.on('reset-game', onReset);
-    return () => EventBus.off('reset-game', onReset);
-  }, []);
+    EventBus.on('reset-game', reset);
+    return () => { EventBus.off('reset-game', reset); reset(); combat.physics = null; combat.projectiles = []; };
+  }, [world, rapier, scene]);
 
   useFrame((_state, delta) => {
-    // Spawn new projectiles from the queue
-    while (combat.pendingProjectiles.length > 0) {
+    if (gameState.paused) return;
+    while (combat.pendingProjectiles.length) {
       const req = combat.pendingProjectiles.shift();
-      const slot = projectiles.current.find((p) => !p.active);
-      if (!slot) break; // pool full
-
-      slot.active = true;
-      slot.position.set(req.origin[0], req.origin[1], req.origin[2]);
-      slot.targetId = req.targetId;
-      slot.damage = req.damage;
-      slot.lifetime = 0;
-
-      // Calculate initial direction toward target
-      const target = combat.units.find((u) => u.id === req.targetId && u.alive);
-      if (target && target.bodyRef.current) {
-        const tPos = target.bodyRef.current.translation();
-        slot.direction.set(
-          tPos.x - slot.position.x,
-          tPos.y - slot.position.y,
-          tPos.z - slot.position.z
-        ).normalize();
-      } else {
-        slot.direction.set(0, 0, -1);
-      }
+      const slot = projectiles.current.find(p => !p.active);
+      if (!slot) continue;
+      Object.assign(slot, { active: true, shooter: req.shooter, shooterId: req.shooterId, team: req.team, damage: req.damage, lifetime: 0 });
+      slot.position.fromArray(req.origin); slot.direction.fromArray(req.direction);
     }
-
-    // Update active projectiles
-    for (const proj of projectiles.current) {
-      if (!proj.active) continue;
-
-      proj.lifetime += delta;
-      if (proj.lifetime > COMBAT.projectileLifetime) {
-        proj.active = false;
-        continue;
-      }
-
-      // Check if target still alive
-      const target = combat.units.find((u) => u.id === proj.targetId && u.alive);
-      if (!target || !target.bodyRef.current) {
-        proj.active = false;
-        continue;
-      }
-
-      // Move projectile
-      proj.position.addScaledVector(proj.direction, COMBAT.projectileSpeed * delta);
-
-      // Check hit
-      const tPos = target.bodyRef.current.translation();
-      const dx = tPos.x - proj.position.x;
-      const dy = tPos.y - proj.position.y;
-      const dz = tPos.z - proj.position.z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-      if (dist < 1.0) {
-        target.health -= proj.damage;
-        if (target.health <= 0) {
-          target.alive = false;
-        }
-        proj.active = false;
-      }
-    }
-
-    // Update mesh positions
     for (let i = 0; i < projectiles.current.length; i++) {
-      const mesh = meshRefs.current[i];
-      if (!mesh) continue;
-      const proj = projectiles.current[i];
-      mesh.visible = proj.active;
-      if (proj.active) {
-        mesh.position.copy(proj.position);
+      const p = projectiles.current[i];
+      if (p.active) {
+        const dt = Math.min(delta, Math.max(0, COMBAT.projectileLifetime - p.lifetime));
+        const distance = COMBAT.projectileSpeed * dt;
+        const hit = trace(p.position, p.direction, distance, p.shooter);
+        if (hit) { applyImpact(hit, p); p.active = false; }
+        else { p.position.addScaledVector(p.direction, distance); p.lifetime += delta; if (p.lifetime >= COMBAT.projectileLifetime) p.active = false; }
       }
+      const mesh = meshes.current[i];
+      if (mesh) { mesh.visible = p.active; if (p.active) mesh.position.copy(p.position); }
     }
   });
-
-  return (
-    <>
-      {Array.from({ length: POOL_SIZE }).map((_, i) => (
-        <mesh key={i} ref={(el) => { meshRefs.current[i] = el; }} visible={false}>
-          <sphereGeometry args={[0.2, 8, 8]} />
-          <meshStandardMaterial color="#ffd700" emissive="#ff6600" emissiveIntensity={0.8} />
-        </mesh>
-      ))}
-    </>
-  );
+  return <>{projectiles.current.map((_,i) => <mesh key={i} ref={el => { meshes.current[i] = el; }} geometry={geometry} material={material} visible={false} />)}</>;
 }

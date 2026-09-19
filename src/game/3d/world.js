@@ -4,6 +4,7 @@ import { SOLDIER } from '@/game/config';
 // Authoritative game state — module scope, read/written by useFrame callbacks
 // and the React overlay. NEVER put per-frame gameplay state in React useState.
 export const gameState = {
+  paused: false,
   mode: 'strategic',            // 'strategic' | 'third_person'
   selectedSoldierId: null,     // ID of selected friendly soldier in strategic mode
   possessedSoldierId: null,    // ID of possessed friendly soldier in third-person mode

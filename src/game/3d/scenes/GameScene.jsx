@@ -1,14 +1,15 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { GameRuntime } from '@/game/3d/GameRuntime';
+import { clearInput } from '@/game/3d/input';
 import { useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { EventBus } from '@/game/EventBus';
 import { Battlefield } from '@/game/3d/objects/Battlefield';
-import { FriendlySoldierManager, friendlyRegistry } from '@/game/3d/objects/FriendlySoldierManager';
+import { FriendlySoldierManager } from '@/game/3d/objects/FriendlySoldierManager';
 import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
 import { gameState } from '@/game/3d/world';
-import { combat } from '@/game/3d/combat';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -18,36 +19,12 @@ export function GameScene() {
     EventBus.emit('current-scene-ready', scene);
   }, [scene]);
 
-  // window.game API for verification
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
-    window.game = {
-      ready: false,
-      getMode: () => gameState.mode,
-      getSoldierPosition: () => ({
-        x: gameState.soldierPosition.x,
-        y: gameState.soldierPosition.y,
-        z: gameState.soldierPosition.z,
-      }),
-      isSelected: () => gameState.selectedSoldierId !== null,
-      getSelectedId: () => gameState.selectedSoldierId,
-      getPossessedId: () => gameState.possessedSoldierId,
-      getSoldierCount: () => friendlyRegistry.soldiers.length,
-      getSoldierIds: () => friendlyRegistry.soldiers.map((s) => s.id),
-      selectSoldier: (id) => {
-        gameState.selectedSoldierId = id;
-        EventBus.emit('soldier-selected');
-      },
-      possess: () => EventBus.emit('possess-soldier'),
-      release: () => EventBus.emit('release-soldier'),
-      getEnemyCount: () => combat.units.filter((u) => u.team === 'enemy' && u.alive).length,
-      getFriendlyCombatCount: () => combat.units.filter((u) => u.team === 'friendly' && u.alive).length,
-    };
-
-    const onLoaded = () => { if (window.game) window.game.ready = true; };
-    EventBus.on('soldier-loaded', onLoaded);
-
-    const id = setTimeout(() => { if (window.game) window.game.ready = true; }, 3000);
-    return () => { clearTimeout(id); EventBus.off('soldier-loaded', onLoaded); delete window.game; };
+    const pause = () => { clearInput(); gameState.paused = true; setPaused(true); };
+    const resume = () => { clearInput(); gameState.paused = false; setPaused(false); };
+    EventBus.on('pause-game', pause); EventBus.on('resume-game', resume); EventBus.on('reset-game', resume);
+    return () => { EventBus.off('pause-game', pause); EventBus.off('resume-game', resume); EventBus.off('reset-game', resume); };
   }, []);
 
   return (
@@ -72,13 +49,14 @@ export function GameScene() {
       />
 
       <CameraRig />
-      <ProjectileManager />
 
       <Suspense fallback={null}>
-        <Physics gravity={[0, -20, 0]}>
+        <Physics gravity={[0, -20, 0]} paused={paused}>
           <Battlefield />
           <FriendlySoldierManager />
           <NpcManager />
+          <ProjectileManager />
+          <GameRuntime />
         </Physics>
       </Suspense>
     </>

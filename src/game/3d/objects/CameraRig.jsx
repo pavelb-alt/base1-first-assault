@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
 import { CAMERA, BASES, MAP } from '@/game/config';
 import { gameState } from '@/game/3d/world';
-import { input } from '@/game/3d/input';
+import { input, clearInput, bindInput } from '@/game/3d/input';
+import { combat } from '@/game/3d/combat';
 
 export function CameraRig() {
   const { camera, gl } = useThree();
@@ -17,6 +18,12 @@ export function CameraRig() {
   // --- Possess / release handlers -------------------------------------------
   useEffect(() => {
     const onPossess = () => {
+      const unit = combat.units.find(u => u.id === gameState.selectedSoldierId && u.team === 'friendly' && u.alive && u.weapon);
+      if (!unit?.bodyRef.current) return;
+      clearInput();
+      gameState.possessedSoldierId = unit.id;
+      const p = unit.bodyRef.current.translation();
+      gameState.soldierPosition.set(p.x, p.y, p.z);
       gameState.mode = 'third_person';
       const pos = gameState.soldierPosition;
       const enemy = BASES.enemy.position;
@@ -27,11 +34,12 @@ export function CameraRig() {
       // Soldier faces enemy base (model forward is +Z) — include ID so only the possessed soldier applies it
       EventBus.emit('set-soldier-rotation', { id: gameState.selectedSoldierId, rotation: Math.atan2(dx, dz) });
       EventBus.emit('mode-changed', 'third_person');
-      // Request pointer lock (slight delay so React processes the mode change first)
-      setTimeout(() => { gl.domElement.requestPointerLock?.(); }, 50);
+      // Stay in the trusted click/keydown gesture; retry is available on canvas click.
+      gl.domElement.requestPointerLock?.()?.catch?.(() => {});
     };
 
     const onRelease = () => {
+      clearInput();
       gameState.mode = 'strategic';
       gameState.selectedSoldierId = null;
       gameState.possessedSoldierId = null;
@@ -64,19 +72,11 @@ export function CameraRig() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // --- Pointer-lock loss safety ---------------------------------------------
-  useEffect(() => {
-    const onPLC = () => {
-      if (!document.pointerLockElement && gameState.mode === 'third_person') {
-        input.keys = {};
-      }
-    };
-    document.addEventListener('pointerlockchange', onPLC);
-    return () => document.removeEventListener('pointerlockchange', onPLC);
-  }, []);
+  useEffect(() => bindInput(gl.domElement), [gl]);
 
   // --- Per-frame camera update ----------------------------------------------
   useFrame((_state, delta) => {
+    if (gameState.paused) return;
     if (gameState.mode === 'strategic') {
       // WASD pan
       const keys = input.keys;
@@ -132,13 +132,18 @@ export function CameraRig() {
       const h = CAMERA.thirdPerson.height;
 
       camera.position.set(
-        pos.x - d * Math.sin(yaw) * Math.cos(pitch),
+        pos.x - d * Math.sin(yaw) * Math.cos(pitch) - CAMERA.thirdPerson.shoulder * Math.cos(yaw),
         pos.y + h + d * Math.sin(pitch),
-        pos.z - d * Math.cos(yaw) * Math.cos(pitch),
+        pos.z - d * Math.cos(yaw) * Math.cos(pitch) + CAMERA.thirdPerson.shoulder * Math.sin(yaw),
       );
-      camera.lookAt(pos.x, pos.y + 1, pos.z);
+      camera.lookAt(
+        camera.position.x + Math.sin(yaw) * Math.cos(pitch),
+        camera.position.y - Math.sin(pitch),
+        camera.position.z + Math.cos(yaw) * Math.cos(pitch),
+      );
+      camera.updateMatrixWorld(true);
     }
-  });
+  }, -1);
 
   return null;
 }

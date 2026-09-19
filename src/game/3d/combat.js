@@ -1,8 +1,8 @@
-// Shared combat registry — module scope, read/written by useFrame callbacks.
-// NEVER put per-frame gameplay state in React useState.
+// Authoritative live registry. Body handles, not overlapping per-team IDs, identify hits.
 export const combat = {
-  units: [],               // { id, team, bodyRef, health, maxHealth, alive }
-  pendingProjectiles: [],  // { origin: [x,y,z], targetId, damage, team }
+  units: [], pendingProjectiles: [], projectiles: [], physics: null,
+  stats: { shots: 0, playerShots: 0, hits: 0, coverHits: 0, damage: 0 },
+  lastShot: null, lastImpact: null,
 };
 
 // Find the nearest enemy unit within maxRange (XZ-plane distance)

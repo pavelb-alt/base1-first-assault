@@ -9,6 +9,9 @@ import { SOLDIER, LANES, NPCS, FRIENDLY, COMBAT } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
+import { useWeaponAttachment } from '@/game/3d/objects/WeaponAttachment';
+import { WEAPON_IDS } from '@/game/3d/weapons';
+import { random } from '@/game/3d/random';
 
 // Start downloading the model as soon as the module loads
 useGLTF.preload(SOLDIER.modelUrl);
@@ -58,7 +61,7 @@ class SoldierErrorBoundary extends Component {
 }
 
 // --- Single friendly soldier: GLB model + lane AI + possession -------------
-function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
+function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
   const bodyRef = useRef();
   const groupRef = useRef();
   const wpIndex = useRef(0);
@@ -69,7 +72,6 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
   const jumpsRemaining = useRef(SOLDIER.maxJumps);
   const wasPossessed = useRef(false);
   const combatEntryRef = useRef(null);
-  const attackTimer = useRef(0);
 
   const lane = friendlyLanePaths[laneIndex];
 
@@ -137,7 +139,7 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
     const entry = {
       id,
       team: 'friendly',
-      bodyRef,
+      bodyRef, weaponId, aimHeight: SOLDIER.colliderY, cooldown: 0, aiTarget: null,
       health: COMBAT.maxHealth,
       maxHealth: COMBAT.maxHealth,
       alive: true,
@@ -150,6 +152,8 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
       combatEntryRef.current = null;
     };
   }, [id]);
+
+  useWeaponAttachment(clonedScene, weaponId, combatEntryRef);
 
   // Listen for reset
   useEffect(() => {
@@ -166,7 +170,7 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
       jumpsRemaining.current = SOLDIER.maxJumps;
       prevSpace.current = false;
       wasPossessed.current = false;
-      attackTimer.current = 0;
+      if (combatEntryRef.current) combatEntryRef.current.cooldown = 0;
     };
     EventBus.on('reset-game', onReset);
     return () => EventBus.off('reset-game', onReset);
@@ -177,6 +181,10 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
     const group = groupRef.current;
     if (!body || !group) return;
 
+    if (gameState.paused) return;
+    const entry = combatEntryRef.current;
+    if (entry && !entry.alive) { onDespawn(id); return; }
+    if (entry) entry.aiTarget = null;
     const pos = body.translation();
     const vel = body.linvel();
     const isPossessed = gameState.possessedSoldierId === id;
@@ -253,31 +261,11 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
         else if (vel.y < -0.5) playAnimation('Idle');
       }
 
-      // --- Player shooting (left mouse button) ---
-      attackTimer.current -= delta;
-      if (input.mouseDown && attackTimer.current <= 0) {
-        attackTimer.current = COMBAT.attackCooldown;
-        playAnimation(SOLDIER.animAttack || 'Attack');
-        const entry = combatEntryRef.current;
-        const enemy = entry ? findNearestEnemy(entry, 50) : null;
-        if (enemy) {
-          combat.pendingProjectiles.push({
-            origin: [pos.x, pos.y + 1.0, pos.z],
-            targetId: enemy.id,
-            damage: COMBAT.projectileDamage,
-            team: 'friendly',
-          });
-        }
-      }
+      // WeaponAttachment consumes the same held fire state after camera/animation updates.
+      targetRotation.current = yaw;
     } else {
       // --- AI mode: combat + lane movement ---
       const entry = combatEntryRef.current;
-
-      // Check if dead
-      if (entry && !entry.alive) {
-        onDespawn(id);
-        return;
-      }
 
       // Find nearest enemy within attack range
       const enemy = entry ? findNearestEnemy(entry, COMBAT.attackRange) : null;
@@ -288,19 +276,8 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
         const enemyPos = enemy.bodyRef.current.translation();
         targetRotation.current = Math.atan2(enemyPos.x - pos.x, enemyPos.z - pos.z);
 
-        attackTimer.current -= delta;
-        if (attackTimer.current <= 0) {
-          attackTimer.current = COMBAT.attackCooldown;
-          playAnimation(SOLDIER.animAttack || 'Attack');
-          combat.pendingProjectiles.push({
-            origin: [pos.x, pos.y + 1.0, pos.z],
-            targetId: enemy.id,
-            damage: COMBAT.projectileDamage,
-            team: 'friendly',
-          });
-        } else {
-          playAnimation('Idle');
-        }
+        if (entry) entry.aiTarget = enemy;
+        playAnimation('Idle');
       } else {
         // No enemy in range — continue lane movement
         const target = lane.points[wpIndex.current];
@@ -342,7 +319,7 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
     group.rotation.y = cur + diff * Math.min(1, delta * 10);
-  });
+  }, -2);
 
   return (
     <RigidBody
@@ -386,6 +363,10 @@ export function FriendlySoldierManager() {
   const waveTimer = useRef(0);
   const firstWaveSpawned = useRef(false);
 
+  // Upgrade already-live records once during hot reload; possession never assigns a weapon.
+  for (const soldier of soldiers) {
+    if (!soldier.weaponId) soldier.weaponId = WEAPON_IDS[Math.floor(random() * WEAPON_IDS.length)];
+  }
   soldiersRef.current = soldiers;
   friendlyRegistry.soldiers = soldiers;
 
@@ -419,6 +400,7 @@ export function FriendlySoldierManager() {
         nextId.current++;
         newSoldiers.push({
           id: nextId.current,
+          weaponId: WEAPON_IDS[Math.floor(random() * WEAPON_IDS.length)],
           laneIndex: li,
           spawnOffset: offsets[si],
         });
@@ -434,6 +416,7 @@ export function FriendlySoldierManager() {
   }, [computeSpawnOffsets]);
 
   const handleDespawn = useCallback((id) => {
+    if (gameState.possessedSoldierId === id) EventBus.emit('release-soldier');
     setSoldiers((prev) => prev.filter((s) => s.id !== id));
     if (gameState.selectedSoldierId === id) {
       gameState.selectedSoldierId = null;
@@ -455,25 +438,11 @@ export function FriendlySoldierManager() {
     return () => EventBus.off('reset-game', onReset);
   }, []);
 
-  // Possess / release handlers
-  useEffect(() => {
-    const onPossess = () => {
-      gameState.possessedSoldierId = gameState.selectedSoldierId;
-    };
-    const onRelease = () => {
-      gameState.possessedSoldierId = null;
-      gameState.selectedSoldierId = null;
-    };
-    EventBus.on('possess-soldier', onPossess);
-    EventBus.on('release-soldier', onRelease);
-    return () => {
-      EventBus.off('possess-soldier', onPossess);
-      EventBus.off('release-soldier', onRelease);
-    };
-  }, []);
+  // CameraRig owns possession/release atomically after validating the live unit.
 
   // Spawn loop — first wave at start, then existing enemy-wave cadence
   useFrame((_state, delta) => {
+    if (gameState.paused) return;
     if (!firstWaveSpawned.current) {
       firstWaveSpawned.current = true;
       spawnWave();
@@ -501,6 +470,7 @@ export function FriendlySoldierManager() {
           }>
             <FriendlySoldier
               id={soldier.id}
+              weaponId={soldier.weaponId}
               laneIndex={soldier.laneIndex}
               spawnOffset={soldier.spawnOffset}
               onDespawn={handleDespawn}
