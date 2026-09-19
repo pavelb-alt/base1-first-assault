@@ -16,7 +16,7 @@ const flashMaterial = new THREE.MeshBasicMaterial({ color: '#ffe6a0', toneMapped
 const zero = new THREE.Vector3();
 
 // Parent uses the existing animated clone. Attach to Hand_R without rebuilding its rig.
-export function useWeaponAttachment(character, weaponId, entryRef) {
+export function useWeaponAttachment(character, weaponId, entryRef, leaseId, active = true) {
   const config = WEAPONS[weaponId];
   const { scene } = useGLTF(config.url);
   const rig = useMemo(() => {
@@ -48,14 +48,15 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
     const entry = entryRef.current;
     if (entry) { entry.weapon = rig; entry.weaponId = weaponId; }
     return () => { rig.hand.remove(rig.socket); rig.pose.restore(); if (entry?.weapon === rig) entry.weapon = null; };
-  }, [rig, weaponId, entryRef]);
+  }, [rig, weaponId, entryRef, leaseId, active]);
 
   useFrame(({ camera }, delta) => {
     const entry = entryRef.current;
     if (!entry?.alive) { rig.flash.visible = false; return; }
     rig.flashTime = Math.max(0, rig.flashTime - delta); rig.flash.visible = rig.flashTime > 0;
     if (gameState.paused) return;
-    entry.cooldown = Math.max(0, (entry.cooldown || 0) - delta);
+    const cooldown = entry.profile?.cooldown ?? COMBAT.attackCooldown;
+    entry.cooldown = Math.max(-cooldown, (entry.cooldown || 0) - delta);
     const possessed = gameState.mode === 'third_person' && gameState.possessedSoldierId === entry.id;
     const target = entry.aiTarget;
     if (possessed) cameraAim(camera, entry, rig.aim);
@@ -86,11 +87,12 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
     rig.muzzle.getWorldPosition(rig.origin);
     entry.aimPoint = rig.aim;
     const wantsShot = possessed ? input.mouseDown : !!target?.alive;
-    if (!wantsShot || entry.cooldown > 0) return;
+    if (!wantsShot) { entry.cooldown = 0; return; }
+    if (entry.cooldown > 0) return;
     const bodyPos = entry.bodyRef.current.translation();
     rig.chest.set(bodyPos.x, bodyPos.y + entry.aimHeight, bodyPos.z);
     if (fireShot(entry, rig.origin, rig.aim, rig.chest, possessed)) {
-      entry.cooldown = COMBAT.attackCooldown;
+      entry.cooldown = Math.max(0, entry.cooldown + cooldown);
       rig.flashTime = AIM.flashTime; rig.flash.visible = true;
     }
   });

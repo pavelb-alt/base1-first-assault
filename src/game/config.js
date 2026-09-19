@@ -91,20 +91,25 @@ export const SOLDIER = {
 };
 
 // --- NPC config -------------------------------------------------------------
-export const NPCS = {
-  spawnInterval: 6,        // seconds between spawns per lane
-  maxPerLane: 3,           // max concurrent NPCs per lane
+// One source for wave budgets, formations and per-type combat tuning.
+export const BALANCE = {
+  friendly: { interval: 6, perLane: 6, maxPerLane: 36, maxAlive: 108 },
+  enemy: { interval: 9, maxPerLane: 36, maxAlive: 108,
+    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
+  formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
-  maxHealth: 100,
-  damage: 10,
-  attackRange: 2,
-  attackCooldown: 1.5,
-  enemyColor: '#ef4444',
-  friendlyColor: '#22c55e',
-  enemySpawn: [36, 0, -36],
-  friendlySpawn: [-36, 0, 36],
-  eyeDroneChance: 0.3,    // probability of spawning EyeDrone vs QuadShell
+  units: {
+    soldier:  { health: 100, damage: 10, cooldown: 0.125, range: 15, aiSpread: 0.05 },
+    quadshell:{ health: 130, damage: 10, cooldown: 0.125, range: 14, aiSpread: 0.04 },
+    eyedrone: { health: 110, damage: 10, cooldown: 0.125, range: 17, aiSpread: 0.04 },
+    trilobite:{ health: 380, damage: 18, cooldown: 0.25, range: 13, aiSpread: 0.035 },
+  },
+  // 216 units * 8 rounds/sec * 3 seconds, rounded up. Separate team pools
+  // prevent update order from starving one faction's shots.
+  projectilePoolPerTeam: 2816, // maximum lifetime budget plus one synchronized volley
+  targetScanInterval: 0.2,
 };
+export const NPCS = { spawnInterval: BALANCE.enemy.interval, maxPerLane: BALANCE.enemy.maxPerLane, moveSpeed: BALANCE.moveSpeed };
 
 // --- Enemy model types -----------------------------------------------------
 export const ENEMY_TYPES = {
@@ -135,11 +140,11 @@ export const ENEMY_TYPES = {
   },
   trilobite: {
     modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/257cba8bf_6d96b7d31_Enemy_Trilobite.glb',
-    scale: 1.2,            // commander is larger
-    hoverHeight: 0,        // ground unit
-    colliderHalfHeight: 0.5,
-    colliderRadius: 0.4,
-    colliderY: 1.0,
+    scale: 1.8,            // durable giant; collider scales with its model
+    hoverHeight: 0,
+    colliderHalfHeight: 0.75,
+    colliderRadius: 0.6,
+    colliderY: 1.5,
     facingOffset: 0,
     animIdle: 'Idle',
     animMove: 'Walk',
@@ -151,19 +156,20 @@ export const ENEMY_TYPES = {
 
 // --- Friendly soldier wave config ------------------------------------------
 export const FRIENDLY = {
-  perLane: 3,            // soldiers per lane per wave (9 total across 3 lanes)
-  maxAlive: 30,          // cap on living friendly soldiers (including possessed)
-  moveSpeed: 3,          // AI movement speed (matches NPCS.moveSpeed)
-  staggerOffset: 1.5,    // perpendicular offset between soldiers in a lane
+  perLane: BALANCE.friendly.perLane,
+  spawnInterval: BALANCE.friendly.interval,
+  maxAlive: BALANCE.friendly.maxAlive,
+  moveSpeed: BALANCE.moveSpeed,
+  staggerOffset: BALANCE.formation.spacing,
 };
 
 // --- Combat config ----------------------------------------------------------
 export const COMBAT = {
-  attackRange: 15,          // range at which units start attacking
-  attackCooldown: 0.125,    // seconds between attacks (~8 shots/sec)
-  projectileSpeed: 20,      // units per second
-  projectileDamage: 10,     // damage per hit
-  maxHealth: 100,           // health for all units
+  attackRange: BALANCE.units.soldier.range,
+  attackCooldown: BALANCE.units.soldier.cooldown,
+  projectileSpeed: 20,      // units per second (unchanged)
+  projectileDamage: BALANCE.units.soldier.damage,
+  maxHealth: BALANCE.units.soldier.health, // preserves the possessed-unit HUD
   projectileLifetime: 3,    // max seconds a projectile exists
 };
 

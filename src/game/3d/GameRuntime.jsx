@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
 import { combat } from '@/game/3d/combat';
+import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 const pos = new THREE.Vector3();
@@ -26,6 +27,7 @@ export function GameRuntime() {
     window.game = {
       ready: false,
       getMode: () => gameState.mode,
+      getBattle: () => battleSnapshot(combat.units),
       getSoldierPosition: () => ({...gameState.soldierPosition}),
       isSelected: () => gameState.selectedSoldierId !== null,
       getSelectedId: () => gameState.selectedSoldierId,
@@ -38,8 +40,8 @@ export function GameRuntime() {
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,
         pending: combat.pendingProjectiles.length, lastShot: combat.lastShot ? JSON.parse(JSON.stringify(combat.lastShot)) : null,
         lastImpact: combat.lastImpact ? JSON.parse(JSON.stringify(combat.lastImpact)) : null }),
-      getControlledUnit: () => { const u = selected(); return u ? { ...weaponState(u), health: u.health, cooldown: u.cooldown, firing: input.mouseDown } : null; },
-      getUnit: (team,id) => { const u = combat.units.find(u => u.team === team && u.id === id); return u ? { id:u.id, team:u.team, health:u.health, alive:u.alive } : null; },
+      getControlledUnit: () => { const u = selected(); return u ? { ...weaponState(u), health: u.health, maxHealth: u.maxHealth, profile: { ...u.profile }, laneIndex: u.laneIndex, cooldown: u.cooldown, firing: input.mouseDown } : null; },
+      getUnit: (team,id) => { const u = combat.units.find(u => u.team === team && u.id === id); return u ? { id:u.id, team:u.team, type:u.type, laneIndex:u.laneIndex, squadId:u.squadId, health:u.health, maxHealth:u.maxHealth, profile:{...u.profile}, alive:u.alive } : null; },
       selectSoldier: id => {
         const u = combat.units.find(u => u.team === 'friendly' && u.id === id && u.alive);
         if (!u || gameState.mode !== 'strategic') return false;
@@ -51,14 +53,15 @@ export function GameRuntime() {
       pause: () => EventBus.emit('pause-game'), resume: () => EventBus.emit('resume-game'),
     };
     const reset = () => {
-      clearInput(); frames.current = 0; if (window.game) window.game.ready = false;
+      clearInput(); resetBattle(); frames.current = 0; if (window.game) window.game.ready = false;
       for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; }
       EventBus.emit('release-soldier');
     };
     EventBus.on('reset-game', reset);
     return () => { EventBus.off('reset-game', reset); delete window.game; };
   }, []);
-  useFrame(() => {
+  useFrame((_, delta) => {
+    if (!gameState.paused) battle.elapsed += delta;
     // Inside Physics; assets, bodies, attachments and a completed prior frame are required.
     const friendly = combat.units.filter(u => u.team === 'friendly' && u.alive);
     if (combat.physics && friendly.length && friendly.every(u => u.weapon?.socket.parent && u.bodyRef.current)) {

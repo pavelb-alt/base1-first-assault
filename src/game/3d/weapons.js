@@ -19,4 +19,4 @@ export const WEAPON_IDS = Object.keys(WEAPONS);
 // Actual rigid animated hierarchy: Torso > UpperArm_R > Forearm_R > Hand_R.
 // Palm centre between the thumb and curled fingers; no character reparenting.
 export const HAND_SOCKET = { node: 'Hand_R', position: [.02,-.14,.055] };
-export const AIM = { distance: 160, minDistance: .001, flashTime: .07, poolSize: 50 };
+export const AIM = { distance: 160, minDistance: .001, flashTime: .07 };

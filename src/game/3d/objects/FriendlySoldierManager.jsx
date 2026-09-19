@@ -1,17 +1,18 @@
-import { useState, useRef, useCallback, useEffect, useMemo, Component, Suspense } from 'react';
+import { memo, useRef, useCallback, useEffect, useMemo, Component, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
-import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { clonePooledModel } from '@/game/3d/objects/pooledModel';
 import { EventBus } from '@/game/EventBus';
-import { SOLDIER, LANES, NPCS, FRIENDLY, COMBAT } from '@/game/config';
+import { SOLDIER, LANES, FRIENDLY, BALANCE } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { useWeaponAttachment } from '@/game/3d/objects/WeaponAttachment';
-import { WEAPON_IDS } from '@/game/3d/weapons';
-import { random } from '@/game/3d/random';
+import { WEAPONS } from '@/game/3d/weapons';
+import { useWavePool } from '@/game/3d/waves';
+import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 
 // Start downloading the model as soon as the module loads
 useGLTF.preload(SOLDIER.modelUrl);
@@ -61,11 +62,10 @@ class SoldierErrorBoundary extends Component {
 }
 
 // --- Single friendly soldier: GLB model + lane AI + possession -------------
-function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
+const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, active, squadId, slot, onDespawn }) {
   const bodyRef = useRef();
   const groupRef = useRef();
   const wpIndex = useRef(0);
-  const spawned = useRef(false);
   const currentAnim = useRef('Idle');
   const targetRotation = useRef(SOLDIER.initialFacing);
   const prevSpace = useRef(false);
@@ -77,19 +77,11 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
 
   // Load the model (cached by useGLTF — one fetch per URL, many clones)
   const { scene, animations } = useGLTF(SOLDIER.modelUrl);
-  const { actions } = useAnimations(animations, groupRef);
+  const { actions, mixer } = useAnimations(animations, groupRef);
+  useEffect(() => { mixer.timeScale = active ? 1 : 0; }, [active, mixer]);
 
   // Skeleton-safe deep clone — preserves bone bindings, allows independent animation
-  const clonedScene = useMemo(() => {
-    const clone = cloneSkeleton(scene);
-    clone.traverse((obj) => {
-      if (obj.isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-      }
-    });
-    return clone;
-  }, [scene]);
+  const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
 
   // Play an animation with smooth fade (silently skips unknown names)
   const playAnimation = (name) => {
@@ -113,17 +105,7 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
     }
   }, [actions]);
 
-  // Set initial spawn position once the body exists
-  useEffect(() => {
-    if (bodyRef.current && !spawned.current) {
-      spawned.current = true;
-      const start = lane.points[0];
-      bodyRef.current.setTranslation(
-        { x: start.x + spawnOffset.x, y: 0.1, z: start.z + spawnOffset.z },
-        true,
-      );
-    }
-  }, [lane, spawnOffset]);
+  // Body activation and registration are handled together below.
 
   // Listen for external rotation set (only apply if this is the possessed soldier)
   useEffect(() => {
@@ -134,57 +116,46 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
     return () => EventBus.off('set-soldier-rotation', onSetRotation);
   }, [id]);
 
-  // Register in combat system
+  // Reuse the mounted model/body; each lease gets a fresh identity and HP.
   useEffect(() => {
-    const entry = {
-      id,
-      team: 'friendly',
+    const body = bodyRef.current;
+    if (!body) return;
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setEnabled(active);
+    body.setTranslation(active
+      ? { x: lane.points[0].x + spawnOffset.x, y: 0.1, z: lane.points[0].z + spawnOffset.z }
+      : { x: slot * 3, y: -100, z: 100 }, true);
+    wpIndex.current = 1; targetRotation.current = SOLDIER.initialFacing;
+    jumpsRemaining.current = SOLDIER.maxJumps; prevSpace.current = false; wasPossessed.current = false;
+    if (!active) return;
+    const profile = BALANCE.units.soldier;
+    const entry = { id, team: 'friendly', type: 'soldier', laneIndex, squadId, profile,
       bodyRef, weaponId, aimHeight: SOLDIER.colliderY, cooldown: 0, aiTarget: null,
-      health: COMBAT.maxHealth,
-      maxHealth: COMBAT.maxHealth,
-      alive: true,
-    };
-    combat.units.push(entry);
-    combatEntryRef.current = entry;
+      health: profile.health, maxHealth: profile.health, alive: true, bornAt: battle.elapsed, targetScan: 0 };
+    combat.units.push(entry); combat.byBody.set(body.handle, entry); combatEntryRef.current = entry;
     return () => {
+      entry.alive = false;
+      if (combat.byBody.get(body.handle) === entry) combat.byBody.delete(body.handle);
       const idx = combat.units.indexOf(entry);
       if (idx >= 0) combat.units.splice(idx, 1);
       combatEntryRef.current = null;
     };
-  }, [id]);
+  }, [id, active, weaponId, laneIndex, squadId, spawnOffset, slot, lane]);
 
-  useWeaponAttachment(clonedScene, weaponId, combatEntryRef);
+  useWeaponAttachment(clonedScene, weaponId, combatEntryRef, id, active);
 
-  // Listen for reset
-  useEffect(() => {
-    const onReset = () => {
-      if (bodyRef.current) {
-        bodyRef.current.setTranslation(
-          { x: lane.points[0].x + spawnOffset.x, y: 0.1, z: lane.points[0].z + spawnOffset.z },
-          true,
-        );
-        bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      }
-      wpIndex.current = 0;
-      targetRotation.current = SOLDIER.initialFacing;
-      jumpsRemaining.current = SOLDIER.maxJumps;
-      prevSpace.current = false;
-      wasPossessed.current = false;
-      if (combatEntryRef.current) combatEntryRef.current.cooldown = 0;
-    };
-    EventBus.on('reset-game', onReset);
-    return () => EventBus.off('reset-game', onReset);
-  }, [lane, spawnOffset]);
+  // The wave pool owns reset/activation, avoiding one reset timer per soldier.
 
   useFrame((_state, delta) => {
     const body = bodyRef.current;
     const group = groupRef.current;
     if (!body || !group) return;
 
-    if (gameState.paused) return;
+    if (!active || gameState.paused) return;
     const entry = combatEntryRef.current;
-    if (entry && !entry.alive) { onDespawn(id); return; }
-    if (entry) entry.aiTarget = null;
+    if (!entry) return;
+    if (!entry.alive) { onDespawn(id); return; }
+    entry.aiTarget = null;
     const pos = body.translation();
     const vel = body.linvel();
     const isPossessed = gameState.possessedSoldierId === id;
@@ -268,7 +239,7 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
       const entry = combatEntryRef.current;
 
       // Find nearest enemy within attack range
-      const enemy = entry ? findNearestEnemy(entry, COMBAT.attackRange) : null;
+      const enemy = entry ? findNearestEnemy(entry, entry.profile.range) : null;
 
       if (enemy) {
         // In range — stop and attack
@@ -283,7 +254,12 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
         const target = lane.points[wpIndex.current];
         if (!target) return;
 
-        _dir.set(target.x - pos.x, 0, target.z - pos.z);
+        const previous = lane.points[Math.max(0, wpIndex.current - 1)];
+        const sx = target.x - previous.x, sz = target.z - previous.z, length = Math.hypot(sx, sz) || 1;
+        const first = lane.points[1], start = lane.points[0];
+        const firstLength = Math.hypot(first.x - start.x, first.z - start.z);
+        const lateral = (-(first.z - start.z) * spawnOffset.x + (first.x - start.x) * spawnOffset.z) / firstLength;
+        _dir.set(target.x - sz / length * lateral - pos.x, 0, target.z + sx / length * lateral - pos.z);
         const dist = _dir.length();
 
         let moving = false;
@@ -291,6 +267,8 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
         if (dist < 1.2) {
           wpIndex.current++;
           if (wpIndex.current >= lane.points.length) {
+            recordRemoval(entry, 'breach');
+            entry.alive = false;
             onDespawn(id);
             return;
           }
@@ -335,6 +313,7 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
       />
       <group
         ref={groupRef}
+        visible={active}
         rotation={[0, SOLDIER.initialFacing, 0]}
         onClick={(e) => {
           e.stopPropagation();
@@ -353,128 +332,32 @@ function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, onDespawn }) {
       </group>
     </RigidBody>
   );
-}
+});
 
 // --- Manager: wave-based spawning for friendly soldiers --------------------
 export function FriendlySoldierManager() {
-  const [soldiers, setSoldiers] = useState([]);
-  const soldiersRef = useRef([]);
-  const nextId = useRef(0);
-  const waveTimer = useRef(0);
-  const firstWaveSpawned = useRef(false);
-
-  // Upgrade already-live records once during hot reload; possession never assigns a weapon.
-  for (const soldier of soldiers) {
-    if (!soldier.weaponId) soldier.weaponId = WEAPON_IDS[Math.floor(random() * WEAPON_IDS.length)];
-  }
-  soldiersRef.current = soldiers;
-  friendlyRegistry.soldiers = soldiers;
-
-  // Compute staggered spawn offsets perpendicular to the lane direction
-  const computeSpawnOffsets = useCallback((laneIndex) => {
-    const lane = friendlyLanePaths[laneIndex];
-    const start = lane.points[0];
-    const next = lane.points[1] || start;
-    const dx = next.x - start.x;
-    const dz = next.z - start.z;
-    const len = Math.hypot(dx, dz) || 1;
-    const perpX = -dz / len;
-    const perpZ = dx / len;
-
-    const offsets = [];
-    for (let i = 0; i < FRIENDLY.perLane; i++) {
-      const offset = (i - (FRIENDLY.perLane - 1) / 2) * FRIENDLY.staggerOffset;
-      offsets.push({ x: perpX * offset, z: perpZ * offset });
-    }
-    return offsets;
-  }, []);
-
-  // Spawn a wave: FRIENDLY.perLane soldiers per lane
-  const spawnWave = useCallback(() => {
-    if (soldiersRef.current.length >= FRIENDLY.maxAlive) return;
-
-    const newSoldiers = [];
-    for (let li = 0; li < friendlyLanePaths.length; li++) {
-      const offsets = computeSpawnOffsets(li);
-      for (let si = 0; si < FRIENDLY.perLane; si++) {
-        nextId.current++;
-        newSoldiers.push({
-          id: nextId.current,
-          weaponId: WEAPON_IDS[Math.floor(random() * WEAPON_IDS.length)],
-          laneIndex: li,
-          spawnOffset: offsets[si],
-        });
-      }
-    }
-
-    // Respect cap — only add as many as we can fit
-    const remaining = FRIENDLY.maxAlive - soldiersRef.current.length;
-    const toAdd = newSoldiers.slice(0, remaining);
-    if (toAdd.length > 0) {
-      setSoldiers((prev) => [...prev, ...toAdd]);
-    }
-  }, [computeSpawnOffsets]);
-
-  const handleDespawn = useCallback((id) => {
+  useGLTF([SOLDIER.modelUrl, ...Object.values(WEAPONS).map(w => w.url)]);
+  const { slots: soldiers, despawn } = useWavePool('friendly');
+  friendlyRegistry.soldiers = soldiers.filter(s => s.active);
+  const handleDespawn = useCallback(id => {
     if (gameState.possessedSoldierId === id) EventBus.emit('release-soldier');
-    setSoldiers((prev) => prev.filter((s) => s.id !== id));
     if (gameState.selectedSoldierId === id) {
       gameState.selectedSoldierId = null;
       EventBus.emit('soldier-deselected');
     }
-  }, []);
-
-  // Reset: clear all soldiers and timers
-  useEffect(() => {
-    const onReset = () => {
-      setSoldiers([]);
-      soldiersRef.current = [];
-      waveTimer.current = 0;
-      firstWaveSpawned.current = false;
-      gameState.selectedSoldierId = null;
-      gameState.possessedSoldierId = null;
-    };
-    EventBus.on('reset-game', onReset);
-    return () => EventBus.off('reset-game', onReset);
-  }, []);
-
-  // CameraRig owns possession/release atomically after validating the live unit.
-
-  // Spawn loop — first wave at start, then existing enemy-wave cadence
-  useFrame((_state, delta) => {
-    if (gameState.paused) return;
-    if (!firstWaveSpawned.current) {
-      firstWaveSpawned.current = true;
-      spawnWave();
-      return;
-    }
-
-    waveTimer.current += delta;
-    if (waveTimer.current >= NPCS.spawnInterval) {
-      waveTimer.current = 0;
-      if (soldiersRef.current.length < FRIENDLY.maxAlive) {
-        spawnWave();
-      }
-    }
-  });
-
+    despawn(id);
+  }, [despawn]);
   return (
     <>
       {soldiers.map((soldier) => (
-        <SoldierErrorBoundary key={soldier.id}>
+        <SoldierErrorBoundary key={soldier.slot}>
           <Suspense fallback={
             <mesh position={[0, 0.75, 0]}>
               <boxGeometry args={[0.8, 1.5, 0.8]} />
               <meshStandardMaterial color="#facc15" emissive="#ca8a04" emissiveIntensity={0.2} />
             </mesh>
           }>
-            <FriendlySoldier
-              id={soldier.id}
-              weaponId={soldier.weaponId}
-              laneIndex={soldier.laneIndex}
-              spawnOffset={soldier.spawnOffset}
-              onDespawn={handleDespawn}
-            />
+            <FriendlySoldier {...soldier} onDespawn={handleDespawn} />
           </Suspense>
         </SoldierErrorBoundary>
       ))}

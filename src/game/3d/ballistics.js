@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
 import { COMBAT } from '@/game/config';
 import { AIM } from '@/game/3d/weapons';
+import { random } from '@/game/3d/random';
+import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 
 const direction = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
@@ -9,10 +11,13 @@ const center = new THREE.Vector2(0, 0);
 const pathDirection = new THREE.Vector3();
 const cameraOrigin = new THREE.Vector3();
 const cameraDirection = new THREE.Vector3();
+const spreadRight = new THREE.Vector3();
+const spreadUp = new THREE.Vector3();
+const worldUp = new THREE.Vector3(0, 1, 0);
 
 export function unitForCollider(collider) {
   const handle = collider.parent()?.handle;
-  return combat.units.find(u => u.bodyRef.current?.handle === handle);
+  return combat.byBody.get(handle);
 }
 // Same cover/faction rules for camera aim, muzzle clearance, and swept flight.
 export function trace(origin, dir, distance, shooter) {
@@ -44,9 +49,16 @@ export function cameraAim(camera, shooter, out) {
 export function applyImpact(hit, shot) {
   const target = hit.unit;
   if (target && target.alive && target.team !== shot.team) {
-    target.health = Math.max(0, target.health - shot.damage);
-    if (target.health === 0) target.alive = false;
-    combat.stats.hits++; combat.stats.damage += shot.damage;
+    const damage = Math.min(target.health, shot.damage);
+    target.health -= damage;
+    if (target.health === 0) {
+      target.alive = false;
+      recordRemoval(target, 'death');
+      if (shot.player) battle.playerKills++;
+    }
+    combat.stats.hits++; combat.stats.damage += damage;
+    battle.hits[shot.team]++;
+    if (shot.player) battle.playerDamage += damage;
   } else if (!target) combat.stats.coverHits++;
   combat.lastImpact = { team: shot.team, shooterId: shot.shooterId, targetId: target?.id ?? null, targetTeam: target?.team ?? null, cover: !target, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } };
 }
@@ -58,9 +70,19 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
   direction.subVectors(aimPoint, origin);
   if (direction.lengthSq() < AIM.minDistance ** 2) return false;
   direction.normalize();
+  // AI aim is imperfect; possession uses the player's actual crosshair. The
+  // weapon's health, damage, rate, range and projectile physics never change.
+  if (!player && shooter.profile?.aiSpread) {
+    spreadRight.crossVectors(direction, worldUp);
+    if (spreadRight.lengthSq() < 0.0001) spreadRight.set(1, 0, 0);
+    spreadRight.normalize(); spreadUp.crossVectors(spreadRight, direction).normalize();
+    const angle = random() * Math.PI * 2;
+    const radius = Math.sqrt(random()) * Math.tan(shooter.profile.aiSpread);
+    direction.addScaledVector(spreadRight, Math.cos(angle) * radius).addScaledVector(spreadUp, Math.sin(angle) * radius).normalize();
+  }
   const shot = { origin: origin.toArray(), direction: direction.toArray(), team: shooter.team,
-    shooterId: shooter.id, shooter, damage: COMBAT.projectileDamage };
-  combat.stats.shots++; if (player) combat.stats.playerShots++;
+    shooterId: shooter.id, shooter, player, damage: shooter.profile?.damage ?? COMBAT.projectileDamage };
+  combat.stats.shots++; battle.shots[shooter.team]++; if (player) combat.stats.playerShots++;
   combat.lastShot = { origin: [...shot.origin], direction: [...shot.direction], aimPoint: aimPoint.toArray(), team: shot.team, shooterId: shot.shooterId, weaponId: shooter.weaponId ?? null };
   // A long barrel must not poke through cover and spawn its bullet on the far side.
   pathDirection.subVectors(origin, clearanceOrigin);
