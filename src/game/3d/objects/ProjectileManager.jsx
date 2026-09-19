@@ -32,13 +32,13 @@ export function ProjectileManager() {
     if (friendlyMesh.current) { friendlyMesh.current.count = 0; friendlyMesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
     if (enemyMesh.current) { enemyMesh.current.count = 0; enemyMesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
     const reset = () => {
-      combat.pendingProjectiles.length = 0;
+      combat.pendingProjectiles.length = 0; combat.muzzleEffects.length = 0; combat.impactEffects.length = 0;
       const p = pool.current; p.active.clear(); p.free.friendly.length = 0; p.free.enemy.length = 0;
       p.slots.forEach((shot, i) => { shot.active = false; shot.shooter = null;
         p.free[i < BALANCE.projectilePoolPerTeam ? 'friendly' : 'enemy'].push(i); });
       if (friendlyMesh.current) friendlyMesh.current.count = 0;
       if (enemyMesh.current) enemyMesh.current.count = 0;
-      combat.stats = { shots: 0, playerShots: 0, hits: 0, coverHits: 0, damage: 0 };
+      combat.stats = { shots: 0, playerShots: 0, hits: 0, coverHits: 0, damage: 0, muzzleFlashes: 0, impactBursts: 0 };
       combat.lastShot = null; combat.lastImpact = null;
     };
     EventBus.on('reset-game', reset);

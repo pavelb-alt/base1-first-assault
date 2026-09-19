@@ -9,6 +9,7 @@ import { FriendlySoldierManager } from '@/game/3d/objects/FriendlySoldierManager
 import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
+import { WeaponEffects } from '@/game/3d/objects/WeaponEffects';
 import { gameState } from '@/game/3d/world';
 import { FRONT, MAP } from '@/game/config';
 
@@ -57,6 +58,7 @@ export function GameScene() {
           <FriendlySoldierManager />
           <NpcManager />
           <ProjectileManager />
+          <WeaponEffects />
           <GameRuntime />
         </Physics>
       </Suspense>

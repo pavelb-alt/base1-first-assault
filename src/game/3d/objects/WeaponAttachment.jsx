@@ -10,9 +10,6 @@ import { COMBAT } from '@/game/config';
 import { createWeaponPose, poseWeaponArm, orientWeaponWrist } from '@/game/3d/objects/WeaponPose';
 
 Object.values(WEAPONS).forEach(w => useGLTF.preload(w.url));
-const flashGeometry = new THREE.ConeGeometry(.045, .15, 6);
-flashGeometry.rotateX(-Math.PI / 2);
-const flashMaterial = new THREE.MeshBasicMaterial({ color: '#ffe6a0', toneMapped: false });
 const zero = new THREE.Vector3();
 
 // Parent uses the existing animated clone. Attach to Hand_R without rebuilding its rig.
@@ -33,14 +30,12 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     model.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
     const muzzle = new THREE.Object3D(); muzzle.name = 'Muzzle'; muzzle.position.fromArray(config.muzzle);
     model.add(muzzle); correction.add(model); socket.add(correction);
-    const flash = new THREE.Mesh(flashGeometry, flashMaterial); flash.visible = false;
-    flash.position.z = -.05; muzzle.add(flash);
-    return { hand, socket, muzzle, flash, pose, model, aim: new THREE.Vector3(), origin: new THREE.Vector3(),
+    return { hand, socket, muzzle, pose, model, aim: new THREE.Vector3(), origin: new THREE.Vector3(),
       grip: new THREE.Vector3(), chest: new THREE.Vector3(), dir: new THREE.Vector3(), parentQ: new THREE.Quaternion(),
       desiredQ: new THREE.Quaternion(), offsetQ: new THREE.Quaternion(), matrix: new THREE.Matrix4(),
       up: new THREE.Vector3(0,1,0), forward: new THREE.Vector3(0,0,1), worldScale: new THREE.Vector3(),
       localMuzzle: new THREE.Vector3(...config.muzzle).sub(new THREE.Vector3(...config.grip)).applyEuler(correction.rotation).multiplyScalar(config.scale),
-      offset: new THREE.Vector3(), flashTime: 0 };
+      offset: new THREE.Vector3() };
   }, [character, config, scene]);
 
   useEffect(() => {
@@ -52,8 +47,7 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
 
   useFrame(({ camera }, delta) => {
     const entry = entryRef.current;
-    if (!entry?.alive) { rig.flash.visible = false; return; }
-    rig.flashTime = Math.max(0, rig.flashTime - delta); rig.flash.visible = rig.flashTime > 0;
+    if (!entry?.alive) return;
     if (gameState.paused) return;
     const cooldown = entry.profile?.cooldown ?? COMBAT.attackCooldown;
     entry.cooldown = Math.max(-cooldown, (entry.cooldown || 0) - delta);
@@ -98,7 +92,6 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     rig.chest.set(bodyPos.x, bodyPos.y + entry.aimHeight, bodyPos.z);
     if (fireShot(entry, rig.origin, rig.aim, rig.chest, possessed)) {
       entry.cooldown = Math.max(0, entry.cooldown + cooldown);
-      rig.flashTime = AIM.flashTime; rig.flash.visible = true;
     }
   });
 }

@@ -76,6 +76,8 @@ export function cameraAim(camera, shooter, out) {
 
 export function applyImpact(hit, shot) {
   const target = hit.unit;
+  if (combat.impactEffects.length < 256) combat.impactEffects.push({ position: hit.point.toArray(), direction: [...shot.direction] });
+  combat.stats.impactBursts++;
   if (target && target.alive && target.team !== shot.team) {
     const damage = Math.min(target.health, shot.damage);
     target.health -= damage;
@@ -111,6 +113,8 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
   const shot = { origin: origin.toArray(), direction: direction.toArray(), team: shooter.team,
     shooterId: shooter.id, shooter, player, damage: shooter.profile?.damage ?? COMBAT.projectileDamage };
   combat.stats.shots++; battle.shots[shooter.team]++; if (player) combat.stats.playerShots++;
+  if (combat.muzzleEffects.length < 128) combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
+  combat.stats.muzzleFlashes++;
   combat.lastShot = { origin: [...shot.origin], direction: [...shot.direction], aimPoint: aimPoint.toArray(), team: shot.team, shooterId: shot.shooterId, weaponId: shooter.weaponId ?? null };
   // A long barrel must not poke through cover and spawn its bullet on the far side.
   pathDirection.subVectors(origin, clearanceOrigin);
