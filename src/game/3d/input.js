@@ -4,6 +4,7 @@ export const input = {
   keys: {},
   mouseDelta: { x: 0, y: 0 },
   wheelDelta: 0,
+  mouseDown: false,
 };
 
 if (typeof window !== 'undefined') {
@@ -23,17 +24,27 @@ if (typeof window !== 'undefined') {
     input.wheelDelta += e.deltaY;
   }, { passive: true });
 
+  // Track left mouse button for shooting
+  window.addEventListener('mousedown', (e) => {
+    if (e.button === 0) input.mouseDown = true;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) input.mouseDown = false;
+  });
+
   // Clear all keys on blur / focus loss to prevent stuck movement
   window.addEventListener('blur', () => {
     input.keys = {};
     input.mouseDelta.x = 0;
     input.mouseDelta.y = 0;
+    input.mouseDown = false;
   });
 
   // If pointer lock is lost mid-third-person, clear keys
   document.addEventListener('pointerlockchange', () => {
     if (!document.pointerLockElement) {
       input.keys = {};
+      input.mouseDown = false;
     }
   });
 }

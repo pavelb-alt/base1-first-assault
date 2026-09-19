@@ -252,6 +252,23 @@ function FriendlySoldier({ id, laneIndex, spawnOffset, onDespawn }) {
         if (vel.y > 0.5) playAnimation('Jump');
         else if (vel.y < -0.5) playAnimation('Idle');
       }
+
+      // --- Player shooting (left mouse button) ---
+      attackTimer.current -= delta;
+      if (input.mouseDown && attackTimer.current <= 0) {
+        attackTimer.current = COMBAT.attackCooldown;
+        playAnimation(SOLDIER.animAttack || 'Attack');
+        const entry = combatEntryRef.current;
+        const enemy = entry ? findNearestEnemy(entry, 50) : null;
+        if (enemy) {
+          combat.pendingProjectiles.push({
+            origin: [pos.x, pos.y + 1.0, pos.z],
+            targetId: enemy.id,
+            damage: COMBAT.projectileDamage,
+            team: 'friendly',
+          });
+        }
+      }
     } else {
       // --- AI mode: combat + lane movement ---
       const entry = combatEntryRef.current;

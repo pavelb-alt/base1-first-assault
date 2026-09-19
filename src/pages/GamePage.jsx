@@ -83,6 +83,7 @@ export default function GamePage() {
                   <div><span className="text-white font-semibold">WASD</span> Move Soldier</div>
                   <div><span className="text-white font-semibold">Space</span> Jump / Double Jump</div>
                   <div><span className="text-white font-semibold">Mouse</span> Look Around</div>
+                  <div><span className="text-white font-semibold">Left Click</span> Shoot</div>
                   <div><span className="text-white font-semibold">Tab / Esc</span> Release Control</div>
                 </>
               )}
