@@ -5,7 +5,10 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
 import { EventBus } from '@/game/EventBus';
-import { SOLDIER, LANES, FRIENDLY, BALANCE } from '@/game/config';
+import { SOLDIER, BALANCE } from '@/game/config';
+import { isGrounded } from '@/game/3d/navigation/motion';
+import { updateFriendly, releasePosition, suspendFrontline, resumeFrontline } from '@/game/3d/navigation/frontline';
+import { canSeeTarget } from '@/game/3d/ballistics';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
@@ -17,15 +20,7 @@ import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 // Start downloading the model as soon as the module loads
 useGLTF.preload(SOLDIER.modelUrl);
 
-// Friendly lane paths (friendly base → enemy base, original waypoint order)
-const friendlyLanePaths = Object.values(LANES).map((lane) => ({
-  name: lane.name,
-  color: lane.color,
-  points: lane.waypoints.map((wp) => new THREE.Vector3(wp[0], 0, wp[2])),
-}));
-
-// Scratch vectors — never allocate inside useFrame
-const _dir = new THREE.Vector3();
+// Camera-relative scratch vectors; no movement rails.
 const _forward = new THREE.Vector3();
 const _right = new THREE.Vector3();
 
@@ -62,10 +57,9 @@ class SoldierErrorBoundary extends Component {
 }
 
 // --- Single friendly soldier: GLB model + lane AI + possession -------------
-const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex, spawnOffset, active, squadId, slot, onDespawn }) {
+const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorIndex, spawnOffset, active, squadId, slot, onDespawn }) {
   const bodyRef = useRef();
   const groupRef = useRef();
-  const wpIndex = useRef(0);
   const currentAnim = useRef('Idle');
   const targetRotation = useRef(SOLDIER.initialFacing);
   const prevSpace = useRef(false);
@@ -73,7 +67,6 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex,
   const wasPossessed = useRef(false);
   const combatEntryRef = useRef(null);
 
-  const lane = friendlyLanePaths[laneIndex];
 
   // Load the model (cached by useGLTF — one fetch per URL, many clones)
   const { scene, animations } = useGLTF(SOLDIER.modelUrl);
@@ -123,24 +116,26 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex,
     body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     body.setEnabled(active);
     body.setTranslation(active
-      ? { x: lane.points[0].x + spawnOffset.x, y: 0.1, z: lane.points[0].z + spawnOffset.z }
+      ? { x: spawnOffset.x, y: 0.1, z: spawnOffset.z }
       : { x: slot * 3, y: -100, z: 100 }, true);
-    wpIndex.current = 1; targetRotation.current = SOLDIER.initialFacing;
+    targetRotation.current = SOLDIER.initialFacing;
     jumpsRemaining.current = SOLDIER.maxJumps; prevSpace.current = false; wasPossessed.current = false;
     if (!active) return;
     const profile = BALANCE.units.soldier;
-    const entry = { id, team: 'friendly', type: 'soldier', laneIndex, squadId, profile,
-      bodyRef, weaponId, aimHeight: SOLDIER.colliderY, cooldown: 0, aiTarget: null,
+    const entry = { id, team: 'friendly', type: 'soldier', sectorIndex, squadId, profile,
+      bodyRef, weaponId, aimHeight: SOLDIER.colliderY, footOffset: SOLDIER.colliderY-SOLDIER.colliderHalfHeight-SOLDIER.colliderRadius,
+      heading: SOLDIER.initialFacing, nav:null, cooldown: 0, aiTarget: null,
       health: profile.health, maxHealth: profile.health, alive: true, bornAt: battle.elapsed, targetScan: 0 };
     combat.units.push(entry); combat.byBody.set(body.handle, entry); combatEntryRef.current = entry;
     return () => {
       entry.alive = false;
+      releasePosition(entry);
       if (combat.byBody.get(body.handle) === entry) combat.byBody.delete(body.handle);
       const idx = combat.units.indexOf(entry);
       if (idx >= 0) combat.units.splice(idx, 1);
       combatEntryRef.current = null;
     };
-  }, [id, active, weaponId, laneIndex, squadId, spawnOffset, slot, lane]);
+  }, [id, active, weaponId, sectorIndex, squadId, spawnOffset, slot]);
 
   useWeaponAttachment(clonedScene, weaponId, combatEntryRef, id, active);
 
@@ -166,20 +161,11 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex,
       gameState.soldierPosition.set(pos.x, pos.y, pos.z);
     }
 
-    // Ground detection: low position + low vertical velocity
-    const grounded = pos.y < SOLDIER.groundThreshold && Math.abs(vel.y) < 0.5;
+    // Raycast the real local surface: ground, firing step or ramp.
+    const grounded = isGrounded(entry) && vel.y < 0.5;
     if (grounded) jumpsRemaining.current = SOLDIER.maxJumps;
-
-    // Transition from possessed → AI: recalculate nearest waypoint
-    if (wasPossessed.current && !isPossessed) {
-      let nearestIdx = 0;
-      let nearestDist = Infinity;
-      for (let i = 0; i < lane.points.length; i++) {
-        const d = Math.hypot(lane.points[i].x - pos.x, lane.points[i].z - pos.z);
-        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
-      }
-      wpIndex.current = Math.min(nearestIdx + 1, lane.points.length - 1);
-    }
+    if (isPossessed && !wasPossessed.current) suspendFrontline(entry);
+    if (!isPossessed && wasPossessed.current) resumeFrontline(entry);
     wasPossessed.current = isPossessed;
 
     if (isPossessed && gameState.mode === 'third_person') {
@@ -235,59 +221,17 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex,
       // WeaponAttachment consumes the same held fire state after camera/animation updates.
       targetRotation.current = yaw;
     } else {
-      // --- AI mode: combat + lane movement ---
-      const entry = combatEntryRef.current;
-
-      // Find nearest enemy within attack range
-      const enemy = entry ? findNearestEnemy(entry, entry.profile.range) : null;
-
-      if (enemy) {
-        // In range — stop and attack
-        body.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
-        const enemyPos = enemy.bodyRef.current.translation();
-        targetRotation.current = Math.atan2(enemyPos.x - pos.x, enemyPos.z - pos.z);
-
-        if (entry) entry.aiTarget = enemy;
-        playAnimation('Idle');
-      } else {
-        // No enemy in range — continue lane movement
-        const target = lane.points[wpIndex.current];
-        if (!target) return;
-
-        const previous = lane.points[Math.max(0, wpIndex.current - 1)];
-        const sx = target.x - previous.x, sz = target.z - previous.z, length = Math.hypot(sx, sz) || 1;
-        const first = lane.points[1], start = lane.points[0];
-        const firstLength = Math.hypot(first.x - start.x, first.z - start.z);
-        const lateral = (-(first.z - start.z) * spawnOffset.x + (first.x - start.x) * spawnOffset.z) / firstLength;
-        _dir.set(target.x - sz / length * lateral - pos.x, 0, target.z + sx / length * lateral - pos.z);
-        const dist = _dir.length();
-
-        let moving = false;
-
-        if (dist < 1.2) {
-          wpIndex.current++;
-          if (wpIndex.current >= lane.points.length) {
-            recordRemoval(entry, 'breach');
-            entry.alive = false;
-            onDespawn(id);
-            return;
-          }
-        } else {
-          _dir.normalize();
-          moving = true;
-          body.setLinvel(
-            { x: _dir.x * FRIENDLY.moveSpeed, y: vel.y, z: _dir.z * FRIENDLY.moveSpeed },
-            true,
-          );
-          targetRotation.current = Math.atan2(_dir.x, _dir.z);
-        }
-
-        if (moving) {
-          playAnimation('Running');
-        } else {
-          playAnimation('Idle');
-        }
+      // Stable reservations and physically accessible routes replace lane AI.
+      const enemy = findNearestEnemy(entry,entry.profile.range,canSeeTarget);
+      if (updateFriendly(entry,delta,enemy)) {
+        recordRemoval(entry,'breach');entry.alive=false;releasePosition(entry);onDespawn(id);return;
       }
+      if(enemy) {
+        const p=enemy.bodyRef.current.translation();
+        targetRotation.current=Math.atan2(p.x-pos.x,p.z-pos.z);
+      } else targetRotation.current=entry.heading;
+      const v=body.linvel();
+      playAnimation(Math.hypot(v.x,v.z)>0.2?'Running':'Idle');
     }
 
     // Smooth rotation toward target
@@ -306,8 +250,10 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, laneIndex,
       lockRotations
       canSleep={false}
       name="friendly-soldier"
+      ccd
     >
       <CapsuleCollider
+        friction={0}
         args={[SOLDIER.colliderHalfHeight, SOLDIER.colliderRadius]}
         position={[0, SOLDIER.colliderY, 0]}
       />

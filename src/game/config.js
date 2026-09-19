@@ -7,77 +7,52 @@ export const GAME_PERSPECTIVE = 'top-down';
 
 // --- Map dimensions ---------------------------------------------------------
 export const MAP = {
-  SIZE: 80,
-  HALF: 40,
+  SIZE: 400,
+  HALF: 200,
   GROUND_COLOR: '#b4bdca',
-  LANE_WIDTH: 5,
 };
 
 // --- Base positions (opposite corners) --------------------------------------
-// Friendly = bottom-left,  Enemy = top-right  (in XZ plane, -Z is "north")
+// Friendly advances along -Z; enemies advance +Z. Fronts run across X.
 export const BASES = {
   friendly: {
-    position: [-36, 0, 36],
+    position: [0, 0, 180],
     color: '#22c55e',
     accentColor: '#16a34a',
     label: 'FRIENDLY',
   },
   enemy: {
-    position: [36, 0, -36],
+    position: [0, 0, -180],
     color: '#ef4444',
     accentColor: '#dc2626',
     label: 'ENEMY',
   },
 };
 
-// --- Lane waypoints (friendly → enemy) --------------------------------------
-// Top lane: up the left side, across the top
-// Mid lane: straight diagonal
-// Bot lane: across the bottom, up the right side
-export const LANES = {
-  top: {
-    name: 'TOP',
-    waypoints: [
-      [-36, 0, 36], [-36, 0, 12], [-36, 0, -12], [-36, 0, -36],
-      [-12, 0, -36], [12, 0, -36], [36, 0, -36],
-    ],
-    color: '#3b82f6',
-  },
-  mid: {
-    name: 'MID',
-    waypoints: [
-      [-36, 0, 36], [-24, 0, 24], [-12, 0, 12], [0, 0, 0],
-      [12, 0, -12], [24, 0, -24], [36, 0, -36],
-    ],
-    color: '#f59e0b',
-  },
-  bot: {
-    name: 'BOT',
-    waypoints: [
-      [-36, 0, 36], [-12, 0, 36], [12, 0, 36], [36, 0, 36],
-      [36, 0, 12], [36, 0, -12], [36, 0, -36],
-    ],
-    color: '#a855f7',
-  },
-};
-
-// --- Obstacles between lanes (raised terrain blocks) ------------------------
-// Central scatter blocks REMOVED — they blocked the mid-lane corridor.
-export const OBSTACLES = [
-  // Between top & mid (upper-left quadrant)
-  { pos: [-24, 0.75, -8], size: [3, 1.5, 4] },
-  { pos: [-16, 0.75, -20], size: [4, 1.5, 3] },
-  { pos: [-28, 1.0, 4], size: [2, 2, 3] },
-  // Between mid & bot (lower-right quadrant)
-  { pos: [24, 0.75, 8], size: [3, 1.5, 4] },
-  { pos: [16, 0.75, 20], size: [4, 1.5, 3] },
-  { pos: [28, 1.0, -4], size: [2, 2, 3] },
+// Broad allocation regions, not movement corridors or waypoint lanes.
+export const SECTORS = [
+  { name: 'WEST', minX: -180, maxX: -60 },
+  { name: 'CENTER', minX: -60, maxX: 60 },
+  { name: 'EAST', minX: 60, maxX: 180 },
 ];
+export const FRONT = {
+  friendlyForward: -1, enemyForward: 1,
+  rows: [120, 60, 0, -60, -120],
+  sectionCenters: [-150, -90, -30, 30, 90, 150],
+  crossings: [-180, -120, -60, 0, 60, 120, 180],
+  sectionWidth: 60, slotsPerSection: 18,
+  depth: 1.6, firingFloor: -0.15, halfWidth: 4,
+  rampReach: 10, crossingHalfWidth: 3, crossingSlope: 5,
+  parapetHeight: 0.35, spawnZ: 170,
+  clearDelay: 8, resistanceRadius: 42,
+  jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
+  gravity: 20, spatialCell: 24, spatialInterval: 0.1,
+};
 
 // --- Soldier config ---------------------------------------------------------
 export const SOLDIER = {
   modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/affec41bd_8994d7574_orange-guardian-animated-jumps.glb',
-  spawnPosition: [-35, 0, 35],
+  spawnPosition: [0, 0, FRONT.spawnZ],
   scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
   moveSpeed: 8,
   jumpForce: 9,
@@ -86,19 +61,17 @@ export const SOLDIER = {
   colliderRadius: 0.4,
   colliderY: 0.9,
   groundThreshold: 0.35,  // body Y below this + low vertical velocity = grounded
-  initialFacing: (3 * Math.PI) / 4, // model faces +Z; rotate to face enemy base
+  initialFacing: Math.PI, // model faces +Z; friendly advance is -Z
   animAttack: 'Attack',
 };
 
 // --- NPC config -------------------------------------------------------------
 // One source for wave budgets, formations and per-type combat tuning.
 export const BALANCE = {
-  // Equal reinforcement cadence; one heavy squad replaces every third normal wave.
-  friendly: { interval: 9, perLane: 6, maxPerLane: 36, maxAlive: 108 },
-  enemy: { interval: 9, maxPerLane: 36, maxAlive: 108,
-    squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'],
-    giantEvery: 3,
-    giantSquad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
+  // Preserve timing, combat profiles and total population. Three complete squads.
+  friendly: { interval: 9, perSector: 6, maxPerSector: 36, maxAlive: 108 },
+  enemy: { interval: 9, maxPerSector: 36, maxAlive: 108,
+    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
   units: {
@@ -112,7 +85,7 @@ export const BALANCE = {
   projectilePoolPerTeam: 2816, // maximum lifetime budget plus one synchronized volley
   targetScanInterval: 0.2,
 };
-export const NPCS = { spawnInterval: BALANCE.enemy.interval, maxPerLane: BALANCE.enemy.maxPerLane, moveSpeed: BALANCE.moveSpeed };
+export const NPCS = { spawnInterval: BALANCE.enemy.interval, maxPerSector: BALANCE.enemy.maxPerSector, moveSpeed: BALANCE.moveSpeed };
 
 // --- Enemy model types -----------------------------------------------------
 export const ENEMY_TYPES = {
@@ -159,7 +132,7 @@ export const ENEMY_TYPES = {
 
 // --- Friendly soldier wave config ------------------------------------------
 export const FRIENDLY = {
-  perLane: BALANCE.friendly.perLane,
+  perSector: BALANCE.friendly.perSector,
   spawnInterval: BALANCE.friendly.interval,
   maxAlive: BALANCE.friendly.maxAlive,
   moveSpeed: BALANCE.moveSpeed,
@@ -179,12 +152,12 @@ export const COMBAT = {
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
-    initialTarget: [0, 0, 0],
-    initialDistance: 80,
-    minDistance: 30,
-    maxDistance: 130,
+    initialTarget: [0, 0, 30],
+    initialDistance: 430,
+    minDistance: 25,
+    maxDistance: 650,
     angle: Math.PI / 3.2, // pitch from horizontal
-    panSpeed: 50,
+    panSpeed: 100,
   },
   thirdPerson: {
     distance: 7,

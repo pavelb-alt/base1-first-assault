@@ -12,7 +12,7 @@ export default function Game({ onReady }) {
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ fov: 55, near: 0.1, far: 200, position: [0, 30, 35] }}
+      camera={{ fov: 55, near: 0.1, far: 1200, position: [0, 350, 270] }}
       onCreated={(state) => {
         if (typeof onReady === 'function') onReady(state);
       }}

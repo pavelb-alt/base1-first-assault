@@ -37,6 +37,23 @@ export function trace(origin, dir, distance, shooter) {
   return hit;
 }
 
+const sightOrigin = new THREE.Vector3();
+const sightTarget = new THREE.Vector3();
+const sightDirection = new THREE.Vector3();
+export function clearShot(shooter, origin, target) {
+  sightDirection.subVectors(target,origin);
+  const distance=sightDirection.length();
+  if(distance<0.001)return true;
+  const hit=trace(origin,sightDirection.divideScalar(distance),distance,shooter);
+  return !hit || !!hit.unit;
+}
+export function canSeeTarget(shooter,target) {
+  const a=shooter.bodyRef.current.translation(),b=target.bodyRef.current.translation();
+  sightOrigin.set(a.x,a.y+shooter.aimHeight,a.z);
+  sightTarget.set(b.x,b.y+target.aimHeight,b.z);
+  return clearShot(shooter,sightOrigin,sightTarget);
+}
+
 export function cameraAim(camera, shooter, out) {
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(center, camera);

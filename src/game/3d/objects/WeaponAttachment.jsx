@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { WEAPONS, HAND_SOCKET, AIM } from '@/game/3d/weapons';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
-import { cameraAim, fireShot } from '@/game/3d/ballistics';
+import { cameraAim, fireShot, clearShot } from '@/game/3d/ballistics';
 import { COMBAT } from '@/game/config';
 import { createWeaponPose, poseWeaponArm, orientWeaponWrist } from '@/game/3d/objects/WeaponPose';
 
@@ -88,6 +88,8 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     entry.aimPoint = rig.aim;
     const wantsShot = possessed ? input.mouseDown : !!target?.alive;
     if (!wantsShot) { entry.cooldown = 0; return; }
+    if (!possessed && !clearShot(entry,rig.origin,rig.aim)) { entry.blockedSightline=true; return; }
+    entry.blockedSightline=false;
     if (entry.cooldown > 0) return;
     const bodyPos = entry.bodyRef.current.translation();
     rig.chest.set(bodyPos.x, bodyPos.y + entry.aimHeight, bodyPos.z);

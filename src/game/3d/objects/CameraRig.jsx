@@ -6,6 +6,7 @@ import { CAMERA, BASES, MAP } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { input, clearInput, bindInput } from '@/game/3d/input';
 import { combat } from '@/game/3d/combat';
+const cameraAnchor=new THREE.Vector3(),cameraRay=new THREE.Vector3();
 
 export function CameraRig() {
   const { camera, gl } = useThree();
@@ -49,9 +50,12 @@ export function CameraRig() {
       if (document.pointerLockElement) document.exitPointerLock();
     };
 
+    const onResetCamera=()=>{strategicTarget.current.fromArray(CAMERA.strategic.initialTarget);strategicDistance.current=CAMERA.strategic.initialDistance;};
+    EventBus.on('reset-camera',onResetCamera);
     EventBus.on('possess-soldier', onPossess);
     EventBus.on('release-soldier', onRelease);
     return () => {
+      EventBus.off('reset-camera',onResetCamera);
       EventBus.off('possess-soldier', onPossess);
       EventBus.off('release-soldier', onRelease);
     };
@@ -136,6 +140,16 @@ export function CameraRig() {
         pos.y + h + d * Math.sin(pitch),
         pos.z - d * Math.cos(yaw) * Math.cos(pitch) + CAMERA.thirdPerson.shoulder * Math.sin(yaw),
       );
+      // Keep the possessed camera on the near side of trench walls/ground.
+      if(combat.physics) {
+        cameraAnchor.set(pos.x,pos.y+1.4,pos.z);
+        cameraRay.subVectors(camera.position,cameraAnchor);
+        const distance=cameraRay.length();cameraRay.normalize();
+        const {world,rapier}=combat.physics;
+        const hit=world.castRay(new rapier.Ray(cameraAnchor,cameraRay),distance,true,undefined,undefined,undefined,undefined,
+          collider=>!combat.byBody.has(collider.parent()?.handle));
+        if(hit)camera.position.copy(cameraAnchor).addScaledVector(cameraRay,Math.max(0.15,hit.timeOfImpact-0.2));
+      }
       camera.lookAt(
         camera.position.x + Math.sin(yaw) * Math.cos(pitch),
         camera.position.y - Math.sin(pitch),

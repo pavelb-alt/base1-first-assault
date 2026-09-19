@@ -10,6 +10,7 @@ import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
 import { gameState } from '@/game/3d/world';
+import { FRONT, MAP } from '@/game/config';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -30,28 +31,28 @@ export function GameScene() {
   return (
     <>
       <color attach="background" args={['#87ceeb']} />
-      <fog attach="fog" args={['#87ceeb', 90, 180]} />
+      <fog attach="fog" args={['#87ceeb', 500, 1100]} />
 
       <ambientLight intensity={0.6} />
       <hemisphereLight intensity={0.5} groundColor="#8a9a6a" color="#b0d0ff" />
       <directionalLight
         castShadow
-        position={[30, 50, 20]}
+        position={[80, 180, 100]}
         intensity={1.5}
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-45}
-        shadow-camera-right={45}
-        shadow-camera-top={45}
-        shadow-camera-bottom={-45}
+        shadow-camera-left={-MAP.HALF-10}
+        shadow-camera-right={MAP.HALF+10}
+        shadow-camera-top={MAP.HALF+10}
+        shadow-camera-bottom={-MAP.HALF-10}
         shadow-camera-near={1}
-        shadow-camera-far={120}
+        shadow-camera-far={800}
         shadow-bias={-0.0005}
       />
 
       <CameraRig />
 
       <Suspense fallback={null}>
-        <Physics gravity={[0, -20, 0]} paused={paused}>
+        <Physics gravity={[0, -FRONT.gravity, 0]} paused={paused}>
           <Battlefield />
           <FriendlySoldierManager />
           <NpcManager />
