@@ -5,10 +5,11 @@ import { FRONT, MAP } from '@/game/config';
 import { SURFACE, COVER_SEGMENTS as covers } from '@/game/3d/trenchShape';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
+import { createGroundMaterial } from '@/game/3d/dressing/groundAppearance';
 
 // One surface for visible earth AND fixed concave collision; no plane over the cutouts.
 const ground = new THREE.BufferGeometry();
-const vertices=[],colors=[];
+const vertices=[],colors=[],flat=[];
 const palette=Object.fromEntries(Object.entries({ground:MAP.GROUND_COLOR,...FRONT.earthColors}).map(([k,v])=>[k,new THREE.Color(v)]));
 const ab=new THREE.Vector3(),ac=new THREE.Vector3();
 function face(a,b,c) {
@@ -16,7 +17,7 @@ function face(a,b,c) {
   const up=ab.cross(ac).normalize().y;
   const min=Math.min(a.y,b.y,c.y),max=Math.max(a.y,b.y,c.y);
   const color=min>=-0.001?palette.ground : up<0.65?palette.wall : max<=-FRONT.depth+0.01?palette.floor : min>=FRONT.firingFloor-0.01?palette.step : palette.ramp;
-  for(const p of [a,b,c]){vertices.push(p.x,p.y,p.z);colors.push(color.r,color.g,color.b);}
+  for(const p of [a,b,c]){vertices.push(p.x,p.y,p.z);colors.push(color.r,color.g,color.b);flat.push(min>=-0.001?1:0);}
 }
 for(let z=0;z<SURFACE.length-1;z++)for(let x=0;x<SURFACE[z].length-1;x++) {
   const a=SURFACE[z][x],b=SURFACE[z][x+1],c=SURFACE[z+1][x],d=SURFACE[z+1][x+1];
@@ -24,8 +25,9 @@ for(let z=0;z<SURFACE.length-1;z++)for(let x=0;x<SURFACE[z].length-1;x++) {
 }
 ground.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
 ground.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ground.setAttribute('dressingFlat',new THREE.Float32BufferAttribute(flat,1));
 ground.computeVertexNormals();
-const groundMaterial=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.95});
+const groundMaterial=createGroundMaterial();
 const box=new THREE.BoxGeometry(1,1,1);
 const coverMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.edge,roughness:0.9});
 export function TrenchTerrain(){

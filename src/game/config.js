@@ -2,7 +2,7 @@
 // PROJECT-WIDE CONSTANTS — edit these to tune the battlefield
 // ============================================================================
 
-export const ART_STYLE = 'clean sci-fi greybox, neutral tones with faction accents';
+export const ART_STYLE = 'stylized low-poly sci-fi battlefield, muted earth and sand, restrained faction accents';
 export const GAME_PERSPECTIVE = 'top-down';
 
 // Rendering only: simulation, spawn budgets and weapon timing are unchanged.
@@ -18,7 +18,15 @@ export const PERFORMANCE = {
 export const MAP = {
   SIZE: 300,
   HALF: 150,
-  GROUND_COLOR: '#b4bdca',
+  GROUND_COLOR: '#a99b7f',
+};
+
+// Visual-only dressing. Independent of combat RNG and unchanged by battle resets.
+export const DRESSING = {
+  seed: 4173, textureSize: 2048, perimeterSize: 440,
+  sand: '#b6a689', earth: '#938772', olive: '#85886a', worn: '#c0b194',
+  scorch: '#5d5850', rock: '#79776b', steel: '#646d69', rust: '#887663',
+  friendly: '#cf8140', friendlyAccent: '#a96736', enemy: '#b34c43', enemyAccent: '#843b37',
 };
 
 // --- Base positions (opposite corners) --------------------------------------
