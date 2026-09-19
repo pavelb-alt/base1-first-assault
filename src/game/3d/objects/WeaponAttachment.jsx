@@ -16,7 +16,7 @@ const flashMaterial = new THREE.MeshBasicMaterial({ color: '#ffe6a0', toneMapped
 const zero = new THREE.Vector3();
 
 // Parent uses the existing animated clone. Attach to Hand_R without rebuilding its rig.
-export function useWeaponAttachment(character, weaponId, entryRef, leaseId, active = true) {
+export function useWeaponAttachment(character, weaponId, entryRef, leaseId, active = true, visualFrame) {
   const config = WEAPONS[weaponId];
   const { scene } = useGLTF(config.url);
   const rig = useMemo(() => {
@@ -30,7 +30,7 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     correction.scale.setScalar(config.scale);
     const model = scene.clone(true); // Includes ALL magazine/scope descendants; cached geometry/materials.
     model.position.fromArray(config.grip).negate();
-    model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    model.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
     const muzzle = new THREE.Object3D(); muzzle.name = 'Muzzle'; muzzle.position.fromArray(config.muzzle);
     model.add(muzzle); correction.add(model); socket.add(correction);
     const flash = new THREE.Mesh(flashGeometry, flashMaterial); flash.visible = false;
@@ -59,6 +59,9 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     entry.cooldown = Math.max(-cooldown, (entry.cooldown || 0) - delta);
     const possessed = gameState.mode === 'third_person' && gameState.possessedSoldierId === entry.id;
     const target = entry.aiTarget;
+    // Always solve the actual muzzle on shot frames; idle/carry posing follows
+    // the visual budget, while possessed aiming remains full-rate.
+    if (!possessed && visualFrame && !visualFrame.current && !(target?.alive && entry.cooldown <= 0)) return;
     if (possessed) cameraAim(camera, entry, rig.aim);
     else if (target?.alive && target.bodyRef.current) {
       const p = target.bodyRef.current.translation();
@@ -88,9 +91,9 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
     entry.aimPoint = rig.aim;
     const wantsShot = possessed ? input.mouseDown : !!target?.alive;
     if (!wantsShot) { entry.cooldown = 0; return; }
+    if (entry.cooldown > 0) return;
     if (!possessed && !clearShot(entry,rig.origin,rig.aim)) { entry.blockedSightline=true; return; }
     entry.blockedSightline=false;
-    if (entry.cooldown > 0) return;
     const bodyPos = entry.bodyRef.current.translation();
     rig.chest.set(bodyPos.x, bodyPos.y + entry.aimHeight, bodyPos.z);
     if (fireShot(entry, rig.origin, rig.aim, rig.chest, possessed)) {

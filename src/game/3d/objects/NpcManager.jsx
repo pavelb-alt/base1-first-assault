@@ -1,6 +1,7 @@
 import { memo, useRef, useEffect, useMemo, Component, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
+import { useUnitVisuals } from '@/game/3d/objects/useUnitVisuals';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
@@ -55,11 +56,9 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
 
   // Load the model (cached by useGLTF — one fetch per URL, many clones)
   const { scene, animations } = useGLTF(config.modelUrl);
-  const { actions, mixer } = useAnimations(animations, groupRef);
-  useEffect(() => { mixer.timeScale = active ? 1 : 0; }, [active, mixer]);
-
   // Skeleton-safe deep clone — preserves bone bindings, allows independent animation
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
+  const { actions } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'enemy', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
   const playAnimation = (name) => {

@@ -8,6 +8,8 @@ import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 const direction = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 const center = new THREE.Vector2(0, 0);
+const coverPoint = new THREE.Vector3();
+const coverHits = [];
 const pathDirection = new THREE.Vector3();
 const cameraOrigin = new THREE.Vector3();
 const cameraDirection = new THREE.Vector3();
@@ -32,8 +34,17 @@ export function trace(origin, dir, distance, shooter) {
   let hit = result ? { distance: result.timeOfImpact, unit: unitForCollider(result.collider), point: ray.pointAt(result.timeOfImpact) } : null;
   // Base decorations have no movement colliders: ray-test them without changing navigation.
   raycaster.set(origin, dir); raycaster.near = 0; raycaster.far = distance;
-  const visual = raycaster.intersectObjects(context.cover, true)[0];
-  if (visual && (!hit || visual.distance < hit.distance)) hit = { distance: visual.distance, unit: null, point: visual.point };
+  // Most rounds are nowhere near a base. Reject its cached world bounds
+  // before traversing decorative meshes; retain exact cover hits nearby.
+  for (const cover of context.cover) {
+    if (!cover.bounds.containsPoint(origin) &&
+      (!raycaster.ray.intersectBox(cover.bounds, coverPoint) || coverPoint.distanceToSquared(origin) > distance * distance)) continue;
+    coverHits.length = 0;
+    raycaster.intersectObject(cover.object, true, coverHits);
+    const visual = coverHits[0];
+    if (visual && (!hit || visual.distance < hit.distance)) hit = { distance: visual.distance, unit: null, point: visual.point };
+  }
+  coverHits.length = 0;
   return hit;
 }
 
@@ -107,9 +118,9 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
   const obstruction = length > AIM.minDistance ? trace(clearanceOrigin, pathDirection.normalize(), length, shooter) : null;
   if (obstruction) applyImpact(obstruction, shot);
   else {
-    // Check the entire muzzle-to-aim path now; flight still collides per segment,
-    // so moving units/cover are resolved at impact, never damaged early.
-    const path = trace(origin, direction, origin.distanceTo(aimPoint), shooter);
+    // Only immediate muzzle obstruction matters here. The flight sweep still
+    // checks every travelled segment against moving units and cover.
+    const path = trace(origin, direction, Math.min(AIM.minDistance, origin.distanceTo(aimPoint)), shooter);
     if (path && path.distance < AIM.minDistance) applyImpact(path, shot);
     else combat.pendingProjectiles.push(shot);
   }

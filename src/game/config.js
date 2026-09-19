@@ -5,6 +5,15 @@
 export const ART_STYLE = 'clean sci-fi greybox, neutral tones with faction accents';
 export const GAME_PERSPECTIVE = 'top-down';
 
+// Rendering only: simulation, spawn budgets and weapon timing are unchanged.
+export const PERFORMANCE = {
+  maxDpr: 1.25,
+  nearAnimationDistance: 55,
+  nearAnimationHz: 30,
+  farAnimationHz: 15,
+  unitShadowDistance: 65,
+};
+
 // --- Map dimensions ---------------------------------------------------------
 export const MAP = {
   SIZE: 400,

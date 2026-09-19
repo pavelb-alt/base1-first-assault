@@ -79,10 +79,12 @@ export function GameRuntime() {
       p.drawCalls=gl.info.render.calls;p.triangles=gl.info.render.triangles;
     }
     // Inside Physics; assets, bodies, attachments and a completed prior frame are required.
-    const friendly = combat.units.filter(u => u.team === 'friendly' && u.alive);
-    if (combat.physics && friendly.length && friendly.every(u => u.weapon?.socket.parent && u.bodyRef.current)) {
-      if (++frames.current > 1 && window.game) window.game.ready = true;
-    } else frames.current = 0;
+    if (!window.game?.ready) {
+      const friendly = combat.units.filter(u => u.team === 'friendly' && u.alive);
+      if (combat.physics && friendly.length && friendly.every(u => u.weapon?.socket.parent && u.bodyRef.current)) {
+        if (++frames.current > 1 && window.game) window.game.ready = true;
+      } else frames.current = 0;
+    }
   }, -3);
   return null;
 }

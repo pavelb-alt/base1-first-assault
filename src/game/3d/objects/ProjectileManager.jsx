@@ -27,7 +27,7 @@ export function ProjectileManager() {
     for (let i = 0; i < capacity; i++) { pool.current.free.friendly.push(i); pool.current.free.enemy.push(i + capacity); }
   }
   useEffect(() => {
-    const cover = []; scene.traverse(o => { if (o.userData.shotCover) cover.push(o); });
+    const cover = []; scene.traverse(o => { if (o.userData.shotCover) cover.push({ object: o, bounds: new THREE.Box3().setFromObject(o) }); });
     combat.physics = { world, rapier, cover }; combat.projectiles = pool.current.slots;
     if (friendlyMesh.current) { friendlyMesh.current.count = 0; friendlyMesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
     if (enemyMesh.current) { enemyMesh.current.count = 0; enemyMesh.current.instanceMatrix.setUsage(THREE.DynamicDrawUsage); }
@@ -77,7 +77,12 @@ export function ProjectileManager() {
       mesh.setMatrixAt(at, poolState.transform.matrix);
     }
     friendlyMesh.current.count = friendlyCount; enemyMesh.current.count = enemyCount;
-    friendlyMesh.current.instanceMatrix.needsUpdate = true; enemyMesh.current.instanceMatrix.needsUpdate = true;
+    for (const [mesh, count] of [[friendlyMesh.current, friendlyCount], [enemyMesh.current, enemyCount]]) {
+      if (!count) continue;
+      mesh.instanceMatrix.clearUpdateRanges();
+      mesh.instanceMatrix.addUpdateRange(0, count * 16);
+      mesh.instanceMatrix.needsUpdate = true;
+    }
   });
   return <>
     <instancedMesh ref={friendlyMesh} args={[boltGeometry, friendlyMaterial, BALANCE.projectilePoolPerTeam]} frustumCulled={false} />

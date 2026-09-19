@@ -1,6 +1,7 @@
 import { memo, useRef, useCallback, useEffect, useMemo, Component, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
+import { useUnitVisuals } from '@/game/3d/objects/useUnitVisuals';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
@@ -70,11 +71,9 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
 
   // Load the model (cached by useGLTF — one fetch per URL, many clones)
   const { scene, animations } = useGLTF(SOLDIER.modelUrl);
-  const { actions, mixer } = useAnimations(animations, groupRef);
-  useEffect(() => { mixer.timeScale = active ? 1 : 0; }, [active, mixer]);
-
   // Skeleton-safe deep clone — preserves bone bindings, allows independent animation
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
+  const { actions, visualFrame } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'friendly', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
   const playAnimation = (name) => {
@@ -137,7 +136,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     };
   }, [id, active, weaponId, sectorIndex, squadId, spawnOffset, slot]);
 
-  useWeaponAttachment(clonedScene, weaponId, combatEntryRef, id, active);
+  useWeaponAttachment(clonedScene, weaponId, combatEntryRef, id, active, visualFrame);
 
   // The wave pool owns reset/activation, avoiding one reset timer per soldier.
 
@@ -162,7 +161,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     }
 
     // Raycast the real local surface: ground, firing step or ramp.
-    const grounded = isGrounded(entry) && vel.y < 0.5;
+    const grounded = isPossessed && vel.y < 0.5 && isGrounded(entry);
     if (grounded) jumpsRemaining.current = SOLDIER.maxJumps;
     if (isPossessed && !wasPossessed.current) suspendFrontline(entry);
     if (!isPossessed && wasPossessed.current) resumeFrontline(entry);
