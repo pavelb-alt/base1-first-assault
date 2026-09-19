@@ -69,9 +69,9 @@ export const SOLDIER = {
 // One source for wave budgets, formations and per-type combat tuning.
 export const BALANCE = {
   // Preserve timing, combat profiles and total population. Three complete squads.
-  friendly: { interval: 9, perSector: 6, maxPerSector: 36, maxAlive: 108 },
+  friendly: { interval: 8, perSector: 8, maxPerSector: 48, maxAlive: 144 },
   enemy: { interval: 9, maxPerSector: 36, maxAlive: 108,
-    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
+    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'] },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
   units: {
