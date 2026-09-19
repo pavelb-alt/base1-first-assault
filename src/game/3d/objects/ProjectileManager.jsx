@@ -9,8 +9,11 @@ import { combat } from '@/game/3d/combat';
 import { gameState } from '@/game/3d/world';
 import { trace, applyImpact } from '@/game/3d/ballistics';
 
-const geometry = new THREE.SphereGeometry(.2, 8, 8);
-const material = new THREE.MeshStandardMaterial({ color: '#ffd700', emissive: '#ff6600', emissiveIntensity: .8 });
+const boltGeometry = new THREE.CapsuleGeometry(0.05, 0.1, 4, 6); // ~25% original thickness
+boltGeometry.rotateX(Math.PI / 2); // align along Z (direction of travel)
+const friendlyMaterial = new THREE.MeshStandardMaterial({ color: '#3b82f6', emissive: '#3b82f6', emissiveIntensity: 0.6, toneMapped: false });
+const enemyMaterial = new THREE.MeshStandardMaterial({ color: '#ef4444', emissive: '#ef4444', emissiveIntensity: 0.6, toneMapped: false });
+const BOLT_FORWARD = new THREE.Vector3(0, 0, 1);
 export function ProjectileManager() {
   const { world, rapier } = useRapier();
   const scene = useThree(s => s.scene);
@@ -48,8 +51,15 @@ export function ProjectileManager() {
         else { p.position.addScaledVector(p.direction, distance); p.lifetime += delta; if (p.lifetime >= COMBAT.projectileLifetime) p.active = false; }
       }
       const mesh = meshes.current[i];
-      if (mesh) { mesh.visible = p.active; if (p.active) mesh.position.copy(p.position); }
+      if (mesh) {
+        mesh.visible = p.active;
+        if (p.active) {
+          mesh.position.copy(p.position);
+          mesh.quaternion.setFromUnitVectors(BOLT_FORWARD, p.direction);
+          mesh.material = p.team === 'friendly' ? friendlyMaterial : enemyMaterial;
+        }
+      }
     }
   });
-  return <>{projectiles.current.map((_,i) => <mesh key={i} ref={el => { meshes.current[i] = el; }} geometry={geometry} material={material} visible={false} />)}</>;
+  return <>{projectiles.current.map((_,i) => <mesh key={i} ref={el => { meshes.current[i] = el; }} geometry={boltGeometry} material={friendlyMaterial} visible={false} />)}</>;
 }

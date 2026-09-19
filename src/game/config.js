@@ -160,7 +160,7 @@ export const FRIENDLY = {
 // --- Combat config ----------------------------------------------------------
 export const COMBAT = {
   attackRange: 15,          // range at which units start attacking
-  attackCooldown: 1.5,      // seconds between attacks
+  attackCooldown: 0.125,    // seconds between attacks (~8 shots/sec)
   projectileSpeed: 20,      // units per second
   projectileDamage: 10,     // damage per hit
   maxHealth: 100,           // health for all units

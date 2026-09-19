@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GameContainer } from '@/components/game/GameContainer';
 import { EventBus } from '@/game/EventBus';
 import AimOverlay from '@/components/AimOverlay';
+import { HealthBar } from '@/components/HealthBar';
 
 export default function GamePage() {
   const [mode, setMode] = useState('strategic');
@@ -56,6 +57,7 @@ export default function GamePage() {
         <GameContainer />
         <div className="absolute inset-0 pointer-events-none select-none">
           {mode === 'third_person' && <AimOverlay />}
+          <HealthBar />
           {/* Mode indicator */}
           <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
             <div className="text-white font-bold text-sm tracking-wider">
