@@ -19,8 +19,12 @@ export function CameraRig() {
   // --- Possess / release handlers -------------------------------------------
   useEffect(() => {
     const onPossess = () => {
-      const unit = combat.units.find(u => u.id === gameState.selectedSoldierId && u.team === 'friendly' && u.alive && u.weapon);
-      if (!unit?.bodyRef.current) return;
+      const eligible = combat.units.filter(u => u.team === 'friendly' && u.alive && u.weapon && u.bodyRef.current);
+      if (eligible.length === 0) {
+        EventBus.emit('no-eligible-soldier');
+        return;
+      }
+      const unit = eligible[Math.floor(Math.random() * eligible.length)];
       clearInput();
       gameState.possessedSoldierId = unit.id;
       const p = unit.bodyRef.current.translation();
@@ -33,7 +37,7 @@ export function CameraRig() {
       // Camera looks toward enemy base
       thirdPersonYaw.current = Math.atan2(dx, dz);
       // Soldier faces enemy base (model forward is +Z) — include ID so only the possessed soldier applies it
-      EventBus.emit('set-soldier-rotation', { id: gameState.selectedSoldierId, rotation: Math.atan2(dx, dz) });
+      EventBus.emit('set-soldier-rotation', { id: unit.id, rotation: Math.atan2(dx, dz) });
       EventBus.emit('mode-changed', 'third_person');
       // Stay in the trusted click/keydown gesture; retry is available on canvas click.
       gl.domElement.requestPointerLock?.()?.catch?.(() => {});

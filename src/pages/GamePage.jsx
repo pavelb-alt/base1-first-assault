@@ -6,49 +6,38 @@ import { HealthBar } from '@/components/HealthBar';
 
 export default function GamePage() {
   const [mode, setMode] = useState('strategic');
-  const [selected, setSelected] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
+  const [waitingForReinforcements, setWaitingForReinforcements] = useState(false);
 
   // EventBus subscriptions
   useEffect(() => {
-    const onMode = (m) => { setMode(m); if (m === 'strategic') setSelected(false); };
-    const onSelected = () => setSelected(true);
-    const onDeselected = () => setSelected(false);
+    const onMode = (m) => { setMode(m); setWaitingForReinforcements(false); };
     const onLoaded = () => { setLoaded(true); setError(null); };
     const onError = (e) => setError(e);
+    const onNoEligible = () => {
+      setWaitingForReinforcements(true);
+      setTimeout(() => setWaitingForReinforcements(false), 3000);
+    };
 
     EventBus.on('mode-changed', onMode);
-    EventBus.on('soldier-selected', onSelected);
-    EventBus.on('soldier-deselected', onDeselected);
     EventBus.on('soldier-loaded', onLoaded);
     EventBus.on('soldier-error', onError);
+    EventBus.on('no-eligible-soldier', onNoEligible);
 
     return () => {
       EventBus.off('mode-changed', onMode);
-      EventBus.off('soldier-selected', onSelected);
-      EventBus.off('soldier-deselected', onDeselected);
       EventBus.off('soldier-loaded', onLoaded);
       EventBus.off('soldier-error', onError);
+      EventBus.off('no-eligible-soldier', onNoEligible);
     };
   }, []);
-
-  // E key to possess when soldier is selected in strategic mode
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.code === 'KeyE' && mode === 'strategic' && selected) {
-        EventBus.emit('possess-soldier');
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mode, selected]);
 
   const handleReset = () => {
     EventBus.emit('reset-game');
     EventBus.emit('mode-changed', 'strategic');
     setMode('strategic');
-    setSelected(false);
+    setWaitingForReinforcements(false);
   };
 
   return (
@@ -75,8 +64,6 @@ export default function GamePage() {
                 <>
                   <div><span className="text-white font-semibold">WASD</span> Pan Camera</div>
                   <div><span className="text-white font-semibold">Wheel</span> Zoom</div>
-                  <div><span className="text-white font-semibold">Click</span> Select Soldier</div>
-                  {selected && <div className="text-green-400"><span className="font-semibold">E</span> Take Control</div>}
                 </>
               ) : (
                 <>
@@ -91,12 +78,12 @@ export default function GamePage() {
           </div>
 
           {/* Action buttons */}
-          {mode === 'strategic' && selected && (
+          {mode === 'strategic' && (
             <button
               className="absolute bottom-4 right-4 px-6 py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold pointer-events-auto transition-colors shadow-lg"
               onClick={() => EventBus.emit('possess-soldier')}
             >
-              Take Control (E)
+              {waitingForReinforcements ? 'Waiting for reinforcements' : 'Join the Fight'}
             </button>
           )}
           {mode === 'third_person' && (
