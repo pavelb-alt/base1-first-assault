@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { WEAPONS, HAND_SOCKET, AIM } from '@/game/3d/weapons';
+import { WEAPONS, HAND_SOCKET } from '@/game/3d/weapons';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { cameraAim, fireShot, clearShot } from '@/game/3d/ballistics';
