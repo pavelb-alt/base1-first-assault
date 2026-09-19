@@ -1,5 +1,6 @@
 import { BASES } from '@/game/config';
 import { TrenchTerrain } from '@/game/3d/objects/TrenchTerrain';
+import { BattlefieldDressing } from '@/game/3d/objects/BattlefieldDressing';
 
 // --- Faction base platform --------------------------------------------------
 function Base({ position, color, accentColor }) {
@@ -31,6 +32,7 @@ function Base({ position, color, accentColor }) {
 export function Battlefield() {
   return <group>
     <TrenchTerrain />
+    <BattlefieldDressing />
     <Base {...BASES.friendly} />
     <Base {...BASES.enemy} />
   </group>;
