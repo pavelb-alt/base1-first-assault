@@ -26,13 +26,13 @@ export function useWavePool(team) {
   if(!state.current)state.current={slots:Array.from({length:rules.maxAlive},(_,slot)=>({
     slot,id:-slot-1,active:false,sectorIndex:Math.floor(slot/rules.maxPerSector),
     type:team==='enemy'?rules.squad[slot%size]:'soldier',weaponId:WEAPON_IDS[slot%WEAPON_IDS.length],spawnOffset:{x:0,z:0},squadId:0,
-  })),timer:rules.interval,nextId:0,waveId:0};
+  })),timer:rules.interval,trilobiteTimer:0,nextId:0,waveId:0};
   const despawn=useCallback(id=>{
     const s=state.current,index=s.slots.findIndex(u=>u.active&&u.id===id);
     if(index<0)return;s.slots[index]={...s.slots[index],active:false};publish();
   },[]);
   useEffect(()=>{
-    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false}));s.timer=rules.interval;s.waveId=0;publish();};
+    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false}));s.timer=rules.interval;s.trilobiteTimer=0;s.waveId=0;publish();};
     EventBus.on('reset-game',reset);return()=>EventBus.off('reset-game',reset);
   },[rules]);
   useFrame((_,delta)=>{
@@ -68,6 +68,22 @@ export function useWavePool(team) {
         spawnOffset:spawnPosition(sectorIndex,team,member,s.waveId,counts)};
     }
     s.timer=0;recordWave(team,s.waveId,spawned);publish();
+    // Trilobite spawns independently once every trilobiteInterval seconds.
+    if(team==='enemy'){
+      s.trilobiteTimer=Math.min(rules.trilobiteInterval,s.trilobiteTimer+delta);
+      if(s.trilobiteTimer>=rules.trilobiteInterval){
+        const triFree=[];
+        s.slots.forEach((u,i)=>{if(!u.active)triFree.push(i);});
+        if(triFree.length){
+          const sectorIndex=Math.floor(random()*SECTORS.length);
+          const index=triFree[0];
+          s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`enemy-trilobite-${s.waveId}`,
+            type:'trilobite',weaponId:null,
+            spawnOffset:spawnPosition(sectorIndex,'enemy',0,s.waveId,counts)};
+          s.trilobiteTimer=0;publish();
+        }
+      }
+    }
   });
   return {slots:state.current.slots,despawn};
 }

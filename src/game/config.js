@@ -80,7 +80,8 @@ export const BALANCE = {
   // Preserve timing, combat profiles and total population. Three complete squads.
   friendly: { interval: 8, perSector: 8, maxPerSector: 48, maxAlive: 144 },
   enemy: { interval: 9, maxPerSector: 36, maxAlive: 108,
-    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'] },
+    squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'],
+    trilobiteInterval: 30 },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
   units: {
