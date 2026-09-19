@@ -16,8 +16,8 @@ export const PERFORMANCE = {
 
 // --- Map dimensions ---------------------------------------------------------
 export const MAP = {
-  SIZE: 400,
-  HALF: 200,
+  SIZE: 300,
+  HALF: 150,
   GROUND_COLOR: '#b4bdca',
 };
 
@@ -25,13 +25,13 @@ export const MAP = {
 // Friendly advances along -Z; enemies advance +Z. Fronts run across X.
 export const BASES = {
   friendly: {
-    position: [0, 0, 180],
+    position: [0, 0, 135],
     color: '#22c55e',
     accentColor: '#16a34a',
     label: 'FRIENDLY',
   },
   enemy: {
-    position: [0, 0, -180],
+    position: [0, 0, -135],
     color: '#ef4444',
     accentColor: '#dc2626',
     label: 'ENEMY',
@@ -40,19 +40,19 @@ export const BASES = {
 
 // Broad allocation regions, not movement corridors or waypoint lanes.
 export const SECTORS = [
-  { name: 'WEST', minX: -180, maxX: -60 },
-  { name: 'CENTER', minX: -60, maxX: 60 },
-  { name: 'EAST', minX: 60, maxX: 180 },
+  { name: 'WEST', minX: -135, maxX: -45 },
+  { name: 'CENTER', minX: -45, maxX: 45 },
+  { name: 'EAST', minX: 45, maxX: 135 },
 ];
 export const FRONT = {
   friendlyForward: -1, enemyForward: 1,
-  rows: [120, 60, 0, -60, -120],
-  sectionCenters: [-150, -90, -30, 30, 90, 150],
-  crossings: [-180, -120, -60, 0, 60, 120, 180],
-  sectionWidth: 60, slotsPerSection: 18,
+  rows: [90, 45, 0, -45, -90],
+  sectionCenters: [-112.5, -67.5, -22.5, 22.5, 67.5, 112.5],
+  crossings: [-135, -90, -45, 0, 45, 90, 135],
+  sectionWidth: 45, slotsPerSection: 18,
   depth: 1.6, firingFloor: -0.15, halfWidth: 4,
   rampReach: 10, crossingHalfWidth: 3, crossingSlope: 5,
-  parapetHeight: 0.35, spawnZ: 170,
+  parapetHeight: 0.35, spawnZ: 127.5,
   clearDelay: 8, resistanceRadius: 42,
   jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
   gravity: 20, spatialCell: 24, spatialInterval: 0.1,
@@ -161,12 +161,12 @@ export const COMBAT = {
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
-    initialTarget: [0, 0, 30],
-    initialDistance: 430,
+    initialTarget: [0, 0, 22.5],
+    initialDistance: 322.5,
     minDistance: 25,
-    maxDistance: 650,
+    maxDistance: 487.5,
     angle: Math.PI / 3.2, // pitch from horizontal
-    panSpeed: 100,
+    panSpeed: 75,
   },
   thirdPerson: {
     distance: 7,

@@ -40,7 +40,7 @@ export function TrenchTerrain(){
     </RigidBody>
     <RigidBody type="fixed" colliders={false}>
       {covers.map((c,i)=><CuboidCollider key={i} args={[c.width/2,FRONT.parapetHeight/2,0.275]} position={[c.x,FRONT.parapetHeight/2,c.z]}/>)}
-      {/* Side walls enclose the full 400 × 400 playable surface. */}
+      {/* Side walls track the configured playable surface. */}
       <CuboidCollider args={[MAP.HALF+1,6,1]} position={[0,3,-MAP.HALF-1]}/>
       <CuboidCollider args={[MAP.HALF+1,6,1]} position={[0,3,MAP.HALF+1]}/>
       <CuboidCollider args={[1,6,MAP.HALF]} position={[-MAP.HALF-1,3,0]}/>

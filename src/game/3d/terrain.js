@@ -2,14 +2,15 @@ import { FRONT, MAP } from '@/game/config';
 
 const clamp = v => Math.max(0, Math.min(1, v));
 export function nearestSection(x) {
-  return Math.max(0, Math.min(FRONT.sectionCenters.length - 1, Math.floor((x + 180) / FRONT.sectionWidth)));
+  const frontage = MAP.HALF * 0.9;
+  return Math.max(0, Math.min(FRONT.sectionCenters.length - 1, Math.floor((x + frontage) / FRONT.sectionWidth)));
 }
 export function trenchAt(z, margin = FRONT.rampReach) {
   return FRONT.rows.findIndex(row => Math.abs(row - z) < margin);
 }
 // This surface definition builds the actual collision mesh, not just an AI height hint.
 export function terrainHeight(x, z) {
-  if (Math.abs(x) >= 188) return 0;
+  if (Math.abs(x) >= MAP.HALF * 0.94) return 0;
   const rowIndex = trenchAt(z, FRONT.rampReach + 0.01);
   if (rowIndex < 0) return 0;
   const dz = z - FRONT.rows[rowIndex];
@@ -31,19 +32,21 @@ export function terrainHeight(x, z) {
 }
 
 const sorted = a => [...new Set(a)].sort((a,b) => a-b);
-export const TERRAIN_X = sorted([-MAP.HALF, -188, ...FRONT.crossings.flatMap(x => [x-8,x-3,x,x+3,x+8]),
-  ...FRONT.sectionCenters.flatMap(x => [x-4,x-3,x,x+3,x+4]), 188, MAP.HALF]);
+const terrainEdge = MAP.HALF * 0.94;
+export const TERRAIN_X = sorted([-MAP.HALF, -terrainEdge, ...FRONT.crossings.flatMap(x => [x-8,x-3,x,x+3,x+8]),
+  ...FRONT.sectionCenters.flatMap(x => [x-4,x-3,x,x+3,x+4]), terrainEdge, MAP.HALF]);
 export const TERRAIN_Z = sorted([-MAP.HALF, ...FRONT.rows.flatMap(z => [-10,-4.3,-4,-2.5,0.5,4,4.3,10].map(d => z+d)), MAP.HALF]);
 
 // Parapets have actual colliders. Gaps coincide with all entry ramps and crossings.
 const gaps = [...FRONT.crossings.map(x => [x-8,x+8]), ...FRONT.sectionCenters.map(x => [x-4,x+4])].sort((a,b) => a[0]-b[0]);
 export const COVER_SEGMENTS = [];
-let cursor = -180;
+const frontage = MAP.HALF * 0.9;
+let cursor = -frontage;
 for (const [a,b] of gaps) {
   if (a > cursor) COVER_SEGMENTS.push({ x: (cursor+a)/2, width: a-cursor });
   cursor = Math.max(cursor,b);
 }
-if (cursor < 180) COVER_SEGMENTS.push({ x:(cursor+180)/2, width:180-cursor });
+if (cursor < frontage) COVER_SEGMENTS.push({ x:(cursor+frontage)/2, width:frontage-cursor });
 
 // Route every ground crossing through a physical ramp, never through a wall.
 export function walkRoute(start, target) {

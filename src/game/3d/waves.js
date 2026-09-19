@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { BALANCE, FRONT, SECTORS } from '@/game/config';
+import { BALANCE, FRONT, MAP, SECTORS } from '@/game/config';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { combat } from '@/game/3d/combat';
@@ -47,7 +47,8 @@ export function useWavePool(team) {
     s.waveId++;
     const counts=FRONT.sectionCenters.map(()=>0);
     for(const u of combat.units)if(u.alive&&u.team==='friendly'&&u.bodyRef.current){
-      const section=u.assignment?.section??Math.max(0,Math.min(5,Math.floor((u.bodyRef.current.translation().x+180)/60)));
+      const section=u.assignment?.section??Math.max(0,Math.min(FRONT.sectionCenters.length-1,
+        Math.floor((u.bodyRef.current.translation().x+MAP.HALF*0.9)/FRONT.sectionWidth)));
       counts[section]++;
     }
     const spawned=SECTORS.map(()=>0);
