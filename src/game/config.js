@@ -50,9 +50,16 @@ export const FRONT = {
   sectionCenters: [-112.5, -67.5, -22.5, 22.5, 67.5, 112.5],
   crossings: [-135, -90, -45, 0, 45, 90, 135],
   sectionWidth: 45, slotsPerSection: 18,
-  depth: 1.6, firingFloor: -0.15, halfWidth: 4,
-  rampReach: 10, crossingHalfWidth: 3, crossingSlope: 5,
-  parapetHeight: 0.35, spawnZ: 127.5,
+  // Existing Orange Guardian measures ~0.726m at scale 0.3 (hand: 0.324m, head: 0.488m).
+  // 0.46m floor-to-lip cover protects the torso; the 2.2m aisle fits two 0.8m capsules.
+  depth: 0.4, firingFloor: -0.025, halfWidth: 2.4,
+  floorFront: -0.1, floorRear: 2.1, stepRear: -1.1, firingZ: -1.75, spineZ: 1,
+  zigLength: 7.5, zigAmplitude: 1.1,
+  rampReach: 6.8, rampHalfWidth: 1.6, rampShoulder: 0.6,
+  crossingHalfWidth: 1.8, crossingSlope: 3,
+  stationInner: 3.5, stationSpacing: 1.65,
+  parapetHeight: 0.06, edgeThickness: 0.18, spawnZ: 127.5,
+  earthColors: { wall: '#806148', floor: '#514437', step: '#a58a64', ramp: '#99754f', edge: '#665443' },
   clearDelay: 8, resistanceRadius: 42,
   jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
   gravity: 20, spatialCell: 24, spatialInterval: 0.1,
@@ -62,7 +69,7 @@ export const FRONT = {
 export const SOLDIER = {
   modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/affec41bd_8994d7574_orange-guardian-animated-jumps.glb',
   spawnPosition: [0, 0, FRONT.spawnZ],
-  scale: 0.3, // RobotExpressive is ~6 units natively; scale to ~1.8 to match collider
+  scale: 0.3, // Existing Orange Guardian rest height: 2.42 native units, ~0.726 in world space
   moveSpeed: 8,
   jumpForce: 9,
   maxJumps: 2,            // ground jump + 1 air jump (double jump)

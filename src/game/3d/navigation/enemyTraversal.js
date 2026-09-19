@@ -1,7 +1,7 @@
 import { FRONT, BASES, SECTORS } from '@/game/config';
 import { battle } from '@/game/3d/battleMetrics';
 import { random } from '@/game/3d/random';
-import { terrainHeight } from '@/game/3d/terrain';
+import { terrainHeight, trenchCenter } from '@/game/3d/terrain';
 import { visitNearby } from '@/game/3d/spatial';
 import { isGrounded, moveToward, stop } from '@/game/3d/navigation/motion';
 import { recordTraversal } from '@/game/3d/navigation/frontline';
@@ -21,8 +21,8 @@ function allocateLink(entry) {
     const choices=FRONT.crossings.filter(c=>c>=sector.minX&&c<=sector.maxX);
     let best=choices[0],score=Infinity;
     for(const c of choices){let crowd=0;visitNearby(c,row,16,u=>{if(u.team==='enemy')crowd++;});const s=Math.abs(c-x)+crowd*8;if(s<score){score=s;best=c;}}
-    nav.x=best;nav.target={x:best,z:row-12};
-  } else {nav.x=x;nav.target={x,z:row+FRONT.jumpStart};}
+    nav.x=best;nav.row=trenchCenter(FRONT.rows.length-1-nav.front,best);nav.target={x:best,z:nav.row-12};
+  } else {nav.x=x;nav.row=trenchCenter(FRONT.rows.length-1-nav.front,x);nav.target={x,z:nav.row+FRONT.jumpStart};}
 }
 function clearLanding(entry,x,z) {
   if(Math.abs(x)>190 || Math.abs(z)>190 || Math.abs(terrainHeight(x,z))>0.05)return false;
@@ -37,8 +37,9 @@ function beginJump(entry) {
   if(!clearLanding(entry,nav.x,z)) {
     for(const offset of [3,-3,6,-6]) {
       const x=nav.x+offset,sector=SECTORS[entry.sectorIndex];
-      if(x>sector.minX+3&&x<sector.maxX-3&&clearLanding(entry,x,z)) {
-        nav.x=x;nav.target={x,z:nav.row+FRONT.jumpStart};nav.phase='approach';return false;
+      const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
+      if(x>sector.minX+3&&x<sector.maxX-3&&clearLanding(entry,x,row+FRONT.jumpEnd)) {
+        nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';return false;
       }
     }
     stop(entry);return false;
