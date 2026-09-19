@@ -1,6 +1,6 @@
 import { BASES, FRONT } from '@/game/config';
 import { battle } from '@/game/3d/battleMetrics';
-import { walkRoute } from '@/game/3d/terrain';
+import { walkRoute, zigzagOffset } from '@/game/3d/terrain';
 import { visitNearby } from '@/game/3d/spatial';
 import { followRoute, stop } from '@/game/3d/navigation/motion';
 
@@ -46,7 +46,7 @@ export function reservePosition(entry,minimumRow=0) {
   const slot=slots.find(i=>!reservations.has(`${best.row}:${best.section}:${i}`));
   if(slot===undefined)return false;
   const x=FRONT.sectionCenters[best.section]+(slot-8.5)*2.4;
-  entry.assignment={row:best.row,section:best.section,slot,x,z:FRONT.rows[best.row]-3.1};
+  entry.assignment={row:best.row,section:best.section,slot,x,z:FRONT.rows[best.row]+zigzagOffset(x,best.row)-1.3};
   entry.positionId=`${best.row}:${best.section}:${slot}`;
   reservations.set(entry.positionId,entry);
   entry.nav={phase:'entering',route:walkRoute(entry.bodyRef.current.translation(),entry.assignment),index:0,started:battle.elapsed,clearSince:null,nextCheck:0};

@@ -50,12 +50,13 @@ export const FRONT = {
   sectionCenters: [-112.5, -67.5, -22.5, 22.5, 67.5, 112.5],
   crossings: [-135, -90, -45, 0, 45, 90, 135],
   sectionWidth: 45, slotsPerSection: 18,
-  depth: 1.6, firingFloor: -0.15, halfWidth: 4,
-  rampReach: 10, crossingHalfWidth: 3, crossingSlope: 5,
-  parapetHeight: 0.35, spawnZ: 127.5,
+  depth: 1.6, firingFloor: -0.15, halfWidth: 1.8,
+  rampReach: 4, crossingHalfWidth: 2.5, crossingSlope: 3,
+  parapetHeight: 0.5, spawnZ: 127.5,
   clearDelay: 8, resistanceRadius: 42,
   jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
   gravity: 20, spatialCell: 24, spatialInterval: 0.1,
+  zigzagPeriod: 20, zigzagAmplitude: 1.0,
 };
 
 // --- Soldier config ---------------------------------------------------------
