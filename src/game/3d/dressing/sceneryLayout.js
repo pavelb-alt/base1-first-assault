@@ -4,7 +4,12 @@ import { dressingNoise } from '@/game/3d/dressing/groundAppearance';
 // All meshes use unit bounds (radius 0.5). Conservative spherical bounds keep
 // even tilted beams and dishes OUTSIDE the existing physical map boundary.
 export const SCENERY = { rock:[], box:[], cylinder:[], dish:[] };
+// Layout authored around a 300m map. Compress interior coordinates while
+// retaining the original outside-edge clearance and full-size scenery.
+const layoutHalf=150;
+const mapCoordinate=v=>Math.sign(v)*(Math.abs(v)>layoutHalf?MAP.HALF+Math.abs(v)-layoutHalf:Math.abs(v)*MAP.HALF/layoutHalf);
 function add(type,position,scale,color,rotation=[0,0,0]) {
+  position=[mapCoordinate(position[0]),position[1],mapCoordinate(position[2])];
   const radius=Math.hypot(...scale)/2;
   if(Math.abs(position[0])-radius<=MAP.HALF+3 && Math.abs(position[2])-radius<=MAP.HALF+3)return;
   SCENERY[type].push({position,scale,color,rotation});
@@ -33,8 +38,8 @@ for(const z of [-73,-57])beam(165,3.5,z,2,7,2);
 beam(165,7,-70,2,1,9,DRESSING.rust,[.14,0,0]);
 beam(166,2,-60,1,6,1,DRESSING.steel,[.4,0,.4]);
 // Base surroundings sit BEHIND the out-of-bounds line, never on spawn exits.
-const friendlyRear=BASES.friendly.position[2]+29;
-const enemyRear=BASES.enemy.position[2]-30;
+const friendlyRear=BASES.friendly.position[2]*layoutHalf/MAP.HALF+29;
+const enemyRear=BASES.enemy.position[2]*layoutHalf/MAP.HALF-30;
 beam(-23,2.2,friendlyRear,13,4.4,8);
 beam(-23,4.7,friendlyRear,14,.65,9,DRESSING.rust);
 beam(-23,3.8,friendlyRear-4.1,11,.65,.25,DRESSING.friendly);

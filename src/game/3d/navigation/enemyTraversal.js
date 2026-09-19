@@ -1,4 +1,4 @@
-import { FRONT, BASES, SECTORS } from '@/game/config';
+import { FRONT, BASES, SECTORS, MAP } from '@/game/config';
 import { battle } from '@/game/3d/battleMetrics';
 import { random } from '@/game/3d/random';
 import { terrainHeight, trenchCenter } from '@/game/3d/terrain';
@@ -25,7 +25,7 @@ function allocateLink(entry) {
   } else {nav.x=x;nav.row=trenchCenter(FRONT.rows.length-1-nav.front,x);nav.target={x,z:nav.row+FRONT.jumpStart};}
 }
 function clearLanding(entry,x,z) {
-  if(Math.abs(x)>190 || Math.abs(z)>190 || Math.abs(terrainHeight(x,z))>0.05)return false;
+  if(Math.abs(x)>MAP.HALF-2 || Math.abs(z)>MAP.HALF-2 || Math.abs(terrainHeight(x,z))>0.05)return false;
   let clear=true;
   visitNearby(x,z,2.1,(u,p)=>{if(u!==entry&&p.y<2)clear=false;});
   for(const [key,landing] of landings)if(key!==entry.nav.landingKey&&Math.hypot(landing.x-x,landing.z-z)<2.1)clear=false;

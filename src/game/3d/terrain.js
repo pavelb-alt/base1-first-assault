@@ -9,8 +9,8 @@ export function trenchAt(z,margin=FRONT.rampReach,x=0) {
   return FRONT.rows.findIndex((_,row)=>Math.abs(trenchCenter(row,x)-z)<margin);
 }
 export function firingPosition(row,section,slot) {
-  // Nine distinct stations on either side of the ramp, clear of causeway slopes.
-  const half=FRONT.slotsPerSection/2;
+  // Odd station counts use one extra station on the left of each clear entry.
+  const half=Math.ceil(FRONT.slotsPerSection/2);
   const x=FRONT.sectionCenters[section]+(slot<half?-1:1)*(FRONT.stationInner+(slot%half)*FRONT.stationSpacing);
   return {x,z:trenchCenter(row,x)+FRONT.firingZ};
 }

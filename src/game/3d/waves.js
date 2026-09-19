@@ -38,12 +38,17 @@ export function useWavePool(team) {
   useFrame((_,delta)=>{
     if(gameState.paused)return;
     const s=state.current;s.timer=Math.min(rules.interval,s.timer+delta);
+    // Carry fractional squad budgets across waves: 2 then 3 enemies per sector,
+    // preserving the full five-member composition over each pair of waves.
+    const budget=team==='enemy'?rules.squad.length*(rules.spawnScale??1):rules.perSector;
+    const waveOffset=Math.floor(s.waveId*budget);
+    const waveSize=Math.floor((s.waveId+1)*budget)-waveOffset;
     if(s.timer<rules.interval)return;
     // Slots belong to the faction pool, not permanently to a sector. Casualties
     // on one flank must not wait for an unrelated flank to free its own slots.
     const free=[];
     s.slots.forEach((u,i)=>{if(!u.active)free.push(i);});
-    if(free.length<size*SECTORS.length)return;
+    if(free.length<waveSize*SECTORS.length)return;
     s.waveId++;
     const counts=FRONT.sectionCenters.map(()=>0);
     for(const u of combat.units)if(u.alive&&u.team==='friendly'&&u.bodyRef.current){
@@ -52,7 +57,7 @@ export function useWavePool(team) {
       counts[section]++;
     }
     const spawned=SECTORS.map(()=>0);
-    for(let squad=0;squad<SECTORS.length;squad++)for(let member=0;member<size;member++){
+    for(let squad=0;squad<SECTORS.length;squad++)for(let member=0;member<waveSize;member++){
       let sectorIndex=squad;
       if(team==='friendly') {
         let least=Infinity;
@@ -61,9 +66,9 @@ export function useWavePool(team) {
           if(population<least){least=population;sectorIndex=sector;}
         }
       }
-      const index=free[squad*size+member];spawned[sectorIndex]++;
+      const index=free[squad*waveSize+member];spawned[sectorIndex]++;
       s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`${team}-${s.waveId}-${squad}`, 
-        type:team==='enemy'?rules.squad[member]:'soldier',
+        type:team==='enemy'?rules.squad[(waveOffset+member)%rules.squad.length]:'soldier',
         weaponId:team==='friendly'?WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)]:null,
         spawnOffset:spawnPosition(sectorIndex,team,member,s.waveId,counts)};
     }

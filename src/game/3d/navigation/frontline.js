@@ -42,7 +42,7 @@ export function reservePosition(entry,minimumRow=0) {
   if(!best)return false;
   allocationCursor=(best.section+1)%FRONT.sectionCenters.length;
   // Spread unique firing stations on both banks of the entry ramp, never on a crossing.
-  const half=FRONT.slotsPerSection/2;
+  const half=Math.ceil(FRONT.slotsPerSection/2);
   const slots=Array.from({length:FRONT.slotsPerSection},(_,i)=>i).sort((a,b)=>(a%half)-(b%half)||a-b);
   const slot=slots.find(i=>!reservations.has(`${best.row}:${best.section}:${i}`));
   if(slot===undefined)return false;

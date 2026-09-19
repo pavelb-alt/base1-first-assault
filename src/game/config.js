@@ -16,14 +16,14 @@ export const PERFORMANCE = {
 
 // --- Map dimensions ---------------------------------------------------------
 export const MAP = {
-  SIZE: 300,
-  HALF: 150,
+  SIZE: 150,
+  HALF: 75,
   GROUND_COLOR: '#a99b7f',
 };
 
 // Visual-only dressing. Independent of combat RNG and unchanged by battle resets.
 export const DRESSING = {
-  seed: 4173, textureSize: 2048, perimeterSize: 440,
+  seed: 4173, textureSize: 2048, perimeterSize: 290,
   sand: '#b6a689', earth: '#938772', olive: '#85886a', worn: '#c0b194',
   scorch: '#5d5850', rock: '#79776b', steel: '#646d69', rust: '#887663',
   friendly: '#cf8140', friendlyAccent: '#a96736', enemy: '#b34c43', enemyAccent: '#843b37',
@@ -33,13 +33,13 @@ export const DRESSING = {
 // Friendly advances along -Z; enemies advance +Z. Fronts run across X.
 export const BASES = {
   friendly: {
-    position: [0, 0, 135],
+    position: [0, 0, 67.5],
     color: '#22c55e',
     accentColor: '#16a34a',
     label: 'FRIENDLY',
   },
   enemy: {
-    position: [0, 0, -135],
+    position: [0, 0, -67.5],
     color: '#ef4444',
     accentColor: '#dc2626',
     label: 'ENEMY',
@@ -48,25 +48,25 @@ export const BASES = {
 
 // Broad allocation regions, not movement corridors or waypoint lanes.
 export const SECTORS = [
-  { name: 'WEST', minX: -135, maxX: -45 },
-  { name: 'CENTER', minX: -45, maxX: 45 },
-  { name: 'EAST', minX: 45, maxX: 135 },
+  { name: 'WEST', minX: -67.5, maxX: -22.5 },
+  { name: 'CENTER', minX: -22.5, maxX: 22.5 },
+  { name: 'EAST', minX: 22.5, maxX: 67.5 },
 ];
 export const FRONT = {
   friendlyForward: -1, enemyForward: 1,
-  rows: [90, 45, 0, -45, -90],
-  sectionCenters: [-112.5, -67.5, -22.5, 22.5, 67.5, 112.5],
-  crossings: [-135, -90, -45, 0, 45, 90, 135],
-  sectionWidth: 45, slotsPerSection: 18,
+  rows: [45, 22.5, 0, -22.5, -45],
+  sectionCenters: [-56.25, -33.75, -11.25, 11.25, 33.75, 56.25],
+  crossings: [-67.5, -45, -22.5, 0, 22.5, 45, 67.5],
+  sectionWidth: 22.5, slotsPerSection: 9,
   // Existing Orange Guardian measures ~0.726m at scale 0.3 (hand: 0.324m, head: 0.488m).
   // 0.46m floor-to-lip cover protects the torso; the 2.2m aisle fits two 0.8m capsules.
   depth: 0.4, firingFloor: -0.025, halfWidth: 2.4,
   floorFront: -0.1, floorRear: 2.1, stepRear: -1.1, firingZ: -1.75, spineZ: 1,
-  zigLength: 7.5, zigAmplitude: 1.1,
+  zigLength: 3.75, zigAmplitude: 0.55,
   rampReach: 6.8, rampHalfWidth: 1.6, rampShoulder: 0.6,
-  crossingHalfWidth: 1.8, crossingSlope: 3,
-  stationInner: 3.5, stationSpacing: 1.65,
-  parapetHeight: 0.06, edgeThickness: 0.18, spawnZ: 127.5,
+  crossingHalfWidth: 1.8, crossingSlope: 1.5,
+  stationInner: 2.75, stationSpacing: 1.2,
+  parapetHeight: 0.06, edgeThickness: 0.18, spawnZ: 63.75,
   earthColors: { wall: '#806148', floor: '#514437', step: '#a58a64', ramp: '#99754f', edge: '#665443' },
   clearDelay: 8, resistanceRadius: 42,
   jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
@@ -92,9 +92,9 @@ export const SOLDIER = {
 // --- NPC config -------------------------------------------------------------
 // One source for wave budgets, formations and per-type combat tuning.
 export const BALANCE = {
-  // Preserve timing, combat profiles and total population. Three complete squads.
-  friendly: { interval: 8, perSector: 8, maxPerSector: 48, maxAlive: 144 },
-  enemy: { interval: 9, maxPerSector: 36, maxAlive: 108,
+  // Half the population and regular reinforcement volume; timing/stats unchanged.
+  friendly: { interval: 8, perSector: 4, maxPerSector: 24, maxAlive: 72 },
+  enemy: { interval: 9, maxPerSector: 18, maxAlive: 54, spawnScale: 0.5,
     squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'],
     trilobiteInterval: 30 },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
@@ -177,10 +177,10 @@ export const COMBAT = {
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
-    initialTarget: [0, 0, 22.5],
-    initialDistance: 322.5,
+    initialTarget: [0, 0, 11.25],
+    initialDistance: 161.25,
     minDistance: 25,
-    maxDistance: 487.5,
+    maxDistance: 243.75,
     angle: Math.PI / 3.2, // pitch from horizontal
     panSpeed: 75,
   },
