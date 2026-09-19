@@ -93,16 +93,19 @@ export const SOLDIER = {
 // --- NPC config -------------------------------------------------------------
 // One source for wave budgets, formations and per-type combat tuning.
 export const BALANCE = {
-  friendly: { interval: 6, perLane: 6, maxPerLane: 36, maxAlive: 108 },
+  // Equal reinforcement cadence; one heavy squad replaces every third normal wave.
+  friendly: { interval: 9, perLane: 6, maxPerLane: 36, maxAlive: 108 },
   enemy: { interval: 9, maxPerLane: 36, maxAlive: 108,
-    squad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
+    squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'],
+    giantEvery: 3,
+    giantSquad: ['trilobite', 'quadshell', 'quadshell', 'quadshell', 'eyedrone', 'eyedrone'] },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
   units: {
-    soldier:  { health: 100, damage: 10, cooldown: 0.125, range: 15, aiSpread: 0.05 },
-    quadshell:{ health: 130, damage: 10, cooldown: 0.125, range: 14, aiSpread: 0.04 },
-    eyedrone: { health: 110, damage: 10, cooldown: 0.125, range: 17, aiSpread: 0.04 },
-    trilobite:{ health: 380, damage: 18, cooldown: 0.25, range: 13, aiSpread: 0.035 },
+    soldier:  { health: 120, damage: 7, cooldown: 0.125, range: 15, aiSpread: 0.05 },
+    quadshell:{ health: 120, damage: 7, cooldown: 0.125, range: 14, aiSpread: 0.05 },
+    eyedrone: { health: 100, damage: 6, cooldown: 0.125, range: 17, aiSpread: 0.05 },
+    trilobite:{ health: 320, damage: 14, cooldown: 0.25, range: 13, aiSpread: 0.05 },
   },
   // 216 units * 8 rounds/sec * 3 seconds, rounded up. Separate team pools
   // prevent update order from starving one faction's shots.

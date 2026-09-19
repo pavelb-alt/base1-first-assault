@@ -63,12 +63,15 @@ export function useWavePool(team) {
     s.slots.forEach((u, i) => { if (!u.active) free[u.laneIndex].push(i); });
     if (free.some(lane => lane.length < size)) return;
     s.waveId++;
+    const squad = team === 'enemy'
+      ? (s.waveId % rules.giantEvery === 0 ? rules.giantSquad : rules.squad)
+      : null;
     for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
       for (let member = 0; member < size; member++) {
         const index = free[laneIndex][member];
         s.slots[index] = {
           ...s.slots[index], id: ++s.nextId, active: true, squadId: `${team}-${s.waveId}-${laneIndex}`,
-          type: team === 'enemy' ? rules.squad[member] : 'soldier',
+          type: team === 'enemy' ? squad[member] : 'soldier',
           weaponId: team === 'friendly' ? WEAPON_IDS[Math.floor(random() * WEAPON_IDS.length)] : null,
           spawnOffset: formationOffset(laneIndex, team, member),
         };
