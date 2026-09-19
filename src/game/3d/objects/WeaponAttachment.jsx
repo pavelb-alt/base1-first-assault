@@ -7,6 +7,7 @@ import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { cameraAim, fireShot } from '@/game/3d/ballistics';
 import { COMBAT } from '@/game/config';
+import { createWeaponPose, poseWeaponArm, orientWeaponWrist } from '@/game/3d/objects/WeaponPose';
 
 Object.values(WEAPONS).forEach(w => useGLTF.preload(w.url));
 const flashGeometry = new THREE.ConeGeometry(.045, .15, 6);
@@ -21,8 +22,10 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
   const rig = useMemo(() => {
     const hand = character.getObjectByName(HAND_SOCKET.node);
     if (!hand) throw new Error('Orange Guardian is missing Hand_R');
+    const pose = createWeaponPose(character, hand);
     const socket = new THREE.Group(); socket.name = 'WeaponSocket';
     socket.position.fromArray(HAND_SOCKET.position);
+    socket.quaternion.copy(pose.socketRotation);
     const correction = new THREE.Group(); correction.rotation.fromArray(config.correction);
     correction.scale.setScalar(config.scale);
     const model = scene.clone(true); // Includes ALL magazine/scope descendants; cached geometry/materials.
@@ -32,7 +35,7 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
     model.add(muzzle); correction.add(model); socket.add(correction);
     const flash = new THREE.Mesh(flashGeometry, flashMaterial); flash.visible = false;
     flash.position.z = -.05; muzzle.add(flash);
-    return { hand, socket, muzzle, flash, aim: new THREE.Vector3(), origin: new THREE.Vector3(),
+    return { hand, socket, muzzle, flash, pose, model, aim: new THREE.Vector3(), origin: new THREE.Vector3(),
       grip: new THREE.Vector3(), chest: new THREE.Vector3(), dir: new THREE.Vector3(), parentQ: new THREE.Quaternion(),
       desiredQ: new THREE.Quaternion(), offsetQ: new THREE.Quaternion(), matrix: new THREE.Matrix4(),
       up: new THREE.Vector3(0,1,0), forward: new THREE.Vector3(0,0,1), worldScale: new THREE.Vector3(),
@@ -44,7 +47,7 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
     rig.hand.add(rig.socket);
     const entry = entryRef.current;
     if (entry) { entry.weapon = rig; entry.weaponId = weaponId; }
-    return () => { rig.hand.remove(rig.socket); if (entry?.weapon === rig) entry.weapon = null; };
+    return () => { rig.hand.remove(rig.socket); rig.pose.restore(); if (entry?.weapon === rig) entry.weapon = null; };
   }, [rig, weaponId, entryRef]);
 
   useFrame(({ camera }, delta) => {
@@ -59,17 +62,16 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
     else if (target?.alive && target.bodyRef.current) {
       const p = target.bodyRef.current.translation();
       rig.aim.set(p.x, p.y + target.aimHeight, p.z);
-    } else { rig.socket.quaternion.identity(); return; }
+    }
 
-    // Preserve every animation; compensate only the child weapon socket's rotation.
-    rig.hand.updateWorldMatrix(true, true);
-    rig.hand.getWorldQuaternion(rig.parentQ).invert();
-    // Solve barrel parallax analytically: R * (muzzleOffset + forward * travel)
-    // must equal aimPoint - gripWorld. This stays stable at close range.
-    rig.socket.getWorldPosition(rig.grip);
+    // Layer an armed right-arm pose after the animation mixer. Walking, jumping,
+    // torso and left-arm animations are untouched; the fist keeps its handle.
+    poseWeaponArm(rig.pose, rig.aim, possessed || !!(target?.alive && target.bodyRef.current));
     rig.hand.getWorldScale(rig.worldScale);
-    rig.offset.copy(rig.localMuzzle).multiply(rig.worldScale);
-    rig.dir.subVectors(rig.aim, rig.grip);
+    // Solve parallax about the WRIST pivot, including the fixed fist-to-grip
+    // offset. Rotating the fist now also rotates the muzzle and grip together.
+    rig.offset.copy(rig.localMuzzle).add(rig.pose.wristOffset).multiply(rig.worldScale);
+    rig.dir.subVectors(rig.aim, rig.pose.wrist);
     if (rig.dir.lengthSq() < .000001) return;
     rig.matrix.lookAt(rig.dir, zero, rig.up);
     rig.desiredQ.setFromRotationMatrix(rig.matrix);
@@ -79,9 +81,8 @@ export function useWeaponAttachment(character, weaponId, entryRef) {
       rig.offsetQ.setFromUnitVectors(rig.offset.normalize(), rig.forward);
       rig.desiredQ.multiply(rig.offsetQ);
     }
-    // Inside-barrel targets use the grip direction; the clearance sweep blocks flight.
-    rig.socket.quaternion.copy(rig.parentQ).multiply(rig.desiredQ);
-    rig.socket.updateWorldMatrix(false, true);
+    // Inside-barrel targets use the wrist direction; clearance still blocks flight.
+    orientWeaponWrist(rig.pose, rig.desiredQ);
     rig.muzzle.getWorldPosition(rig.origin);
     entry.aimPoint = rig.aim;
     const wantsShot = possessed ? input.mouseDown : !!target?.alive;

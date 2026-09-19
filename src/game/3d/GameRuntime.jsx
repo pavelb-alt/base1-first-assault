@@ -34,10 +34,7 @@ export function GameRuntime() {
       getSoldierCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getEnemyCount: () => combat.units.filter(u => u.team === 'enemy' && u.alive).length,
       getFriendlyCombatCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
-      getWeapons: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(u => ({
-        id: u.id, weaponId: u.weaponId, attached: !!u.weapon && u.weapon.socket.parent === u.weapon.hand,
-        socketCount: u.weapon?.hand.children.filter(c => c.name === 'WeaponSocket').length ?? 0,
-      })),
+      getWeapons: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(weaponState),
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,
         pending: combat.pendingProjectiles.length, lastShot: combat.lastShot ? JSON.parse(JSON.stringify(combat.lastShot)) : null,
         lastImpact: combat.lastImpact ? JSON.parse(JSON.stringify(combat.lastImpact)) : null }),
