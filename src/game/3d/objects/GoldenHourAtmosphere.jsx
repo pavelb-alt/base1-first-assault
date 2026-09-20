@@ -24,9 +24,9 @@ export function GoldenHourAtmosphere() {
           #include <colorspace_fragment>
         }`} />
     </mesh>
-    <ambientLight intensity={0.22} />
-    <hemisphereLight intensity={0.7} color="#b9cfdf" groundColor="#8b7358" />
-    <directionalLight name="Low golden sun" castShadow position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
+    <ambientLight intensity={0.36} />
+    <hemisphereLight intensity={1.05} color="#d9ecf5" groundColor="#a99476" />
+    <directionalLight name="High daylight sun" castShadow position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
       shadow-mapSize={[2048, 2048]} shadow-camera-left={-MAP.HALF-25} shadow-camera-right={MAP.HALF+25}
       shadow-camera-top={MAP.HALF+25} shadow-camera-bottom={-MAP.HALF-25}
       shadow-camera-near={1} shadow-camera-far={450} shadow-bias={-0.0003} shadow-normalBias={0.035} />

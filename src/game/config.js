@@ -196,8 +196,8 @@ export const BASE = {
 
 // Golden-hour art direction; visual only, no gameplay tuning.
 export const CINEMATIC = {
-  sky: '#819cae', horizon: '#ddbc91', sun: '#ffd39b',
-  sunPosition: [-110, 65, -95], sunIntensity: 2.8,
+  sky: '#9eb9ca', horizon: '#ead2ae', sun: '#fff0ce',
+  sunPosition: [-85, 175, -70], sunIntensity: 4.1,
   fogNear: 150, fogFar: 460,
   smokeLife: 4.6, fireLife: 0.55, dustLife: 2.4,
   smokeCapacity: 192, fireCapacity: 48, debrisCapacity: 160,
