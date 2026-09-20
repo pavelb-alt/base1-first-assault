@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
 import { EventBus } from '@/game/EventBus';
 import { SOLDIER, BALANCE } from '@/game/config';
-import { isGrounded } from '@/game/3d/navigation/motion';
+import { isGrounded, applyMovement } from '@/game/3d/navigation/motion';
 import { updateFriendly, releasePosition, suspendFrontline, resumeFrontline } from '@/game/3d/navigation/frontline';
 import { canSeeTarget } from '@/game/3d/ballistics';
 import { gameState } from '@/game/3d/world';
@@ -202,12 +202,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
       const moving = mx !== 0 || mz !== 0;
 
       if (moving) {
-        const len = Math.sqrt(mx * mx + mz * mz);
-        mx /= len; mz /= len;
-        body.setLinvel(
-          { x: mx * SOLDIER.moveSpeed, y: verticalVelocity, z: mz * SOLDIER.moveSpeed },
-          true,
-        );
+        applyMovement(body, mx, mz, verticalVelocity);
         targetRotation.current = Math.atan2(mx, mz);
         if (grounded && !jumpAnimation) playAnimation('Running');
       } else {

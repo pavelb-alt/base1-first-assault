@@ -3,6 +3,18 @@ import { BALANCE } from '@/game/config';
 import { visitNearby } from '@/game/3d/spatial';
 import { steerAroundOutposts } from '@/game/3d/dressing/outpostLayout';
 
+// Player input and NPC steering use exactly the same normalized ground speed.
+// The optional cap only prevents NPCs overshooting their destination.
+const movementVelocity = { x: 0, y: 0, z: 0 };
+export function applyMovement(body, dx, dz, verticalVelocity, arrivalSpeed = BALANCE.moveSpeed) {
+  const length = Math.hypot(dx, dz);
+  const speed = Math.min(BALANCE.moveSpeed, arrivalSpeed);
+  movementVelocity.x = length > 0 ? dx / length * speed : 0;
+  movementVelocity.y = verticalVelocity;
+  movementVelocity.z = length > 0 ? dz / length * speed : 0;
+  body.setLinvel(movementVelocity, true);
+}
+
 export function isGrounded(entry) {
   const body=entry.bodyRef.current, ctx=combat.physics;
   if(!body || !ctx)return false;
@@ -30,9 +42,8 @@ export function moveToward(entry,target,delta,{flying=false,separate=true,avoidO
     const d=Math.sqrt(d2),weight=(1.6-d)*0.8;
     dx+=(p.x-q.x)/d*weight;dz+=(p.z-q.z)/d*weight;
   });
-  const length=Math.hypot(dx,dz)||1;
-  const speed=Math.min(BALANCE.moveSpeed,distance/Math.max(delta,0.001));
-  body.setLinvel({x:dx/length*speed,y:flying?(entry.hoverHeight-p.y)*5:v.y,z:dz/length*speed},true);
+  applyMovement(body, dx, dz, flying ? (entry.hoverHeight-p.y)*5 : v.y,
+    distance / Math.max(delta, 0.001));
   entry.heading=Math.atan2(dx,dz);
   return false;
 }
