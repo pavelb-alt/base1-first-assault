@@ -17,6 +17,7 @@ import { useWeaponAttachment } from '@/game/3d/objects/WeaponAttachment';
 import { WEAPONS } from '@/game/3d/weapons';
 import { useWavePool } from '@/game/3d/waves';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
+import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAnimation';
 
 // Start downloading the model as soon as the module loads
 useGLTF.preload(SOLDIER.modelUrl);
@@ -119,6 +120,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
       : { x: slot * 3, y: -100, z: 100 }, true);
     targetRotation.current = SOLDIER.initialFacing;
     jumpsRemaining.current = SOLDIER.maxJumps; prevSpace.current = false; wasPossessed.current = false;
+    resetDeathPose(groupRef.current, actions, 'Idle', currentAnim);
     if (!active) return;
     const profile = BALANCE.units.soldier;
     const entry = { id, team: 'friendly', type: 'soldier', sectorIndex, squadId, profile,
@@ -134,7 +136,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
       if (idx >= 0) combat.units.splice(idx, 1);
       combatEntryRef.current = null;
     };
-  }, [id, active, weaponId, sectorIndex, squadId, spawnOffset, slot]);
+  }, [id, active, weaponId, sectorIndex, squadId, spawnOffset, slot, actions]);
 
   useWeaponAttachment(clonedScene, weaponId, combatEntryRef, id, active, visualFrame);
 
@@ -148,7 +150,10 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     if (!active || gameState.paused) return;
     const entry = combatEntryRef.current;
     if (!entry) return;
-    if (!entry.alive) { onDespawn(id); return; }
+    if (!entry.alive) {
+      if (!entry.playDeathAnimation || updateDeathAnimation(entry, body, group, actions, currentAnim, delta)) onDespawn(id);
+      return;
+    }
     entry.aiTarget = null;
     const pos = body.translation();
     const vel = body.linvel();

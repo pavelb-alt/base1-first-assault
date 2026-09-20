@@ -12,6 +12,7 @@ import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
 import { useWavePool } from '@/game/3d/waves';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
+import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAnimation';
 const shotOrigin = new THREE.Vector3();
 const shotAim = new THREE.Vector3();
 
@@ -89,6 +90,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
       ? { x: spawnOffset.x, y: isFlying ? config.hoverHeight : 0.1, z: spawnOffset.z }
       : { x: slot * 3, y: -100, z: -100 }, true);
     attackTimer.current = 0;
+    resetDeathPose(groupRef.current, actions, config.animIdle, currentAnim);
     if (!active) return;
     const entry = { id, team: 'enemy', type, sectorIndex, squadId, profile,
       bodyRef, aimHeight: config.colliderY, footOffset: config.colliderY-config.colliderHalfHeight-config.colliderRadius,
@@ -103,7 +105,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
       if (index >= 0) combat.units.splice(index, 1);
       combatEntryRef.current = null;
     };
-  }, [id, active, type, sectorIndex, squadId, spawnOffset, slot, isFlying, config, profile]);
+  }, [id, active, type, sectorIndex, squadId, spawnOffset, slot, isFlying, config, profile, actions]);
 
   useFrame((_state, delta) => {
     if (!active || gameState.paused) return;
@@ -117,7 +119,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
     const entry = combatEntryRef.current;
     if (!entry) return;
     if (!entry.alive) {
-      onDespawn(id);
+      if (!entry.playDeathAnimation || updateDeathAnimation(entry, body, group, actions, currentAnim, delta, { flying: isFlying })) onDespawn(id);
       return;
     }
 

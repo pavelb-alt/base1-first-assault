@@ -88,6 +88,7 @@ export function applyImpact(hit, shot) {
     target.health -= damage;
     if (target.health === 0) {
       target.alive = false;
+      target.playDeathAnimation = true;
       recordRemoval(target, 'death');
       if (shot.player) battle.playerKills++;
     }
