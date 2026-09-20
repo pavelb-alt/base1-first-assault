@@ -183,7 +183,7 @@ export const BASE = {
 
 // --- Ambient battlefield explosions (visual only, no gameplay effect) ------
 export const EXPLOSIONS = {
-  minInterval: 3.5, maxInterval: 8,
+  minInterval: 1, maxInterval: 2.5,
   areaX: MAP.HALF * 0.85, areaZMin: -50, areaZMax: 50,
   flashColor: '#ffdd88', smokeColor: '#5c564c', debrisColor: '#3f3a33', dirtColor: '#7a6a4f',
   flashLife: 0.18, smokeLife: 1.6, debrisLife: 0.9,
