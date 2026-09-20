@@ -62,16 +62,16 @@ export const FRONT = {
   sectionWidth: 22.5, slotsPerSection: 9,
   // Existing Orange Guardian measures ~0.726m at scale 0.3 (hand: 0.324m, head: 0.488m).
   // 0.46m floor-to-lip cover protects the torso; the 2.2m aisle fits two 0.8m capsules.
-  depth: 0.4, firingFloor: -0.025, halfWidth: 2.4,
+  depth: 0.8, firingFloor: -0.025, halfWidth: 2.4,
   floorFront: -0.1, floorRear: 2.1, stepRear: -1.1, firingZ: -1.75, spineZ: 1,
   mainRow: 2,
   rowProfiles: [
-    { role: 'artillery', halfWidth: 1.85, depth: 0.32, zigAmplitude: 0.45 },
-    { role: 'support', halfWidth: 2.15, depth: 0.42, zigAmplitude: 0.75 },
-    { role: 'front', halfWidth: 3.15, depth: 0.68, zigAmplitude: 1.35 },
-    { role: 'front', halfWidth: 3.15, depth: 0.68, zigAmplitude: 1.35 },
-    { role: 'support', halfWidth: 2.15, depth: 0.42, zigAmplitude: 0.75 },
-    { role: 'artillery', halfWidth: 1.85, depth: 0.32, zigAmplitude: 0.45 },
+    { role: 'artillery', halfWidth: 1.85, depth: 0.6, zigAmplitude: 0.45 },
+    { role: 'support', halfWidth: 2.15, depth: 0.75, zigAmplitude: 0.75 },
+    { role: 'front', halfWidth: 3.15, depth: 1.15, zigAmplitude: 1.35 },
+    { role: 'front', halfWidth: 3.15, depth: 1.15, zigAmplitude: 1.35 },
+    { role: 'support', halfWidth: 2.15, depth: 0.75, zigAmplitude: 0.75 },
+    { role: 'artillery', halfWidth: 1.85, depth: 0.6, zigAmplitude: 0.45 },
   ],
   communicationWidth: 1.35,
   zigLength: 7.5, zigAmplitude: 0.55,
