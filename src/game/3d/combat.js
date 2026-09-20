@@ -5,7 +5,7 @@ import { visitNearby } from '@/game/3d/spatial';
 // Authoritative live registry. Body handles, not overlapping per-team IDs, identify hits.
 export const combat = {
   units: [], byBody: new Map(), pendingProjectiles: [], projectiles: [], physics: null,
-  muzzleEffects: [], impactEffects: [],
+  muzzleEffects: [], impactEffects: [], tracerEffects: [],
   stats: { shots: 0, playerShots: 0, hits: 0, coverHits: 0, damage: 0, muzzleFlashes: 0, impactBursts: 0 },
   lastShot: null, lastImpact: null,
 };

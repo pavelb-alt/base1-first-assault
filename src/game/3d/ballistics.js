@@ -119,6 +119,7 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
     shooterId: shooter.id, shooter, player, damage: shooter.profile?.damage ?? COMBAT.projectileDamage };
   combat.stats.shots++; battle.shots[shooter.team]++; if (player) combat.stats.playerShots++;
   if (combat.muzzleEffects.length < 128) combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
+  if (combat.tracerEffects.length < 256) combat.tracerEffects.push({ start: [...shot.origin], end: aimPoint.toArray(), team: shot.team });
   combat.stats.muzzleFlashes++;
   combat.lastShot = { origin: [...shot.origin], direction: [...shot.direction], aimPoint: aimPoint.toArray(), team: shot.team, shooterId: shot.shooterId, weaponId: shooter.weaponId ?? null };
   // A long barrel must not poke through cover and spawn its bullet on the far side.
