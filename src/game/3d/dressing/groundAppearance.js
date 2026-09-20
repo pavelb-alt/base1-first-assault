@@ -63,6 +63,28 @@ export function groundTexture() {
     const [x,,z]=base.position;
     stain(x,z,13,10,DRESSING.worn,.22);
   }
+  // Baked blast ejecta, tire impressions and small stones add detail without colliders.
+  for(let i=0;i<90;i++) {
+    const x=(dressingNoise(16000+i*3)-.5)*MAP.SIZE*.94;
+    const z=(dressingNoise(16001+i*3)-.5)*MAP.SIZE*.9;
+    if(FRONT.rows.some((_,row)=>Math.abs(z-trenchCenter(row,x))<FRONT.rampReach+1))continue;
+    const r=.5+dressingNoise(16002+i*3)*1.8;
+    stain(x,z,r*1.5,r,DRESSING.scorch,.38);
+    for(let j=0;j<7;j++) {
+      const a=dressingNoise(17000+i*9+j)*Math.PI*2;
+      path([{x:x+Math.cos(a)*r*.7,z:z+Math.sin(a)*r*.7},{x:x+Math.cos(a)*r*2,z:z+Math.sin(a)*r*2}],.07,.2,DRESSING.scorch);
+    }
+  }
+  for(const x of [-63,-40,39,62]) for(let z=-58;z<59;z+=.65) {
+    if(FRONT.rows.some((_,row)=>Math.abs(z-trenchCenter(row,x))<FRONT.rampReach+1))continue;
+    for(const dx of [-.75,.75]) path([{x:x+dx-.22,z},{x:x+dx+.22,z:z+.12}],.1,.24,DRESSING.earth);
+  }
+  for(let i=0;i<18000;i++) {
+    const u=dressingNoise(21000+i*2)*size,v=dressingNoise(21001+i*2)*size;
+    ctx.fillStyle=i%3===0?'#dac3a1':'#716451';ctx.globalAlpha=.14;
+    ctx.fillRect(u,v,1+dressingNoise(i+80000)*2,1);
+  }
+  ctx.globalAlpha=1;
   // Subtle fine grain is baked once, not an animated shader or another draw call.
   const image=ctx.getImageData(0,0,size,size);
   for(let i=0;i<image.data.length;i+=4) {

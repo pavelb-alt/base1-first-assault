@@ -1,5 +1,6 @@
 import { MAP, BASES, DRESSING } from '@/game/config';
 import { dressingNoise } from '@/game/3d/dressing/groundAppearance';
+import { addCinematicScenery } from '@/game/3d/dressing/cinematicScenery';
 
 // All meshes use unit bounds (radius 0.5). Conservative spherical bounds keep
 // even tilted beams and dishes OUTSIDE the existing physical map boundary.
@@ -53,3 +54,4 @@ beam(26,2.5,enemyRear,10,5,7);
 beam(26,4,enemyRear+3.6,8,.75,.3,DRESSING.enemy);
 beam(22,6,enemyRear,1.2,5,1.2,DRESSING.rust,[0,0,.12]);
 beam(29,5,enemyRear-1,1.2,3,1.2);
+addCinematicScenery(SCENERY);

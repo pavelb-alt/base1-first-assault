@@ -29,7 +29,7 @@ function SceneryBatch({kind,items}) {
     if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;
     ref.current.computeBoundingSphere();
   },[items]);
-  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} receiveShadow />;
+  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={kind !== 'rock'} receiveShadow />;
 }
 export function BattlefieldDressing() {
   // Deliberately outside RigidBody and outside both bases' shotCover groups.

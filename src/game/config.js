@@ -23,7 +23,7 @@ export const MAP = {
 
 // Visual-only dressing. Independent of combat RNG and unchanged by battle resets.
 export const DRESSING = {
-  seed: 4173, textureSize: 2048, perimeterSize: 290,
+  seed: 4173, textureSize: 2048, perimeterSize: 520,
   sand: '#b6a689', earth: '#938772', olive: '#85886a', worn: '#c0b194',
   scorch: '#5d5850', rock: '#79776b', steel: '#646d69', rust: '#887663',
   friendly: '#cf8140', friendlyAccent: '#a96736', enemy: '#b34c43', enemyAccent: '#843b37',
@@ -179,6 +179,15 @@ export const BASE = {
   health: 100,
   breachDamage: 10,
   breachRadius: 6, // distance from base center to count as a breach
+};
+
+// Golden-hour art direction; visual only, no gameplay tuning.
+export const CINEMATIC = {
+  sky: '#819cae', horizon: '#ddbc91', sun: '#ffd39b',
+  sunPosition: [-110, 65, -95], sunIntensity: 2.8,
+  fogNear: 150, fogFar: 460,
+  smokeLife: 4.6, fireLife: 0.55, dustLife: 2.4,
+  smokeCapacity: 192, fireCapacity: 48, debrisCapacity: 160,
 };
 
 // --- Ambient battlefield explosions (visual only, no gameplay effect) ------

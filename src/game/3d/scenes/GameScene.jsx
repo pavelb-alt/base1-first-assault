@@ -13,7 +13,8 @@ import { WeaponEffects } from '@/game/3d/objects/WeaponEffects';
 import { BattlefieldExplosions } from '@/game/3d/objects/BattlefieldExplosions';
 import { HealthBars } from '@/game/3d/objects/HealthBars';
 import { gameState } from '@/game/3d/world';
-import { FRONT, MAP } from '@/game/config';
+import { FRONT } from '@/game/config';
+import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -33,24 +34,7 @@ export function GameScene() {
 
   return (
     <>
-      <color attach="background" args={['#87ceeb']} />
-      <fog attach="fog" args={['#87ceeb', 500, 1100]} />
-
-      <ambientLight intensity={0.6} />
-      <hemisphereLight intensity={0.5} groundColor="#8a9a6a" color="#b0d0ff" />
-      <directionalLight
-        castShadow
-        position={[80, 180, 100]}
-        intensity={1.5}
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-MAP.HALF-10}
-        shadow-camera-right={MAP.HALF+10}
-        shadow-camera-top={MAP.HALF+10}
-        shadow-camera-bottom={-MAP.HALF-10}
-        shadow-camera-near={1}
-        shadow-camera-far={800}
-        shadow-bias={-0.0005}
-      />
+      <GoldenHourAtmosphere />
 
       <CameraRig />
 

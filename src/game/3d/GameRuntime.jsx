@@ -5,6 +5,7 @@ import { EventBus } from '@/game/EventBus';
 import { combat } from '@/game/3d/combat';
 import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
+import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE } from '@/game/config';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
@@ -32,6 +33,7 @@ export function GameRuntime() {
     window.game = {
       ready: false,
       getMode: () => gameState.mode,
+      getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
       getFrontline: () => frontlineSnapshot(),
       getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],capPerTeam:BALANCE.friendly.maxAlive}),
