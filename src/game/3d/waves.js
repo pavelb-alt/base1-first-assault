@@ -53,7 +53,7 @@ export function useWavePool(team) {
         }
       }
       cargoShipState.readyDeliveries.length=0;
-      if(activated)publish();
+      if(activated){cargoShipState.firstSquadDeployed=true;publish();}
     }
     // Trilobite spawns independently once every trilobiteInterval seconds.
     // Runs every frame (before the main-wave timer guard) so its timer advances

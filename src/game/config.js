@@ -277,6 +277,15 @@ export const SKY_BATTLE = {
   },
 };
 
+// --- Opening flow (main menu, intro video, handoff) -------------------------
+export const OPENING = {
+  menuBackgroundUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/0802417bf_948de030c_image.png',
+  introVideoUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/960cdcca5_c3d195aea_Create_a_short_cinematic.mp4',
+  handoffTimeout: 60000,
+  fadeDuration: 800,
+  firstShipMinUnload: 3.5,
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {

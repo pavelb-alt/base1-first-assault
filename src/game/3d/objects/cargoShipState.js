@@ -7,11 +7,15 @@ export const cargoShipState = {
   activeShipCount: 0,
   occupiedZones: new Set(),
   nextDeliveryId: 0,
+  firstLanded: false,       // first cargo ship has touched down
+  firstSquadDeployed: false, // first squad activated from a landed delivery
   reset() {
     this.pendingDeliveries.length = 0;
     this.readyDeliveries.length = 0;
     this.activeShipCount = 0;
     this.occupiedZones.clear();
     this.nextDeliveryId = 0;
+    this.firstLanded = false;
+    this.firstSquadDeployed = false;
   },
 };

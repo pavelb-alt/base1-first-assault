@@ -76,6 +76,7 @@ export function CargoShip({ shipId, delivery, zone, onComplete }) {
           unloadTimer.current = 0;
           if (!unloaded.current) {
             unloaded.current = true;
+            cargoShipState.firstLanded = true;
             cargoShipState.readyDeliveries.push({
               deliveryId: delivery.deliveryId,
               slots: computeSpawnOffsets(delivery.slots, zone),
@@ -86,7 +87,8 @@ export function CargoShip({ shipId, delivery, zone, onComplete }) {
       }
       case 'unload': {
         unloadTimer.current += delta;
-        if (unloadTimer.current >= CARGO_SHIP.landingPause) {
+        const minUnload = delivery.deliveryId <= 1 ? 3.5 : CARGO_SHIP.landingPause;
+        if (unloadTimer.current >= minUnload) {
           phase.current = 'depart';
         }
         break;

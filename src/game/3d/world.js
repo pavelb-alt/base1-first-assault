@@ -12,4 +12,5 @@ export const gameState = {
   cameraYaw: 0,                // current third-person camera yaw
   loaded: false,               // model finished loading
   error: null,                 // model load error message
+  preparing: false,            // opening-flow handoff: physics runs, player input blocked
 };

@@ -55,11 +55,14 @@ export function CameraRig() {
     };
 
     const onResetCamera=()=>{strategicTarget.current.fromArray(CAMERA.strategic.initialTarget);strategicDistance.current=CAMERA.strategic.initialDistance;};
+    const onFrameLanding=()=>{strategicTarget.current.set(0,0,56);strategicDistance.current=45;};
     EventBus.on('reset-camera',onResetCamera);
+    EventBus.on('frame-landing-area',onFrameLanding);
     EventBus.on('possess-soldier', onPossess);
     EventBus.on('release-soldier', onRelease);
     return () => {
       EventBus.off('reset-camera',onResetCamera);
+      EventBus.off('frame-landing-area',onFrameLanding);
       EventBus.off('possess-soldier', onPossess);
       EventBus.off('release-soldier', onRelease);
     };
@@ -86,27 +89,29 @@ export function CameraRig() {
   useFrame((_state, delta) => {
     if (gameState.paused) return;
     if (gameState.mode === 'strategic') {
-      // WASD pan
-      const keys = input.keys;
-      const pan = CAMERA.strategic.panSpeed * delta;
-      if (keys.KeyW) strategicTarget.current.z -= pan;
-      if (keys.KeyS) strategicTarget.current.z += pan;
-      if (keys.KeyA) strategicTarget.current.x -= pan;
-      if (keys.KeyD) strategicTarget.current.x += pan;
+      if (!gameState.preparing) {
+        // WASD pan
+        const keys = input.keys;
+        const pan = CAMERA.strategic.panSpeed * delta;
+        if (keys.KeyW) strategicTarget.current.z -= pan;
+        if (keys.KeyS) strategicTarget.current.z += pan;
+        if (keys.KeyA) strategicTarget.current.x -= pan;
+        if (keys.KeyD) strategicTarget.current.x += pan;
 
-      // Clamp to map
-      const h = MAP.HALF;
-      strategicTarget.current.x = THREE.MathUtils.clamp(strategicTarget.current.x, -h, h);
-      strategicTarget.current.z = THREE.MathUtils.clamp(strategicTarget.current.z, -h, h);
+        // Clamp to map
+        const h = MAP.HALF;
+        strategicTarget.current.x = THREE.MathUtils.clamp(strategicTarget.current.x, -h, h);
+        strategicTarget.current.z = THREE.MathUtils.clamp(strategicTarget.current.z, -h, h);
 
-      // Wheel zoom
-      if (input.wheelDelta !== 0) {
-        strategicDistance.current = THREE.MathUtils.clamp(
-          strategicDistance.current + input.wheelDelta * 0.02,
-          CAMERA.strategic.minDistance,
-          CAMERA.strategic.maxDistance,
-        );
-        input.wheelDelta = 0;
+        // Wheel zoom
+        if (input.wheelDelta !== 0) {
+          strategicDistance.current = THREE.MathUtils.clamp(
+            strategicDistance.current + input.wheelDelta * 0.02,
+            CAMERA.strategic.minDistance,
+            CAMERA.strategic.maxDistance,
+          );
+          input.wheelDelta = 0;
+        }
       }
 
       // Position camera at fixed angle above target
