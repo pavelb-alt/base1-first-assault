@@ -10,6 +10,7 @@ import AimOverlay from '@/components/AimOverlay';
 import { HealthBar } from '@/components/HealthBar';
 import { Minimap } from '@/components/Minimap';
 import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
+import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 
 export default function GamePage() {
@@ -215,6 +216,7 @@ export default function GamePage() {
             <HealthBar />
             <Minimap />
             <TowerDefenseHUD visible={mode === 'strategic'} />
+            <InControlTowerMenu visible={mode === 'third_person'} />
 
             {/* Mode indicator */}
             <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
@@ -243,6 +245,7 @@ export default function GamePage() {
                     <div><span className="text-white font-semibold">Mouse</span> Look Around</div>
                     <div><span className="text-white font-semibold">Left Click</span> Shoot</div>
                     <div><span className="text-white font-semibold">Right Click</span> Aim Down Sights</div>
+                    <div><span className="text-white font-semibold">E</span> Deploy Tower</div>
                     <div><span className="text-white font-semibold">Tab / Esc</span> Release Control</div>
                   </>
                 )}
