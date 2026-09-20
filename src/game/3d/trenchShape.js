@@ -10,14 +10,17 @@ export const rowProfile = row => ({
   ...(FRONT.rowProfiles?.[row] || {}),
 });
 export function trenchOffset(x, row=FRONT.mainRow ?? 0) {
+  // Long firing bays joined by short angled traverses, matching the field diagram.
   const t = (x + frontage) / FRONT.zigLength;
-  const n = Math.floor(t), f = t - n;
-  return (n % 2 === 0 ? 1 - 2*f : -1 + 2*f) * rowProfile(row).zigAmplitude;
+  const n = Math.floor(t), f = t - n, direction = n % 2 === 0 ? 1 : -1;
+  const shape = f < 0.64 ? direction : direction * (1 - 2 * (f - 0.64) / 0.36);
+  return shape * rowProfile(row).zigAmplitude;
 }
 export const trenchCenter = (row, x) => FRONT.rows[row] + trenchOffset(x,row);
 export const crossingDistance = x => Math.min(...FRONT.crossings.map(c => Math.abs(c-x)));
 export const rampDistance = x => Math.min(...FRONT.sectionCenters.map(c => Math.abs(c-x)));
-export const ZIG_X = Array.from({length:Math.round(2*frontage/FRONT.zigLength)+1},(_,i) => -frontage+i*FRONT.zigLength);
+const zigCount=Math.ceil(2*frontage/FRONT.zigLength);
+export const ZIG_X = sorted(Array.from({length:zigCount+1},(_,i)=>[-frontage+i*FRONT.zigLength,-frontage+(i+0.64)*FRONT.zigLength]).flat().filter(x=>x<=frontage));
 export const TERRAIN_X = sorted([-MAP.HALF, MAP.HALF, ...ZIG_X,
   ...FRONT.crossings.flatMap(x => [-FRONT.crossingHalfWidth-FRONT.crossingSlope,-FRONT.crossingHalfWidth,0,FRONT.crossingHalfWidth,FRONT.crossingHalfWidth+FRONT.crossingSlope].map(d => x+d)),
   ...FRONT.sectionCenters.flatMap(x => [-FRONT.rampHalfWidth-FRONT.rampShoulder,-FRONT.rampHalfWidth,0,FRONT.rampHalfWidth,FRONT.rampHalfWidth+FRONT.rampShoulder].map(d => x+d))]);
@@ -76,18 +79,36 @@ for(let i=0;i<TERRAIN_X.length-1;i++) {
   }
 }
 
-// Dog-legged communication trenches visually connect the main and support lines.
+// Diagram-style dog-legged communication trenches. The two front systems stay
+// separated by No Man's Land; links branch from support lines into paired bays.
 export const COMMUNICATION_SEGMENTS=[];
-const connectorColumns=[[-56.25,-11.25,33.75],[-33.75,11.25,56.25]];
-for(let row=0;row<FRONT.rows.length-1;row++) {
-  for(const anchor of connectorColumns[row%2]) {
-    const start={x:anchor,z:trenchCenter(row,anchor)};
-    const end={x:anchor,z:trenchCenter(row+1,anchor)};
-    const mid=(start.z+end.z)/2;
-    const points=[start,{x:anchor+(row%2?4:-4),z:start.z+(mid-start.z)*0.48},{x:anchor+(row%2?-3:3),z:mid+(end.z-mid)*0.52},end];
-    for(let i=0;i<points.length-1;i++) {
-      const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z;
-      COMMUNICATION_SEGMENTS.push({x:(a.x+b.x)/2,z:(a.z+b.z)/2,width:Math.hypot(dx,dz),rotation:-Math.atan2(dz,dx)});
+function addPolyline(points) {
+  for(let i=0;i<points.length-1;i++) {
+    const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z;
+    COMMUNICATION_SEGMENTS.push({x:(a.x+b.x)/2,z:(a.z+b.z)/2,width:Math.hypot(dx,dz),rotation:-Math.atan2(dz,dx)});
+  }
+}
+for(const [rear,support,front] of [[0,1,2],[5,4,3]]) {
+  const towardFront=Math.sign(FRONT.rows[front]-FRONT.rows[support]);
+  for(const anchor of [-45,0,45]) {
+    const rearZ=trenchCenter(rear,anchor),supportZ=trenchCenter(support,anchor);
+    addPolyline([
+      {x:anchor,z:rearZ},
+      {x:anchor+(anchor===0?5:-Math.sign(anchor)*4),z:(rearZ+supportZ)/2},
+      {x:anchor,z:supportZ},
+    ]);
+    const junction={x:anchor,z:supportZ+towardFront*5.5};
+    addPolyline([{x:anchor,z:supportZ},junction]);
+    for(const branch of [-1,1]) {
+      const mouthX=anchor+branch*7.5;
+      addPolyline([junction,{x:mouthX-branch*2.5,z:junction.z+towardFront*4.5},{x:mouthX,z:trenchCenter(front,mouthX)}]);
     }
   }
+}
+
+// Large rear firing pits echo the artillery boxes shown behind the support line.
+export const ARTILLERY_BAYS=[];
+for(const row of [0,5]) {
+  const outward=Math.sign(FRONT.rows[row]);
+  for(const x of [-34,0,34]) ARTILLERY_BAYS.push({x,z:FRONT.rows[row]+outward*5.2,width:11,depth:6.5});
 }

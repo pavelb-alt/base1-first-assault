@@ -2,7 +2,8 @@ import { useLayoutEffect, useRef } from 'react';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { FRONT, MAP } from '@/game/config';
-import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications } from '@/game/3d/trenchShape';
+import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays } from '@/game/3d/trenchShape';
+import { TrenchWire } from '@/game/3d/objects/TrenchWire';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { createGroundMaterial } from '@/game/3d/dressing/groundAppearance';
@@ -33,7 +34,7 @@ const coverMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.edge
 const communicationFloorMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.floor,roughness:1});
 const communicationBankMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.wall,roughness:1});
 export function TrenchTerrain(){
-  const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef();
+  const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef();
   useLayoutEffect(()=>{
     const m=new THREE.Object3D();
     covers.forEach((c,i)=>{m.position.set(c.x,FRONT.parapetHeight/2,c.z);m.rotation.y=c.rotation;m.scale.set(c.width,FRONT.parapetHeight,FRONT.edgeThickness);m.updateMatrix();mesh.current.setMatrixAt(i,m.matrix);});
@@ -48,6 +49,18 @@ export function TrenchTerrain(){
     });
     communicationFloor.current.instanceMatrix.needsUpdate=true;
     communicationBanks.current.instanceMatrix.needsUpdate=true;
+    artilleryBays.forEach((bay,i)=>{
+      const outward=Math.sign(bay.z);
+      m.position.set(bay.x,0.013,bay.z);m.rotation.y=0;m.scale.set(bay.width,0.026,bay.depth);m.updateMatrix();bayFloors.current.setMatrixAt(i,m.matrix);
+      const banks=[
+        {x:bay.x-bay.width/2,z:bay.z,w:0.3,d:bay.depth},
+        {x:bay.x+bay.width/2,z:bay.z,w:0.3,d:bay.depth},
+        {x:bay.x,z:bay.z+outward*bay.depth/2,w:bay.width,d:0.3},
+      ];
+      banks.forEach((bank,j)=>{m.position.set(bank.x,0.11,bank.z);m.scale.set(bank.w,0.22,bank.d);m.updateMatrix();bayBanks.current.setMatrixAt(i*3+j,m.matrix);});
+    });
+    bayFloors.current.instanceMatrix.needsUpdate=true;
+    bayBanks.current.instanceMatrix.needsUpdate=true;
   },[]);
   return <>
     <RigidBody type="fixed" colliders="trimesh" friction={0.3}>
@@ -65,6 +78,9 @@ export function TrenchTerrain(){
     </RigidBody>
     <instancedMesh ref={communicationFloor} args={[box,communicationFloorMaterial,communications.length]} receiveShadow frustumCulled={false}/>
     <instancedMesh ref={communicationBanks} args={[box,communicationBankMaterial,communications.length*2]} castShadow receiveShadow frustumCulled={false}/>
+    <instancedMesh ref={bayFloors} args={[box,communicationFloorMaterial,artilleryBays.length]} receiveShadow frustumCulled={false}/>
+    <instancedMesh ref={bayBanks} args={[box,communicationBankMaterial,artilleryBays.length*3]} castShadow receiveShadow frustumCulled={false}/>
     <instancedMesh ref={mesh} args={[box,coverMaterial,covers.length]} castShadow receiveShadow frustumCulled={false}/>
+    <TrenchWire/>
   </>;
 }
