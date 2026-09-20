@@ -9,6 +9,8 @@ import { IntroVideo } from '@/components/IntroVideo';
 import AimOverlay from '@/components/AimOverlay';
 import { HealthBar } from '@/components/HealthBar';
 import { Minimap } from '@/components/Minimap';
+import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
+import { towerDefenseState } from '@/game/3d/towerDefenseState';
 
 export default function GamePage() {
   // Opening flow: 'menu' → 'intro' → 'handoff' → 'playing'
@@ -24,6 +26,8 @@ export default function GamePage() {
   const [error, setError] = useState(null);
   const [waitingForReinforcements, setWaitingForReinforcements] = useState(false);
   const [gameOver, setGameOver] = useState(null);
+  const [scrapAmount, setScrapAmount] = useState(towerDefenseState.scrap);
+  const [waveNumber, setWaveNumber] = useState(0);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -36,11 +40,16 @@ export default function GamePage() {
     };
     const onGameOver = (result) => setGameOver(result);
 
+    const onCurrency = (amt) => setScrapAmount(amt);
+    const onWave = (w) => setWaveNumber(w);
+
     EventBus.on('mode-changed', onMode);
     EventBus.on('soldier-loaded', onLoaded);
     EventBus.on('soldier-error', onError);
     EventBus.on('no-eligible-soldier', onNoEligible);
     EventBus.on('game-over', onGameOver);
+    EventBus.on('currency-changed', onCurrency);
+    EventBus.on('wave-changed', onWave);
 
     return () => {
       EventBus.off('mode-changed', onMode);
@@ -48,6 +57,8 @@ export default function GamePage() {
       EventBus.off('soldier-error', onError);
       EventBus.off('no-eligible-soldier', onNoEligible);
       EventBus.off('game-over', onGameOver);
+      EventBus.off('currency-changed', onCurrency);
+      EventBus.off('wave-changed', onWave);
     };
   }, []);
 
@@ -108,6 +119,7 @@ export default function GamePage() {
     initStarted.current = false;
     cargoShipState.firstLanded = false;
     cargoShipState.firstSquadDeployed = false;
+    towerDefenseState.reset();
     gameState.preparing = false;
     gameState.paused = false;
     setMissionReady(false);
@@ -115,6 +127,8 @@ export default function GamePage() {
     setMode('strategic');
     setWaitingForReinforcements(false);
     setGameOver(null);
+    setScrapAmount(towerDefenseState.scrap);
+    setWaveNumber(0);
     setPhase('menu');
   }, []);
 
@@ -200,6 +214,7 @@ export default function GamePage() {
             {mode === 'third_person' && <AimOverlay />}
             <HealthBar />
             <Minimap />
+            <TowerDefenseHUD visible={mode === 'strategic'} />
 
             {/* Mode indicator */}
             <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
@@ -218,6 +233,8 @@ export default function GamePage() {
                   <>
                     <div><span className="text-white font-semibold">WASD</span> Pan Camera</div>
                     <div><span className="text-white font-semibold">Wheel</span> Zoom</div>
+                    <div><span className="text-white font-semibold">Right Click</span> Place Tower</div>
+                    <div><span className="text-white font-semibold">Tab</span> Join the Fight</div>
                   </>
                 ) : (
                   <>

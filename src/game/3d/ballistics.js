@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
-import { COMBAT } from '@/game/config';
+import { COMBAT, TOWER_DEFENSE } from '@/game/config';
 import { AIM } from '@/game/3d/weapons';
 import { random } from '@/game/3d/random';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
+import { towerDefenseState } from '@/game/3d/towerDefenseState';
 
 const direction = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
@@ -91,6 +92,11 @@ export function applyImpact(hit, shot) {
       target.playDeathAnimation = true;
       recordRemoval(target, 'death');
       if (shot.player) battle.playerKills++;
+      // Tower defense: award scrap when an enemy is killed
+      if (target.team === 'enemy') {
+        const reward = TOWER_DEFENSE.scrapRewards[target.type] ?? 10;
+        towerDefenseState.addScrap(reward);
+      }
     }
     combat.stats.hits++; combat.stats.damage += damage;
     battle.hits[shot.team]++;

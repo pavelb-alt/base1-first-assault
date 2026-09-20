@@ -7,7 +7,8 @@ import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
-import { MAP, FRONT, BALANCE, BASES, BASE } from '@/game/config';
+import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE } from '@/game/config';
+import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
 import { coverSnapshot, resetCombatCover } from '@/game/3d/navigation/coverTactics';
@@ -66,6 +67,7 @@ export function GameRuntime() {
     };
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
+      towerDefenseState.reset();
       performance.current={frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0};
       frames.current = 0; if (window.game) window.game.ready = false;
       for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; unit.breached = false; }
@@ -81,6 +83,18 @@ export function GameRuntime() {
       updateSpatial(combat.units,battle.elapsed);
       const p=performance.current;p.frames++;p.seconds+=delta;p.maxFrameMs=Math.max(p.maxFrameMs,delta*1000);
       p.drawCalls=gl.info.render.calls;p.triangles=gl.info.render.triangles;
+
+      // Tower defense: track waves and survival timer
+      if (towerDefenseState.startTime === 0) towerDefenseState.startTime = Date.now();
+      if (battle.waves.enemy > towerDefenseState.wave) {
+        towerDefenseState.wave = battle.waves.enemy;
+        EventBus.emit('wave-changed', towerDefenseState.wave);
+        // Victory after surviving all waves
+        if (towerDefenseState.wave >= TOWER_DEFENSE.maxWaves && !battle.gameOver) {
+          battle.gameOver = 'victory';
+          EventBus.emit('game-over', 'victory');
+        }
+      }
 
       // Base breach detection — units that reach the opposing base deal damage.
       if (!battle.gameOver) {

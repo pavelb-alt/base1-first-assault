@@ -277,6 +277,58 @@ export const SKY_BATTLE = {
   },
 };
 
+// --- Tower defense ----------------------------------------------------------
+export const TOWER_DEFENSE = {
+  // Friendly half is z > 0. Towers can only be placed there.
+  friendlyHalfZ: 0,
+  minSpacing: 3,         // minimum distance between tower centers
+  maxTowers: 30,        // hard cap for performance
+  // Kill-based currency: no passive income. Each enemy type drops scrap.
+  scrapRewards: { quadshell: 10, eyedrone: 15, trilobite: 40 },
+  startingScrap: 100,
+  // Wave survival: survive this many enemy waves to win.
+  maxWaves: 20,
+  // Tower types — distinct stats, colors, and shapes.
+  towers: {
+    mg: {
+      name: 'MG Turret',
+      cost: 50,
+      range: 12,
+      damage: 5,
+      cooldown: 0.1,       // seconds between shots
+      projectileSpeed: 30,
+      color: '#ff8140',
+      barrelLength: 0.6,
+      baseRadius: 0.8,
+    },
+    cannon: {
+      name: 'Cannon',
+      cost: 150,
+      range: 25,
+      damage: 30,
+      cooldown: 1.5,
+      projectileSpeed: 22,
+      splashRadius: 3,
+      color: '#646d69',
+      barrelLength: 0.9,
+      baseRadius: 1.1,
+    },
+    frost: {
+      name: 'Frost Tower',
+      cost: 100,
+      range: 15,
+      damage: 3,
+      cooldown: 0.5,
+      projectileSpeed: 25,
+      slowFactor: 0.5,    // multiply enemy speed by this
+      slowDuration: 2,    // seconds
+      color: '#60a5fa',
+      barrelLength: 0.5,
+      baseRadius: 0.9,
+    },
+  },
+};
+
 // --- Opening flow (main menu, intro video, handoff) -------------------------
 export const OPENING = {
   menuBackgroundUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/0802417bf_948de030c_image.png',

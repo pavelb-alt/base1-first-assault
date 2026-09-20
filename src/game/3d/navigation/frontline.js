@@ -58,8 +58,9 @@ export function suspendFrontline(entry) { releasePosition(entry);entry.nav={phas
 export function resumeFrontline(entry) { entry.nav=null;entry.assignment=null; }
 export function updateFriendly(entry,delta,enemy) {
   if(!entry.nav && !reservePosition(entry)) {
-    // Can't get a trench slot — push directly toward the enemy base instead of idling.
-    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:BASES.enemy.position[0]+(entry.id%5-2)*1.5,z:BASES.enemy.position[2]+5}),index:0};
+    // Tower defense: no trench slot available — hold a defensive position on the friendly half
+    const tx = entry.bodyRef.current.translation().x;
+    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:tx,z:30}),index:0};
   }
   const nav=entry.nav;
   const advancingFromCover = battle.elapsed < (entry.coverAdvanceUntil || 0);
@@ -91,11 +92,19 @@ export function updateFriendly(entry,delta,enemy) {
   if(nav.clearSince===null)nav.clearSince=battle.elapsed;
   if(!heldTooLong && battle.elapsed-nav.clearSince<FRONT.clearDelay)return false;
   const next=a.row+1;
+  // Tower defense: friendly NPCs hold at the midline (row 3, z=-14) and do NOT
+  // advance into enemy territory. Row indices 0-2 are enemy-side; 3-5 are friendly.
+  const DEFENSIVE_HOLD_ROW = FRONT.mainRow; // row 2 (z=-14) — the front line facing No Man's Land
+  if(next > DEFENSIVE_HOLD_ROW) {
+    // Hold position at the defensive line — don't push forward
+    nav.clearSince=null;
+    return false;
+  }
   progress[a.section]=Math.max(progress[a.section],next);
   if(next<FRONT.rows.length)reservePosition(entry,next);
   else {
-    releasePosition(entry);
-    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:BASES.enemy.position[0]+(entry.id%5-2)*1.5,z:BASES.enemy.position[2]+5}),index:0};
+    // Should not reach here with the defensive hold, but keep as fallback
+    stop(entry);
   }
   return false;
 }
