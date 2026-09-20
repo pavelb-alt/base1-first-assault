@@ -62,6 +62,16 @@ export const FRONT = {
   // 0.46m floor-to-lip cover protects the torso; the 2.2m aisle fits two 0.8m capsules.
   depth: 0.4, firingFloor: -0.025, halfWidth: 2.4,
   floorFront: -0.1, floorRear: 2.1, stepRear: -1.1, firingZ: -1.75, spineZ: 1,
+  // WWI-style hierarchy: a broad main battle trench with narrower support lines.
+  mainRow: 2,
+  rowProfiles: [
+    { halfWidth: 1.75, depth: 0.3, zigAmplitude: 0.38 },
+    { halfWidth: 2.05, depth: 0.38, zigAmplitude: 0.5 },
+    { halfWidth: 3.2, depth: 0.65, zigAmplitude: 0.9 },
+    { halfWidth: 2.05, depth: 0.38, zigAmplitude: 0.5 },
+    { halfWidth: 1.75, depth: 0.3, zigAmplitude: 0.38 },
+  ],
+  communicationWidth: 1.15,
   zigLength: 3.75, zigAmplitude: 0.55,
   rampReach: 6.8, rampHalfWidth: 1.6, rampShoulder: 0.6,
   crossingHalfWidth: 1.8, crossingSlope: 1.5,

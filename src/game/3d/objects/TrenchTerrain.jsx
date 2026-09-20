@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { FRONT, MAP } from '@/game/config';
-import { SURFACE, COVER_SEGMENTS as covers } from '@/game/3d/trenchShape';
+import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications } from '@/game/3d/trenchShape';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { createGroundMaterial } from '@/game/3d/dressing/groundAppearance';
@@ -16,7 +16,7 @@ function face(a,b,c) {
   ab.set(b.x-a.x,b.y-a.y,b.z-a.z);ac.set(c.x-a.x,c.y-a.y,c.z-a.z);
   const up=ab.cross(ac).normalize().y;
   const min=Math.min(a.y,b.y,c.y),max=Math.max(a.y,b.y,c.y);
-  const color=min>=-0.001?palette.ground : up<0.65?palette.wall : max<=-FRONT.depth+0.01?palette.floor : min>=FRONT.firingFloor-0.01?palette.step : palette.ramp;
+  const color=min>=-0.001?palette.ground : up<0.65?palette.wall : max<=-0.15?palette.floor : min>=FRONT.firingFloor-0.01?palette.step : palette.ramp;
   for(const p of [a,b,c]){vertices.push(p.x,p.y,p.z);colors.push(color.r,color.g,color.b);flat.push(min>=-0.001?1:0);}
 }
 for(let z=0;z<SURFACE.length-1;z++)for(let x=0;x<SURFACE[z].length-1;x++) {
@@ -30,12 +30,24 @@ ground.computeVertexNormals();
 const groundMaterial=createGroundMaterial();
 const box=new THREE.BoxGeometry(1,1,1);
 const coverMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.edge,roughness:0.9});
+const communicationFloorMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.floor,roughness:1});
+const communicationBankMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.wall,roughness:1});
 export function TrenchTerrain(){
-  const mesh=useRef();
+  const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef();
   useLayoutEffect(()=>{
     const m=new THREE.Object3D();
     covers.forEach((c,i)=>{m.position.set(c.x,FRONT.parapetHeight/2,c.z);m.rotation.y=c.rotation;m.scale.set(c.width,FRONT.parapetHeight,FRONT.edgeThickness);m.updateMatrix();mesh.current.setMatrixAt(i,m.matrix);});
     mesh.current.instanceMatrix.needsUpdate=true;
+    communications.forEach((c,i)=>{
+      m.position.set(c.x,0.012,c.z);m.rotation.y=c.rotation;m.scale.set(c.width,0.024,FRONT.communicationWidth);m.updateMatrix();communicationFloor.current.setMatrixAt(i,m.matrix);
+      for(const side of [-1,1]) {
+        const offset=side*(FRONT.communicationWidth/2+0.18);
+        m.position.set(c.x+Math.sin(c.rotation)*offset,0.07,c.z+Math.cos(c.rotation)*offset);
+        m.rotation.y=c.rotation;m.scale.set(c.width,0.14,0.28);m.updateMatrix();communicationBanks.current.setMatrixAt(i*2+(side+1)/2,m.matrix);
+      }
+    });
+    communicationFloor.current.instanceMatrix.needsUpdate=true;
+    communicationBanks.current.instanceMatrix.needsUpdate=true;
   },[]);
   return <>
     <RigidBody type="fixed" colliders="trimesh" friction={0.3}>
@@ -51,6 +63,8 @@ export function TrenchTerrain(){
       <CuboidCollider args={[1,6,MAP.HALF]} position={[-MAP.HALF-1,3,0]}/>
       <CuboidCollider args={[1,6,MAP.HALF]} position={[MAP.HALF+1,3,0]}/>
     </RigidBody>
+    <instancedMesh ref={communicationFloor} args={[box,communicationFloorMaterial,communications.length]} receiveShadow frustumCulled={false}/>
+    <instancedMesh ref={communicationBanks} args={[box,communicationBankMaterial,communications.length*2]} castShadow receiveShadow frustumCulled={false}/>
     <instancedMesh ref={mesh} args={[box,coverMaterial,covers.length]} castShadow receiveShadow frustumCulled={false}/>
   </>;
 }
