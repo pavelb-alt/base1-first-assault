@@ -185,15 +185,15 @@ export const BASE = {
 export const CAMERA = {
   strategic: {
     initialTarget: [0, 0, 11.25],
-    initialDistance: 161.25,
+    initialDistance: 90,
     minDistance: 25,
     maxDistance: 243.75,
     angle: Math.PI / 3.2, // pitch from horizontal
     panSpeed: 75,
   },
   thirdPerson: {
-    distance: 7,
-    height: 2.5,
+    distance: 4.5,
+    height: 1.8,
     shoulder: 0.55, // screen-right offset; existing model/movement forward is +Z
     minPitch: -0.85,
     maxPitch: 1.3,
