@@ -70,7 +70,8 @@ export function WeaponEffects() {
     flashMesh.current.count = flashCount; sparkMesh.current.count = sparkCount;
     if (flashCount) flashMesh.current.instanceMatrix.needsUpdate = true;
     if (sparkCount) sparkMesh.current.instanceMatrix.needsUpdate = true;
-  }, 1);
+  // Keep automatic scene rendering enabled: a positive priority takes it over.
+  }, 0);
 
   return <>
     <instancedMesh ref={flashMesh} args={[flashGeometry, flashMaterial, FLASH_CAPACITY]} frustumCulled={false} />
