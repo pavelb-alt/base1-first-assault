@@ -94,7 +94,7 @@ export const SOLDIER = {
 export const BALANCE = {
   // Half the population and regular reinforcement volume; timing/stats unchanged.
   friendly: { interval: 8, perSector: 4, maxPerSector: 24, maxAlive: 72 },
-  enemy: { interval: 7, maxPerSector: 24, maxAlive: 72, spawnScale: 1,
+  enemy: { interval: 14, maxPerSector: 24, maxAlive: 72, spawnScale: 1,
     squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'],
     trilobiteInterval: 30 },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },

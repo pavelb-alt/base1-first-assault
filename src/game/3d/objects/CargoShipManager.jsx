@@ -18,35 +18,45 @@ function findFreeLandingZone() {
 
 export function CargoShipManager() {
   const shipsRef = useRef([]);
+  const launchCooldown = useRef(0);
   const [, publish] = useReducer(n => n + 1, 0);
 
   useEffect(() => {
     const reset = () => {
       shipsRef.current = [];
+      launchCooldown.current = 0;
       publish();
     };
     EventBus.on('reset-game', reset);
     return () => EventBus.off('reset-game', reset);
   }, []);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (gameState.paused) return;
 
-    // Spawn ships from pending deliveries when capacity allows.
-    while (cargoShipState.pendingDeliveries.length > 0) {
-      if (cargoShipState.activeShipCount >= CARGO_SHIP.maxShips) break;
+    // Stagger ship launches so they arrive one at a time, not in groups.
+    if (launchCooldown.current > 0) {
+      launchCooldown.current = Math.max(0, launchCooldown.current - delta);
+      return;
+    }
+
+    // Launch one ship at a time when capacity allows.
+    if (cargoShipState.pendingDeliveries.length > 0 && cargoShipState.activeShipCount < CARGO_SHIP.maxShips) {
       const delivery = cargoShipState.pendingDeliveries[0];
       const zone = findFreeLandingZone();
-      if (!zone) break;
-      cargoShipState.pendingDeliveries.shift();
-      cargoShipState.occupiedZones.add(zone.id);
-      cargoShipState.activeShipCount++;
-      shipsRef.current.push({
-        id: cargoShipState.nextDeliveryId++,
-        delivery,
-        zone,
-      });
-      publish();
+      if (zone) {
+        cargoShipState.pendingDeliveries.shift();
+        cargoShipState.occupiedZones.add(zone.id);
+        cargoShipState.activeShipCount++;
+        shipsRef.current.push({
+          id: cargoShipState.nextDeliveryId++,
+          delivery,
+          zone,
+        });
+        // Random delay before the next ship can launch (3–6 seconds).
+        launchCooldown.current = 3 + Math.random() * 3;
+        publish();
+      }
     }
   });
 
