@@ -4,23 +4,19 @@ import { SKY_BATTLE } from '@/game/config';
 const MAX_SHIPS = SKY_BATTLE.maxShips;
 const MAX_BOLTS = SKY_BATTLE.maxBolts;
 const MAX_EXPLOSIONS = SKY_BATTLE.maxExplosions;
-const MAX_SMOKE = SKY_BATTLE.maxSmoke;
 
 // Scratch vectors — reused every frame, never allocated per-call.
 const _desired = new THREE.Vector3();
 const _current = new THREE.Vector3();
 const _cross = new THREE.Vector3();
-const _smokeVelocity = new THREE.Vector3();
 
 export const skyBattle = {
   ships: [],
   bolts: [],
   explosions: [],
-  smoke: [],
   initialized: false,
   nextBoltIdx: 0,
   nextExplosionIdx: 0,
-  nextSmokeIdx: 0,
 };
 
 function rand(min, max) { return min + Math.random() * (max - min); }
@@ -43,11 +39,6 @@ function createShipState(i) {
     health: SKY_BATTLE.shipHealth,
     maxHealth: SKY_BATTLE.shipHealth,
     alive: true,
-    crashing: false,
-    crashVelocity: new THREE.Vector3(),
-    crashSpin: new THREE.Vector3(),
-    crashRotation: new THREE.Vector3(),
-    smokeTimer: 0,
     respawnTimer: 0,
     fireCooldown: rand(1, 3),
     targetId: null,
@@ -74,18 +65,6 @@ function createExplosionState() {
     position: new THREE.Vector3(),
     age: 0,
     lifetime: SKY_BATTLE.explosionLifetime,
-    scale: 1,
-    active: false,
-  };
-}
-
-function createSmokeState() {
-  return {
-    position: new THREE.Vector3(),
-    velocity: new THREE.Vector3(),
-    age: 0,
-    lifetime: SKY_BATTLE.smokeLifetime,
-    scale: 1,
     active: false,
   };
 }
@@ -94,22 +73,18 @@ export function initSkyBattle() {
   skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => createShipState(i));
   skyBattle.bolts = Array.from({ length: MAX_BOLTS }, createBoltState);
   skyBattle.explosions = Array.from({ length: MAX_EXPLOSIONS }, createExplosionState);
-  skyBattle.smoke = Array.from({ length: MAX_SMOKE }, createSmokeState);
   skyBattle.initialized = true;
   skyBattle.nextBoltIdx = 0;
   skyBattle.nextExplosionIdx = 0;
-  skyBattle.nextSmokeIdx = 0;
 }
 
 export function resetSkyBattle() {
   skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => createShipState(i));
   for (const bolt of skyBattle.bolts) { bolt.active = false; bolt.lifetime = 0; }
   for (const exp of skyBattle.explosions) { exp.active = false; exp.age = 0; }
-  for (const puff of skyBattle.smoke) { puff.active = false; puff.age = 0; }
   skyBattle.initialized = true;
   skyBattle.nextBoltIdx = 0;
   skyBattle.nextExplosionIdx = 0;
-  skyBattle.nextSmokeIdx = 0;
 }
 
 function fireBolt(ship) {
@@ -122,23 +97,12 @@ function fireBolt(ship) {
   bolt.lifetime = SKY_BATTLE.boltLifetime;
 }
 
-function spawnExplosion(position, scale = 1) {
+function spawnExplosion(position) {
   const exp = skyBattle.explosions[skyBattle.nextExplosionIdx];
   skyBattle.nextExplosionIdx = (skyBattle.nextExplosionIdx + 1) % MAX_EXPLOSIONS;
   exp.position.copy(position);
   exp.age = 0;
-  exp.scale = scale;
   exp.active = true;
-}
-
-function spawnSmoke(position, velocity, scale = 1) {
-  const puff = skyBattle.smoke[skyBattle.nextSmokeIdx];
-  skyBattle.nextSmokeIdx = (skyBattle.nextSmokeIdx + 1) % MAX_SMOKE;
-  puff.position.copy(position);
-  puff.velocity.copy(velocity);
-  puff.age = 0;
-  puff.scale = scale;
-  puff.active = true;
 }
 
 function respawnShip(ship) {
@@ -148,11 +112,6 @@ function respawnShip(ship) {
   ship.heading.set(-Math.cos(angle), 0, -Math.sin(angle)).normalize();
   ship.health = ship.maxHealth;
   ship.alive = true;
-  ship.crashing = false;
-  ship.crashVelocity.set(0, 0, 0);
-  ship.crashSpin.set(0, 0, 0);
-  ship.crashRotation.set(0, 0, 0);
-  ship.smokeTimer = 0;
   ship.fireCooldown = rand(1, 3);
   ship.targetId = null;
   ship.bankAngle = 0;
@@ -161,35 +120,11 @@ function respawnShip(ship) {
 export function updateSkyBattle(delta) {
   const ships = skyBattle.ships;
 
-  // --- Ships: pursuit, banking, firing and wreck descent --------------------
+  // --- Ships: pursuit, banking, firing --------------------------------------
   for (const ship of ships) {
     if (!ship.alive) {
-      if (ship.crashing) {
-        ship.crashVelocity.y -= SKY_BATTLE.crashGravity * delta;
-        ship.position.addScaledVector(ship.crashVelocity, delta);
-        ship.crashRotation.x += ship.crashSpin.x * delta;
-        ship.crashRotation.y += ship.crashSpin.y * delta;
-        ship.crashRotation.z += ship.crashSpin.z * delta;
-        ship.smokeTimer -= delta;
-        if (ship.smokeTimer <= 0) {
-          _smokeVelocity.set(rand(-0.5, 0.5), rand(1.5, 3), rand(-0.5, 0.5));
-          spawnSmoke(ship.position, _smokeVelocity, rand(0.7, 1.25));
-          ship.smokeTimer = 0.07;
-        }
-        if (ship.position.y <= 0.7) {
-          ship.position.y = 0.7;
-          ship.crashing = false;
-          ship.respawnTimer = rand(SKY_BATTLE.respawnDelayMin, SKY_BATTLE.respawnDelayMax);
-          spawnExplosion(ship.position, 1.8);
-          for (let i = 0; i < 5; i++) {
-            _smokeVelocity.set(rand(-2.5, 2.5), rand(2, 5), rand(-2.5, 2.5));
-            spawnSmoke(ship.position, _smokeVelocity, rand(1, 1.7));
-          }
-        }
-      } else {
-        ship.respawnTimer -= delta;
-        if (ship.respawnTimer <= 0) respawnShip(ship);
-      }
+      ship.respawnTimer -= delta;
+      if (ship.respawnTimer <= 0) respawnShip(ship);
       continue;
     }
 
@@ -268,35 +203,18 @@ export function updateSkyBattle(delta) {
         bolt.active = false;
         if (ship.health <= 0) {
           ship.alive = false;
-          spawnExplosion(ship.position, 1.15);
-          if (Math.random() < SKY_BATTLE.crashChance) {
-            ship.crashing = true;
-            ship.crashVelocity.copy(ship.heading).multiplyScalar(SKY_BATTLE.crashForwardSpeed);
-            ship.crashVelocity.y = rand(-1, 2);
-            ship.crashSpin.set(rand(1.5, 4), rand(-2, 2), rand(-4, 4));
-            ship.crashRotation.set(0, 0, 0);
-            ship.smokeTimer = 0;
-          } else {
-            ship.crashing = false;
-            ship.respawnTimer = rand(SKY_BATTLE.respawnDelayMin, SKY_BATTLE.respawnDelayMax);
-          }
+          ship.respawnTimer = rand(SKY_BATTLE.respawnDelayMin, SKY_BATTLE.respawnDelayMax);
+          spawnExplosion(ship.position);
         }
         break;
       }
     }
   }
 
-  // --- Explosions and smoke: animate and recycle ----------------------------
+  // --- Explosions: age and expire ------------------------------------------
   for (const exp of skyBattle.explosions) {
     if (!exp.active) continue;
     exp.age += delta;
     if (exp.age >= exp.lifetime) exp.active = false;
-  }
-  for (const puff of skyBattle.smoke) {
-    if (!puff.active) continue;
-    puff.position.addScaledVector(puff.velocity, delta);
-    puff.velocity.y += 0.35 * delta;
-    puff.age += delta;
-    if (puff.age >= puff.lifetime) puff.active = false;
   }
 }
