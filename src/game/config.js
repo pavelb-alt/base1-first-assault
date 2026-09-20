@@ -241,15 +241,21 @@ export const SKY_BATTLE = {
   maxSmoke: 200,            // crash smoke-trail puffs, pooled
   shipScale: 2.5,           // world units — visible from ground
   altitudeBands: [18, 22, 26, 30, 40, 44, 48, 52, 24, 46, 20, 50, 28], // avoids cargo cruise altitude (35)
-  bound: 55,                // stays clear of cargo landing zones (z 56-58)
+  bound: 115,               // soft airspace boundary; fighters turn inward before reaching it
+  flight: {
+    modelForwardZ: 1, turnMargin: 45, minAltitude: 19, maxAltitude: 57,
+    maxBank: 1.02, bankGain: 1.4, rollRate: 1.2, lift: 12,
+    maxPitch: 0.32, pitchRate: 0.24, acceleration: 3,
+    tailDistance: 16, passDistance: 13, fireRange: 65,
+  },
   shipHealth: 100,
   boltDamage: 25,
-  boltSpeed: 45,
-  boltLifetime: 2,
+  boltSpeed: 100,
+  boltLifetime: 1.1,
   shipSpeedMin: 18, shipSpeedMax: 26,
-  turnRateMin: 1.2, turnRateMax: 1.8,
-  fireAngleThreshold: 0.35, // ~20° — fire only when roughly aligned
-  fireCooldownMin: 0.3, fireCooldownMax: 1.5,
+  turnRateMin: 0.65, turnRateMax: 0.85,
+  fireAngleThreshold: 0.085, // nose guns: narrow lead-angle window
+  fireCooldownMin: 0.13, fireCooldownMax: 0.22,
   respawnDelayMin: 4, respawnDelayMax: 9,
   explosionLifetime: 0.6,
   // --- Death spiral: hit ships burn, tumble and crash into the ground -------

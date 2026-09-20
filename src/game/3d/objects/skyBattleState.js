@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { SKY_BATTLE } from '@/game/config';
+import { random } from '@/game/3d/random';
+import { resetFlight, flyDogfight } from '@/game/3d/objects/dogfightFlight';
 
 const MAX_SHIPS = SKY_BATTLE.maxShips;
 const MAX_BOLTS = SKY_BATTLE.maxBolts;
@@ -8,8 +10,10 @@ const MAX_SMOKE = SKY_BATTLE.maxSmoke;
 
 // Scratch vectors — reused every frame, never allocated per-call.
 const _desired = new THREE.Vector3();
-const _current = new THREE.Vector3();
-const _cross = new THREE.Vector3();
+const _segment = new THREE.Vector3();
+const _toShip = new THREE.Vector3();
+const _closest = new THREE.Vector3();
+const _crashOrientation = new THREE.Object3D();
 
 export const skyBattle = {
   ships: [],
@@ -22,7 +26,7 @@ export const skyBattle = {
   nextSmokeIdx: 0,
 };
 
-function rand(min, max) { return min + Math.random() * (max - min); }
+function rand(min, max) { return min + random() * (max - min); }
 
 function createShipState(i) {
   const half = MAX_SHIPS / 2;
@@ -56,8 +60,7 @@ function createShipState(i) {
     speed: rand(SKY_BATTLE.shipSpeedMin, SKY_BATTLE.shipSpeedMax),
     turnRate: rand(SKY_BATTLE.turnRateMin, SKY_BATTLE.turnRateMax),
     altitude,
-    wanderPhase: Math.random() * Math.PI * 2,
-    wanderFreq: rand(0.3, 0.7),
+
   };
 }
 
@@ -72,7 +75,9 @@ function createSmokeState() {
 }
 
 export function initSkyBattle() {
-  skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => createShipState(i));
+  skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => {
+    const ship = createShipState(i); resetFlight(ship); return ship;
+  });
   skyBattle.bolts = Array.from({ length: MAX_BOLTS }, createBoltState);
   skyBattle.explosions = Array.from({ length: MAX_EXPLOSIONS }, createExplosionState);
   skyBattle.smoke = Array.from({ length: MAX_SMOKE }, createSmokeState);
@@ -83,7 +88,9 @@ export function initSkyBattle() {
 }
 
 export function resetSkyBattle() {
-  skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => createShipState(i));
+  skyBattle.ships = Array.from({ length: MAX_SHIPS }, (_, i) => {
+    const ship = createShipState(i); resetFlight(ship); return ship;
+  });
   for (const bolt of skyBattle.bolts) { bolt.active = false; bolt.lifetime = 0; }
   for (const exp of skyBattle.explosions) { exp.active = false; exp.age = 0; }
   for (const puff of skyBattle.smoke) { puff.active = false; puff.age = 0; }
@@ -131,15 +138,19 @@ function beginCrash(ship) {
   ship.crashing = true;
   ship.smokeTimer = 0;
   // Keeps its forward momentum, then gravity takes over.
-  ship.crashVel.copy(ship.heading).multiplyScalar(ship.speed * 0.55);
-  ship.crashVel.y = rand(-1, 3); // a few get flicked upward before falling
+  ship.crashVel.copy(ship.heading).multiplyScalar(ship.speed);
+  _crashOrientation.position.copy(ship.position);
+  _desired.copy(ship.position).addScaledVector(ship.heading, SKY_BATTLE.flight.modelForwardZ);
+  _crashOrientation.lookAt(_desired);
+  _crashOrientation.rotateZ(ship.bankAngle);
+  ship.tumble.copy(_crashOrientation.rotation);
   ship.spin.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize()
     .multiplyScalar(rand(SKY_BATTLE.crashSpinMin, SKY_BATTLE.crashSpinMax));
   spawnExplosion(ship.position, 1.2); // the mid-air hit flash
 }
 
 function respawnShip(ship) {
-  const angle = Math.random() * Math.PI * 2;
+  const angle = random() * Math.PI * 2;
   const dist = SKY_BATTLE.bound - 2;
   ship.position.set(Math.cos(angle) * dist, ship.altitude, Math.sin(angle) * dist);
   ship.heading.set(-Math.cos(angle), 0, -Math.sin(angle)).normalize();
@@ -151,9 +162,21 @@ function respawnShip(ship) {
   ship.bankAngle = 0;
   ship.tumble.set(0, 0, 0);
   ship.crashVel.set(0, 0, 0);
+  ship.speed = rand(SKY_BATTLE.shipSpeedMin, SKY_BATTLE.shipSpeedMax);
+  resetFlight(ship);
 }
 
 export function updateSkyBattle(delta) {
+  // Small simulation steps preserve smooth turns and swept fire after a slow frame.
+  let remaining = Math.min(Math.max(delta, 0), .1);
+  while (remaining > 0.000001) {
+    const dt = Math.min(remaining, 1 / 60);
+    stepSkyBattle(dt);
+    remaining -= dt;
+  }
+}
+
+function stepSkyBattle(delta) {
   const ships = skyBattle.ships;
 
   for (const ship of ships) {
@@ -192,48 +215,7 @@ export function updateSkyBattle(delta) {
       continue;
     }
 
-    // Acquire target — nearest living enemy
-    let target = ships.find(s => s.id === ship.targetId && s.alive && s.team !== ship.team);
-    if (!target) {
-      let nearest = null, minDist = Infinity;
-      for (const s of ships) {
-        if (!s.alive || s.team === ship.team) continue;
-        const d = ship.position.distanceToSquared(s.position);
-        if (d < minDist) { minDist = d; nearest = s; }
-      }
-      target = nearest;
-      ship.targetId = target?.id ?? null;
-    }
-    if (!target) continue;
-
-    _desired.subVectors(target.position, ship.position);
-    const dist = _desired.length();
-    if (dist < 0.001) continue;
-    _desired.divideScalar(dist);
-
-    // Wander for curved, non-synchronized flight paths
-    ship.wanderPhase += delta * ship.wanderFreq;
-    _desired.x += Math.sin(ship.wanderPhase + ship.id * 2.1) * 0.15;
-    _desired.z += Math.cos(ship.wanderPhase + ship.id * 1.7) * 0.15;
-    _desired.normalize();
-
-    // Turn toward desired (rate-limited)
-    _current.copy(ship.heading);
-    let dot = Math.max(-1, Math.min(1, _current.dot(_desired)));
-    const angle = Math.acos(dot);
-    const turnAmount = Math.min(angle, ship.turnRate * delta);
-    if (angle > 0.001) {
-      ship.heading.lerp(_desired, turnAmount / angle);
-      ship.heading.normalize();
-    }
-
-    ship.position.addScaledVector(ship.heading, ship.speed * delta);
-    ship.position.y = ship.altitude; // hold altitude band
-
-    // Bank into turn (visual roll)
-    _cross.crossVectors(_current, _desired);
-    const targetBank = -angle * 0.4 * (_cross.y > 0 ? 1 : -1);
-    ship.bankAngle = THREE.MathUtils.lerp(ship.bankAngle, targetBank, Math.min(1, delta * 4));
+    const gunsOnTarget = flyDogfight(ship, ships, delta);
 
     // Damaged ships trail smoke before they go down.
     if (ship.health <= ship.maxHealth * 0.5) {
@@ -241,15 +223,8 @@ export function updateSkyBattle(delta) {
       if (ship.smokeTimer <= 0) { spawnSmoke(ship.position); ship.smokeTimer = SKY_BATTLE.smokePuffInterval * 4; }
     }
 
-    // Bounds — bounce heading off edges
-    const B = SKY_BATTLE.bound;
-    if (ship.position.x > B) { ship.position.x = B; ship.heading.x = -Math.abs(ship.heading.x); }
-    if (ship.position.x < -B) { ship.position.x = -B; ship.heading.x = Math.abs(ship.heading.x); }
-    if (ship.position.z > B) { ship.position.z = B; ship.heading.z = -Math.abs(ship.heading.z); }
-    if (ship.position.z < -B) { ship.position.z = -B; ship.heading.z = Math.abs(ship.heading.z); }
-
     ship.fireCooldown -= delta;
-    if (ship.fireCooldown <= 0 && angle < SKY_BATTLE.fireAngleThreshold) {
+    if (ship.fireCooldown <= 0 && gunsOnTarget) {
       fireBolt(ship);
       ship.fireCooldown = rand(SKY_BATTLE.fireCooldownMin, SKY_BATTLE.fireCooldownMax);
     }
@@ -258,12 +233,16 @@ export function updateSkyBattle(delta) {
   // --- Bolts: travel, collide, expire --------------------------------------
   for (const bolt of skyBattle.bolts) {
     if (!bolt.active) continue;
-    bolt.position.addScaledVector(bolt.velocity, delta);
+    _segment.copy(bolt.velocity).multiplyScalar(delta);
     bolt.lifetime -= delta;
     if (bolt.lifetime <= 0) { bolt.active = false; continue; }
     for (const ship of ships) {
       if (!ship.alive || ship.team === bolt.team) continue;
-      if (bolt.position.distanceToSquared(ship.position) < 4) { // 2-unit radius
+      _toShip.subVectors(ship.position, bolt.position);
+      const t = THREE.MathUtils.clamp(_toShip.dot(_segment) / Math.max(_segment.lengthSq(), .000001), 0, 1);
+      _closest.copy(bolt.position).addScaledVector(_segment, t);
+      if (_closest.distanceToSquared(ship.position) < 4) { // swept 2-unit radius
+        bolt.position.copy(_closest);
         ship.health -= SKY_BATTLE.boltDamage;
         bolt.active = false;
         spawnExplosion(bolt.position, 0.45, 0.25); // small hit spark
@@ -272,6 +251,8 @@ export function updateSkyBattle(delta) {
       }
     }
   }
+
+  for (const bolt of skyBattle.bolts) if (bolt.active) bolt.position.addScaledVector(bolt.velocity, delta);
 
   // --- Explosions and smoke: age and expire --------------------------------
   for (const exp of skyBattle.explosions) {

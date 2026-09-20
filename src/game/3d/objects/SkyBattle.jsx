@@ -144,7 +144,7 @@ export function SkyBattle() {
         group.rotation.set(ship.tumble.x, ship.tumble.y, ship.tumble.z);
       } else {
         // Orient +Z along heading (lookAt makes +Z face the target for non-camera objects)
-        _lookTarget.copy(ship.position).add(ship.heading);
+        _lookTarget.copy(ship.position).addScaledVector(ship.heading, SKY_BATTLE.flight.modelForwardZ);
         group.lookAt(_lookTarget);
         // Bank (roll around local forward axis)
         group.rotateZ(ship.bankAngle);
@@ -226,6 +226,8 @@ export function SkyBattle() {
           id: s.id, team: s.team, alive: s.alive, crashing: s.crashing, health: s.health, type: s.type,
           position: { x: s.position.x, y: s.position.y, z: s.position.z },
           heading: { x: s.heading.x, y: s.heading.y, z: s.heading.z },
+          maneuver: s.maneuver, targetId: s.targetId, speed: s.speed,
+          bankAngle: s.bankAngle, pitch: s.pitch,
         })),
       });
       apiSet.current = true;
