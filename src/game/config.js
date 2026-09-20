@@ -223,11 +223,12 @@ export const CARGO_SHIP = {
 
 // --- Sky battle (aerial combat, visual only, no ground interaction) ----------
 export const SKY_BATTLE = {
-  maxShips: 12,             // 6 per side
-  maxBolts: 48,             // pooled, capped
-  maxExplosions: 12,
+  maxShips: 26,             // 13 per side
+  maxBolts: 120,            // pooled, capped
+  maxExplosions: 28,
+  maxSmoke: 200,            // crash smoke-trail puffs, pooled
   shipScale: 2.5,           // world units — visible from ground
-  altitudeBands: [20, 28, 42, 50, 24, 46], // avoids cargo cruise altitude (35)
+  altitudeBands: [18, 22, 26, 30, 40, 44, 48, 52, 24, 46, 20, 50, 28], // avoids cargo cruise altitude (35)
   bound: 55,                // stays clear of cargo landing zones (z 56-58)
   shipHealth: 100,
   boltDamage: 25,
@@ -237,8 +238,18 @@ export const SKY_BATTLE = {
   turnRateMin: 1.2, turnRateMax: 1.8,
   fireAngleThreshold: 0.35, // ~20° — fire only when roughly aligned
   fireCooldownMin: 0.3, fireCooldownMax: 1.5,
-  respawnDelayMin: 3, respawnDelayMax: 5,
+  respawnDelayMin: 4, respawnDelayMax: 9,
   explosionLifetime: 0.6,
+  // --- Death spiral: hit ships burn, tumble and crash into the ground -------
+  crashGravity: 14,          // downward acceleration while falling
+  crashSpinMin: 1.5, crashSpinMax: 4.5, // tumble rate (rad/sec)
+  crashDrag: 0.4,            // horizontal slowdown while falling
+  smokePuffInterval: 0.045,  // seconds between trail puffs
+  smokeLife: 1.8,            // puff fade time
+  smokeRise: 2.2,            // puff drift upward (units/sec)
+  smokeGrow: 2.6,            // puff expansion over its life
+  groundBlastScale: 3.2,     // ground impact fireball size multiplier
+  groundBlastLife: 1.1,
   models: [
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/12a147ef0_craft_speederB.glb',
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/526af9e5f_craft_speederD.glb',
@@ -250,6 +261,7 @@ export const SKY_BATTLE = {
     friendlyBolt: '#60a5fa',
     enemyBolt: '#f87171',
     explosion: '#ffaa44',
+    smoke: '#4a4238',
   },
 };
 

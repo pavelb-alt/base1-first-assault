@@ -16,8 +16,19 @@ const boltGeometry = new THREE.SphereGeometry(0.3, 6, 6);
 const boltMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const explosionGeometry = new THREE.SphereGeometry(1, 8, 8);
 const explosionMaterial = new THREE.MeshBasicMaterial({
-  color: SKY_BATTLE.colors.explosion, transparent: true, opacity: 0.7,
+  color: 0xffffff, transparent: true, opacity: 0.75,
 });
+const smokeGeometry = new THREE.SphereGeometry(1, 6, 6);
+const smokeMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false,
+});
+
+// Fireball fades hot-yellow -> deep orange over its life.
+const _hotColor = new THREE.Color('#fff2c0');
+const _coolColor = new THREE.Color(SKY_BATTLE.colors.explosion);
+const _smokeColor = new THREE.Color(SKY_BATTLE.colors.smoke);
+const _skyFade = new THREE.Color('#9aa7ae');
+const _tmpColor = new THREE.Color();
 
 // Pre-created colors for per-instance bolt coloring
 const _friendlyBoltColor = new THREE.Color(SKY_BATTLE.colors.friendlyBolt);
@@ -112,6 +123,7 @@ export function SkyBattle() {
   const shipGroupRefs = useRef([]);
   const boltMeshRef = useRef();
   const explosionMeshRef = useRef();
+  const smokeMeshRef = useRef();
 
   useFrame((_, delta) => {
     if (gameState.paused || !skyBattle.initialized) return;
@@ -123,9 +135,14 @@ export function SkyBattle() {
       const ship = skyBattle.ships[i];
       const group = shipGroupRefs.current[i];
       if (!group) continue;
-      group.visible = ship.alive;
-      if (ship.alive) {
-        group.position.copy(ship.position);
+      // A crashing wreck stays visible all the way down to the ground.
+      group.visible = ship.alive || ship.crashing;
+      if (!group.visible) continue;
+      group.position.copy(ship.position);
+      if (ship.crashing) {
+        // Out of control: free tumble on all three axes.
+        group.rotation.set(ship.tumble.x, ship.tumble.y, ship.tumble.z);
+      } else {
         // Orient +Z along heading (lookAt makes +Z face the target for non-camera objects)
         _lookTarget.copy(ship.position).add(ship.heading);
         group.lookAt(_lookTarget);
@@ -152,34 +169,61 @@ export function SkyBattle() {
       if (bMesh.instanceColor) bMesh.instanceColor.needsUpdate = true;
     }
 
-    // Update explosion instanced mesh (growing spheres)
+    // Update explosion instanced mesh (growing fireballs, hot -> cooling)
     let expIdx = 0;
     const eMesh = explosionMeshRef.current;
     if (eMesh) {
       for (const exp of skyBattle.explosions) {
         if (!exp.active) continue;
         const t = exp.age / exp.lifetime;
-        const scale = 0.5 + t * 2.5;
         _dummy.position.copy(exp.position);
-        _dummy.scale.setScalar(scale);
+        _dummy.scale.setScalar((0.5 + t * 2.5) * exp.scale);
         _dummy.updateMatrix();
         eMesh.setMatrixAt(expIdx, _dummy.matrix);
+        // Fade the fireball out by darkening toward the cool color as it expands.
+        _tmpColor.copy(_hotColor).lerp(_coolColor, Math.min(1, t * 1.4)).multiplyScalar(1 - t * 0.75);
+        eMesh.setColorAt(expIdx, _tmpColor);
         expIdx++;
       }
       eMesh.count = expIdx;
       eMesh.instanceMatrix.needsUpdate = true;
+      if (eMesh.instanceColor) eMesh.instanceColor.needsUpdate = true;
+    }
+
+    // Update smoke trail instanced mesh (expanding puffs fading into the sky)
+    let smokeIdx = 0;
+    const sMesh = smokeMeshRef.current;
+    if (sMesh) {
+      for (const puff of skyBattle.smoke) {
+        if (!puff.active) continue;
+        const t = puff.age / puff.lifetime;
+        _dummy.position.copy(puff.position);
+        _dummy.scale.setScalar((0.35 + t * SKY_BATTLE.smokeGrow) * puff.seed);
+        _dummy.updateMatrix();
+        sMesh.setMatrixAt(smokeIdx, _dummy.matrix);
+        // Puffs start dark and thin out toward the sky color as they dissipate.
+        _tmpColor.copy(_smokeColor).lerp(_skyFade, t);
+        sMesh.setColorAt(smokeIdx, _tmpColor);
+        smokeIdx++;
+      }
+      sMesh.count = smokeIdx;
+      sMesh.instanceMatrix.needsUpdate = true;
+      if (sMesh.instanceColor) sMesh.instanceColor.needsUpdate = true;
     }
 
     // Extend window.game API for verification
     if (!apiSet.current && window.game) {
       window.game.getSkyBattle = () => ({
+        totalShips: skyBattle.ships.length,
         shipCount: skyBattle.ships.filter(s => s.alive).length,
         friendlyCount: skyBattle.ships.filter(s => s.alive && s.team === 'friendly').length,
         enemyCount: skyBattle.ships.filter(s => s.alive && s.team === 'enemy').length,
+        crashingCount: skyBattle.ships.filter(s => s.crashing).length,
         boltCount: skyBattle.bolts.filter(b => b.active).length,
         explosionCount: skyBattle.explosions.filter(e => e.active).length,
+        smokeCount: skyBattle.smoke.filter(p => p.active).length,
         ships: skyBattle.ships.map(s => ({
-          id: s.id, team: s.team, alive: s.alive, health: s.health, type: s.type,
+          id: s.id, team: s.team, alive: s.alive, crashing: s.crashing, health: s.health, type: s.type,
           position: { x: s.position.x, y: s.position.y, z: s.position.z },
           heading: { x: s.heading.x, y: s.heading.y, z: s.heading.z },
         })),
@@ -199,6 +243,7 @@ export function SkyBattle() {
       ))}
       <instancedMesh ref={boltMeshRef} args={[boltGeometry, boltMaterial, SKY_BATTLE.maxBolts]} frustumCulled={false} />
       <instancedMesh ref={explosionMeshRef} args={[explosionGeometry, explosionMaterial, SKY_BATTLE.maxExplosions]} frustumCulled={false} />
+      <instancedMesh ref={smokeMeshRef} args={[smokeGeometry, smokeMaterial, SKY_BATTLE.maxSmoke]} frustumCulled={false} />
     </>
   );
 }
