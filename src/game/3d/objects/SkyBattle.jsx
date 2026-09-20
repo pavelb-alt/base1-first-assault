@@ -43,9 +43,12 @@ const _dummy = new THREE.Object3D();
  * Preserve body/structure materials (low saturation) unchanged.
  */
 function recolorShipModel(model, team) {
-  const accentColor = team === 'friendly'
-    ? new THREE.Color(SKY_BATTLE.colors.friendlyAccent)
-    : new THREE.Color(SKY_BATTLE.colors.enemyAccent);
+  const hullColor = new THREE.Color(team === 'friendly'
+    ? SKY_BATTLE.colors.friendlyHull
+    : SKY_BATTLE.colors.enemyHull);
+  const accentColor = new THREE.Color(team === 'friendly'
+    ? SKY_BATTLE.colors.friendlyAccent
+    : SKY_BATTLE.colors.enemyAccent);
 
   model.traverse(child => {
     if (!child.isMesh || !child.material) return;
@@ -55,7 +58,9 @@ function recolorShipModel(model, team) {
       if (clone.color) {
         const hsl = {};
         clone.color.getHSL(hsl);
-        if (hsl.s > 0.15) clone.color.copy(accentColor); // saturated = accent
+        const originalLightness = hsl.l;
+        clone.color.copy(hsl.s > 0.15 ? accentColor : hullColor);
+        clone.color.multiplyScalar(THREE.MathUtils.lerp(0.72, 1.18, originalLightness));
       }
       return clone;
     });
