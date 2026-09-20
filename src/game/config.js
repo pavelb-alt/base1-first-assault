@@ -223,22 +223,27 @@ export const CARGO_SHIP = {
 
 // --- Sky battle (aerial combat, visual only, no ground interaction) ----------
 export const SKY_BATTLE = {
-  maxShips: 12,             // 6 per side
-  maxBolts: 48,             // pooled, capped
-  maxExplosions: 12,
-  shipScale: 2.5,           // world units — visible from ground
-  altitudeBands: [20, 28, 42, 50, 24, 46], // avoids cargo cruise altitude (35)
-  bound: 55,                // stays clear of cargo landing zones (z 56-58)
+  maxShips: 20,             // 10 per side — a dense but bounded aerial battle
+  maxBolts: 96,             // pooled laser streaks
+  maxExplosions: 24,
+  maxSmoke: 128,
+  maxDebris: 160,
+  shipScale: 2.7,           // readable from both strategic and ground cameras
+  altitudeBands: [19, 24, 29, 40, 45, 51, 22, 48, 32, 54], // avoids cargo cruise altitude (35)
+  bound: 62,                // wider dogfight while staying clear of landing paths
   shipHealth: 100,
-  boltDamage: 25,
-  boltSpeed: 45,
-  boltLifetime: 2,
-  shipSpeedMin: 18, shipSpeedMax: 26,
-  turnRateMin: 1.2, turnRateMax: 1.8,
-  fireAngleThreshold: 0.35, // ~20° — fire only when roughly aligned
-  fireCooldownMin: 0.3, fireCooldownMax: 1.5,
-  respawnDelayMin: 3, respawnDelayMax: 5,
-  explosionLifetime: 0.6,
+  boltDamage: 34,           // three hits disable a fighter
+  boltSpeed: 58,
+  boltLifetime: 2.2,
+  shipSpeedMin: 19, shipSpeedMax: 29,
+  turnRateMin: 1.15, turnRateMax: 1.9,
+  fireAngleThreshold: 0.5,  // generous firing cone keeps the sky active
+  fireCooldownMin: 0.2, fireCooldownMax: 0.9,
+  respawnDelayMin: 6, respawnDelayMax: 10,
+  explosionLifetime: 0.85,
+  crashGravity: 13,
+  smokeLifetime: 2.8,
+  debrisLifetime: 3.2,
   models: [
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/12a147ef0_craft_speederB.glb',
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/526af9e5f_craft_speederD.glb',
