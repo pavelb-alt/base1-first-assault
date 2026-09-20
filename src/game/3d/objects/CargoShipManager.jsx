@@ -34,7 +34,8 @@ export function CargoShipManager() {
   useFrame((_, delta) => {
     if (gameState.paused) return;
 
-    // Stagger ship launches so they arrive one at a time, not in groups.
+    // Stagger ship launches with occasional bursts so 2–4 ships sometimes
+    // land together instead of always trickling in one at a time.
     if (launchCooldown.current > 0) {
       launchCooldown.current = Math.max(0, launchCooldown.current - delta);
       return;
@@ -53,8 +54,9 @@ export function CargoShipManager() {
           delivery,
           zone,
         });
-        // Random delay before the next ship can launch (3–6 seconds).
-        launchCooldown.current = 3 + Math.random() * 3;
+        // 40% chance of no delay (burst — another ship launches next frame),
+        // 60% chance of a 2–5 second gap.
+        launchCooldown.current = Math.random() < 0.4 ? 0 : 2 + Math.random() * 3;
         publish();
       }
     }

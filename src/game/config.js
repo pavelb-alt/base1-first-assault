@@ -204,7 +204,7 @@ export const EXPLOSIONS = {
 export const CARGO_SHIP = {
   modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/50fa421c8_141c71ee3_craft_cargoA.glb',
   targetLength: 5,       // ~7 soldier heights long
-  maxShips: 3,           // simultaneous in-flight ships
+  maxShips: 4,           // simultaneous in-flight ships
   maxPending: 6,         // queued deliveries cap; oldest dropped if exceeded
   approachSpeed: 25,    // units/sec horizontal flight
   descentSpeed: 12,     // units/sec vertical descent
