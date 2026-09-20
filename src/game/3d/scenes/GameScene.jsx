@@ -10,6 +10,7 @@ import { CameraRig } from '@/game/3d/objects/CameraRig';
 import { NpcManager } from '@/game/3d/objects/NpcManager';
 import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
 import { WeaponEffects } from '@/game/3d/objects/WeaponEffects';
+import { BattlefieldExplosions } from '@/game/3d/objects/BattlefieldExplosions';
 import { HealthBars } from '@/game/3d/objects/HealthBars';
 import { gameState } from '@/game/3d/world';
 import { FRONT, MAP } from '@/game/config';
@@ -60,6 +61,7 @@ export function GameScene() {
           <NpcManager />
           <ProjectileManager />
           <WeaponEffects />
+          <BattlefieldExplosions />
           <HealthBars />
           <GameRuntime />
         </Physics>

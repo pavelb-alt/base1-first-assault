@@ -181,6 +181,15 @@ export const BASE = {
   breachRadius: 6, // distance from base center to count as a breach
 };
 
+// --- Ambient battlefield explosions (visual only, no gameplay effect) ------
+export const EXPLOSIONS = {
+  minInterval: 3.5, maxInterval: 8,
+  areaX: MAP.HALF * 0.85, areaZMin: -50, areaZMax: 50,
+  flashColor: '#ffdd88', smokeColor: '#5c564c', debrisColor: '#3f3a33', dirtColor: '#7a6a4f',
+  flashLife: 0.18, smokeLife: 1.6, debrisLife: 0.9,
+  flashCapacity: 8, smokeCapacity: 24, debrisCapacity: 64,
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
