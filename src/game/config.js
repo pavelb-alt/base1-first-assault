@@ -68,7 +68,7 @@ export const FRONT = {
   stationInner: 2.75, stationSpacing: 1.2,
   parapetHeight: 0.06, edgeThickness: 0.18, spawnZ: 63.75,
   earthColors: { wall: '#806148', floor: '#514437', step: '#a58a64', ramp: '#99754f', edge: '#665443' },
-  clearDelay: 3, resistanceRadius: 18, maxHoldTime: 15,
+  clearDelay: 1.5, resistanceRadius: 10, maxHoldTime: 8,
   jumpDuration: 1.3, jumpStart: -7, jumpEnd: 11,
   gravity: 20, spatialCell: 24, spatialInterval: 0.1,
 };

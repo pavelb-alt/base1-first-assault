@@ -56,8 +56,8 @@ export function suspendFrontline(entry) { releasePosition(entry);entry.nav={phas
 export function resumeFrontline(entry) { entry.nav=null;entry.assignment=null; }
 export function updateFriendly(entry,delta,enemy) {
   if(!entry.nav && !reservePosition(entry)) {
-    if(progress.every(row=>row>=FRONT.rows.length))entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:BASES.enemy.position[0]+(entry.id%5-2)*1.5,z:BASES.enemy.position[2]+5}),index:0};
-    else {stop(entry);return false;}
+    // Can't get a trench slot — push directly toward the enemy base instead of idling.
+    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:BASES.enemy.position[0]+(entry.id%5-2)*1.5,z:BASES.enemy.position[2]+5}),index:0};
   }
   const nav=entry.nav;
   if(enemy) {nav.clearSince=null;stop(entry);entry.aiTarget=enemy;nav.fighting=true;return false;}
