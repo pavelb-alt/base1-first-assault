@@ -284,6 +284,15 @@ export const TOWER_VISUALS = {
   flashDuration: { mg: 0.065, cannon: 0.12, frost: 0.22 },
   steel: '#414a49', dark: '#222b2d', trim: '#afb5a5',
   warmGlow: '#ffb657', coldGlow: '#8feaff',
+  // Rocket-landing deployment (SpaceX-style)
+  descentHeight: 36,
+  descentDuration: 2.2,
+  legDeployAt: 0.45,
+  touchdownBounce: 0.14,
+  touchdownSettle: 0.55,
+  exhaustColor: '#ff9933',
+  exhaustCoreColor: '#fff0cc',
+  dustColor: '#a89478',
 };
 
 // --- Tower defense ----------------------------------------------------------
