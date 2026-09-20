@@ -1,4 +1,5 @@
-import { useRef, useReducer, useEffect, useMemo } from 'react';
+import { useReducer, useEffect, useMemo } from 'react';
+import { TowerVisual } from '@/game/3d/objects/TowerVisual';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
@@ -15,34 +16,12 @@ const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _hitPoint = new THREE.Vector3();
 
 // Scratch vectors — never allocate inside useFrame
-const _targetPos = new THREE.Vector3();
+
 const _origin = new THREE.Vector3();
 const _aim = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 
-// Shared geometries/materials for tower visuals
-const baseGeo = new THREE.CylinderGeometry(1, 1.1, 0.4, 8);
-const turretGeo = new THREE.BoxGeometry(0.5, 0.4, 0.6);
-const barrelGeo = new THREE.CylinderGeometry(0.06, 0.06, 1, 6);
-barrelGeo.rotateX(Math.PI / 2);
-barrelGeo.translate(0, 0, -0.5);
-const ringGeo = new THREE.RingGeometry(0.9, 1, 32);
-ringGeo.rotateX(-Math.PI / 2);
 
-function towerMaterial(color) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.3 });
-}
-
-const TOWER_MATERIALS = {};
-function getMaterial(type) {
-  const cfg = TOWER_DEFENSE.towers[type];
-  if (!cfg) return null;
-  if (!TOWER_MATERIALS[type]) TOWER_MATERIALS[type] = towerMaterial(cfg.color);
-  return TOWER_MATERIALS[type];
-}
-
-const baseMaterial = new THREE.MeshStandardMaterial({ color: '#3a3a3a', roughness: 0.8, metalness: 0.2 });
-const ringMaterial = new THREE.MeshBasicMaterial({ color: '#60a5fa', transparent: true, opacity: 0.25, side: THREE.DoubleSide });
 
 // Pseudo-tower entry for combat registry — lets fireShot/trace work with tower projectiles
 function createTowerCombatEntry(tower, cfg) {
@@ -59,10 +38,7 @@ function createTowerCombatEntry(tower, cfg) {
 }
 
 function Tower({ tower }) {
-  const groupRef = useRef();
-  const barrelRef = useRef();
   const cfg = TOWER_DEFENSE.towers[tower.type];
-  const material = getMaterial(tower.type);
   const combatEntry = useMemo(() => {
     const entry = createTowerCombatEntry(tower, cfg);
     entry.bodyRef = { current: null }; // towers have no physics body — fine for projectile exclusion
@@ -71,9 +47,6 @@ function Tower({ tower }) {
 
   useFrame((_state, delta) => {
     if (gameState.paused) return;
-    const group = groupRef.current;
-    const barrel = barrelRef.current;
-    if (!group || !barrel) return;
 
     tower.cooldown = Math.max(0, tower.cooldown - delta);
 
@@ -95,10 +68,10 @@ function Tower({ tower }) {
     tower.targetId = nearest?.id ?? null;
 
     if (nearest) {
-      // Rotate turret toward target
+      // Model barrels face local -Z; visuals smoothly follow the combat target.
       const p = nearest.bodyRef.current.translation();
-      const yaw = Math.atan2(p.x - tx, p.z - tz);
-      group.rotation.y = yaw;
+      tower.aimYaw = Math.atan2(tx - p.x, tz - p.z);
+      tower.aimPitch = Math.atan2(p.y + nearest.aimHeight - 1.2, nearestDist);
 
       // Fire on cooldown
       if (tower.cooldown <= 0) {
@@ -117,6 +90,7 @@ function Tower({ tower }) {
         // Directly push to pending projectiles (bypassing fireShot's shooter validation)
         if (combat.physics) {
           combat.pendingProjectiles.push(shot);
+          tower.shotsFired = (tower.shotsFired || 0) + 1;
           combat.stats.shots++;
           battle.shots.friendly++;
           if (combat.muzzleEffects.length < 128) {
@@ -136,22 +110,7 @@ function Tower({ tower }) {
     }
   });
 
-  return (
-    <group position={[tower.position.x, 0, tower.position.z]}>
-      {/* Range ring on ground */}
-      <mesh geometry={ringGeo} material={ringMaterial} scale={[cfg.range, cfg.range, 1]} />
-      {/* Base platform */}
-      <mesh geometry={baseGeo} material={baseMaterial} scale={[cfg.baseRadius, 1, cfg.baseRadius]} castShadow receiveShadow position={[0, 0.2, 0]} />
-      {/* Turret */}
-      <group ref={groupRef} position={[0, 0.5, 0]}>
-        <mesh geometry={turretGeo} material={material} castShadow />
-        {/* Barrel */}
-        <group ref={barrelRef} position={[0, 0, -0.3]}>
-          <mesh geometry={barrelGeo} material={material} scale={[1, 1, cfg.barrelLength]} castShadow position={[0, 0, -cfg.barrelLength * 0.5]} />
-        </group>
-      </group>
-    </group>
-  );
+  return <TowerVisual tower={tower} />;
 }
 
 export function TowerManager() {

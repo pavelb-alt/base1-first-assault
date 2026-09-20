@@ -35,6 +35,7 @@ export function GameRuntime() {
     window.game = {
       ready: false,
       getMode: () => gameState.mode,
+      getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
       getFrontline: () => frontlineSnapshot(),
@@ -54,7 +55,7 @@ export function GameRuntime() {
         pending: combat.pendingProjectiles.length, lastShot: combat.lastShot ? JSON.parse(JSON.stringify(combat.lastShot)) : null,
         lastImpact: combat.lastImpact ? JSON.parse(JSON.stringify(combat.lastImpact)) : null }),
       getControlledUnit: () => { const u = selected(); return u ? { ...weaponState(u), health: u.health, maxHealth: u.maxHealth, profile: { ...u.profile }, sectorIndex: u.sectorIndex, cooldown: u.cooldown, firing: input.mouseDown } : null; },
-      getUnit: (team,id) => { const u = combat.units.find(u => u.team === team && u.id === id); return u ? { id:u.id, team:u.team, type:u.type, sectorIndex:u.sectorIndex, squadId:u.squadId, health:u.health, maxHealth:u.maxHealth, profile:{...u.profile}, alive:u.alive, position:u.bodyRef.current?{...u.bodyRef.current.translation()}:null, navigation:u.nav?{phase:u.nav.phase,waypoint:u.nav.index??null,front:u.nav.front??null,target:u.nav.target?{...u.nav.target}:u.nav.route?.[u.nav.index]?{...u.nav.route[u.nav.index]}:null}:null, assignment:u.assignment?{...u.assignment}:null, reservedPosition:u.positionId??null } : null; },
+      getUnit: (team,id) => { const u = combat.units.find(u => u.team === team && u.id === id); return u ? { id:u.id, team:u.team, type:u.type, sectorIndex:u.sectorIndex, squadId:u.squadId, health:u.health, maxHealth:u.maxHealth, profile:{...u.profile}, alive:u.alive, velocity:u.bodyRef.current?{...u.bodyRef.current.linvel()}:null, position:u.bodyRef.current?{...u.bodyRef.current.translation()}:null, navigation:u.nav?{phase:u.nav.phase,waypoint:u.nav.index??null,front:u.nav.front??null,target:u.nav.target?{...u.nav.target}:u.nav.route?.[u.nav.index]?{...u.nav.route[u.nav.index]}:null}:null, assignment:u.assignment?{...u.assignment}:null, reservedPosition:u.positionId??null } : null; },
       selectSoldier: id => {
         const u = combat.units.find(u => u.team === 'friendly' && u.id === id && u.alive);
         if (!u || gameState.mode !== 'strategic') return false;

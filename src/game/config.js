@@ -90,7 +90,7 @@ export const SOLDIER = {
   modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/affec41bd_8994d7574_orange-guardian-animated-jumps.glb',
   spawnPosition: [0, 0, FRONT.spawnZ],
   scale: 0.3, // Existing Orange Guardian rest height: 2.42 native units, ~0.726 in world space
-  moveSpeed: 8,
+  get moveSpeed() { return BALANCE.moveSpeed; }, // possessed and AI soldiers share one speed
   jumpForce: 9,
   maxJumps: 2,            // ground jump + 1 air jump (double jump)
   colliderHalfHeight: 0.5,
@@ -275,6 +275,15 @@ export const SKY_BATTLE = {
     explosion: '#ffaa44',
     smoke: '#4a4238',
   },
+};
+
+// Tower presentation only — does not change damage, range or firing cadence.
+export const TOWER_VISUALS = {
+  turnDamping: 12, deployDuration: 0.65, recoilRecovery: 13,
+  recoil: { mg: 0.09, cannon: 0.28, frost: 0.05 },
+  flashDuration: { mg: 0.065, cannon: 0.12, frost: 0.22 },
+  steel: '#414a49', dark: '#222b2d', trim: '#afb5a5',
+  warmGlow: '#ffb657', coldGlow: '#8feaff',
 };
 
 // --- Tower defense ----------------------------------------------------------
