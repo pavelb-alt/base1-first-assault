@@ -76,7 +76,12 @@ export function cameraAim(camera, shooter, out) {
 
 export function applyImpact(hit, shot) {
   const target = hit.unit;
-  if (combat.impactEffects.length < 256) combat.impactEffects.push({ position: hit.point.toArray(), direction: [...shot.direction] });
+  // Physics hits are plain coordinates; mesh hits are Three vectors. Shots
+  // likewise arrive as arrays at the muzzle and vectors during pooled flight.
+  if (combat.impactEffects.length < 256) combat.impactEffects.push({
+    position: [hit.point.x, hit.point.y, hit.point.z],
+    direction: Array.isArray(shot.direction) ? [...shot.direction] : [shot.direction.x, shot.direction.y, shot.direction.z],
+  });
   combat.stats.impactBursts++;
   if (target && target.alive && target.team !== shot.team) {
     const damage = Math.min(target.health, shot.damage);
