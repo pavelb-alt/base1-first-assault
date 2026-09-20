@@ -223,9 +223,10 @@ export const CARGO_SHIP = {
 
 // --- Sky battle (aerial combat, visual only, no ground interaction) ----------
 export const SKY_BATTLE = {
-  maxShips: 12,             // 6 per side
-  maxBolts: 48,             // pooled, capped
-  maxExplosions: 12,
+  maxShips: 20,             // 10 per side
+  maxBolts: 80,             // pooled, capped
+  maxExplosions: 28,
+  maxSmoke: 96,
   shipScale: 2.5,           // world units — visible from ground
   altitudeBands: [20, 28, 42, 50, 24, 46], // avoids cargo cruise altitude (35)
   bound: 55,                // stays clear of cargo landing zones (z 56-58)
@@ -237,8 +238,12 @@ export const SKY_BATTLE = {
   turnRateMin: 1.2, turnRateMax: 1.8,
   fireAngleThreshold: 0.35, // ~20° — fire only when roughly aligned
   fireCooldownMin: 0.3, fireCooldownMax: 1.5,
-  respawnDelayMin: 3, respawnDelayMax: 5,
-  explosionLifetime: 0.6,
+  respawnDelayMin: 4, respawnDelayMax: 7,
+  explosionLifetime: 0.85,
+  crashChance: 0.72,
+  crashGravity: 13,
+  crashForwardSpeed: 12,
+  smokeLifetime: 2.4,
   models: [
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/12a147ef0_craft_speederB.glb',
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/526af9e5f_craft_speederD.glb',

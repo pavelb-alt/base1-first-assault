@@ -12,11 +12,16 @@ import { gameState } from '@/game/3d/world';
 for (const url of SKY_BATTLE.models) useGLTF.preload(url);
 
 // Shared geometry and materials (created once, reused across all instances)
-const boltGeometry = new THREE.SphereGeometry(0.3, 6, 6);
-const boltMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const explosionGeometry = new THREE.SphereGeometry(1, 8, 8);
+const boltGeometry = new THREE.CapsuleGeometry(0.11, 2.2, 3, 6);
+boltGeometry.rotateX(Math.PI / 2);
+const boltMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+const explosionGeometry = new THREE.IcosahedronGeometry(1, 2);
 const explosionMaterial = new THREE.MeshBasicMaterial({
-  color: SKY_BATTLE.colors.explosion, transparent: true, opacity: 0.7,
+  color: SKY_BATTLE.colors.explosion, transparent: true, opacity: 0.82, toneMapped: false,
+});
+const smokeGeometry = new THREE.DodecahedronGeometry(1, 0);
+const smokeMaterial = new THREE.MeshStandardMaterial({
+  color: '#3e4143', transparent: true, opacity: 0.58, roughness: 1, depthWrite: false,
 });
 
 // Pre-created colors for per-instance bolt coloring
@@ -44,7 +49,13 @@ function recolorShipModel(model, team) {
       if (clone.color) {
         const hsl = {};
         clone.color.getHSL(hsl);
-        if (hsl.s > 0.15) clone.color.copy(accentColor); // saturated = accent
+        if (hsl.s > 0.15) {
+          clone.color.copy(accentColor); // saturated = accent
+          if (clone.emissive) {
+            clone.emissive.copy(accentColor);
+            clone.emissiveIntensity = 0.35;
+          }
+        }
       }
       return clone;
     });
@@ -112,6 +123,7 @@ export function SkyBattle() {
   const shipGroupRefs = useRef([]);
   const boltMeshRef = useRef();
   const explosionMeshRef = useRef();
+  const smokeMeshRef = useRef();
 
   useFrame((_, delta) => {
     if (gameState.paused || !skyBattle.initialized) return;
@@ -123,14 +135,17 @@ export function SkyBattle() {
       const ship = skyBattle.ships[i];
       const group = shipGroupRefs.current[i];
       if (!group) continue;
-      group.visible = ship.alive;
-      if (ship.alive) {
+      group.visible = ship.alive || ship.crashing;
+      if (ship.alive || ship.crashing) {
         group.position.copy(ship.position);
         // Orient +Z along heading (lookAt makes +Z face the target for non-camera objects)
         _lookTarget.copy(ship.position).add(ship.heading);
         group.lookAt(_lookTarget);
-        // Bank (roll around local forward axis)
-        group.rotateZ(ship.bankAngle);
+        if (ship.crashing) {
+          group.rotateX(ship.crashRotation.x);
+          group.rotateY(ship.crashRotation.y);
+          group.rotateZ(ship.crashRotation.z);
+        } else group.rotateZ(ship.bankAngle);
       }
     }
 
@@ -141,6 +156,8 @@ export function SkyBattle() {
       for (const bolt of skyBattle.bolts) {
         if (!bolt.active) continue;
         _dummy.position.copy(bolt.position);
+        _lookTarget.copy(bolt.position).add(bolt.velocity);
+        _dummy.lookAt(_lookTarget);
         _dummy.scale.setScalar(1);
         _dummy.updateMatrix();
         bMesh.setMatrixAt(boltIdx, _dummy.matrix);
@@ -159,8 +176,9 @@ export function SkyBattle() {
       for (const exp of skyBattle.explosions) {
         if (!exp.active) continue;
         const t = exp.age / exp.lifetime;
-        const scale = 0.5 + t * 2.5;
+        const scale = exp.scale * (0.5 + Math.sin(Math.min(1, t) * Math.PI) * 2.8);
         _dummy.position.copy(exp.position);
+        _dummy.rotation.set(t * 2, t * 3, 0);
         _dummy.scale.setScalar(scale);
         _dummy.updateMatrix();
         eMesh.setMatrixAt(expIdx, _dummy.matrix);
@@ -168,6 +186,23 @@ export function SkyBattle() {
       }
       eMesh.count = expIdx;
       eMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    // Update pooled smoke puffs from damaged falling wrecks.
+    let smokeIdx = 0;
+    const sMesh = smokeMeshRef.current;
+    if (sMesh) {
+      for (const puff of skyBattle.smoke) {
+        if (!puff.active) continue;
+        const t = puff.age / puff.lifetime;
+        _dummy.position.copy(puff.position);
+        _dummy.rotation.set(t * 1.3, t * 2.1, t * 0.8);
+        _dummy.scale.setScalar(puff.scale * (0.35 + t * 1.4));
+        _dummy.updateMatrix();
+        sMesh.setMatrixAt(smokeIdx++, _dummy.matrix);
+      }
+      sMesh.count = smokeIdx;
+      sMesh.instanceMatrix.needsUpdate = true;
     }
 
     // Extend window.game API for verification
@@ -178,8 +213,10 @@ export function SkyBattle() {
         enemyCount: skyBattle.ships.filter(s => s.alive && s.team === 'enemy').length,
         boltCount: skyBattle.bolts.filter(b => b.active).length,
         explosionCount: skyBattle.explosions.filter(e => e.active).length,
+        smokeCount: skyBattle.smoke.filter(p => p.active).length,
+        crashingCount: skyBattle.ships.filter(s => s.crashing).length,
         ships: skyBattle.ships.map(s => ({
-          id: s.id, team: s.team, alive: s.alive, health: s.health, type: s.type,
+          id: s.id, team: s.team, alive: s.alive, crashing: s.crashing, health: s.health, type: s.type,
           position: { x: s.position.x, y: s.position.y, z: s.position.z },
           heading: { x: s.heading.x, y: s.heading.y, z: s.heading.z },
         })),
@@ -199,6 +236,7 @@ export function SkyBattle() {
       ))}
       <instancedMesh ref={boltMeshRef} args={[boltGeometry, boltMaterial, SKY_BATTLE.maxBolts]} frustumCulled={false} />
       <instancedMesh ref={explosionMeshRef} args={[explosionGeometry, explosionMaterial, SKY_BATTLE.maxExplosions]} frustumCulled={false} />
+      <instancedMesh ref={smokeMeshRef} args={[smokeGeometry, smokeMaterial, SKY_BATTLE.maxSmoke]} frustumCulled={false} />
     </>
   );
 }
