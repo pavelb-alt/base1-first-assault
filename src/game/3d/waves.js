@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BALANCE, FRONT, MAP, SECTORS } from '@/game/config';
+const ENEMY_START_DELAY = BALANCE.enemy.startDelay ?? 0;
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { combat } from '@/game/3d/combat';
@@ -28,7 +29,7 @@ export function useWavePool(team) {
   if(!state.current)state.current={slots:Array.from({length:rules.maxAlive},(_,slot)=>({
     slot,id:-slot-1,active:false,sectorIndex:Math.floor(slot/rules.maxPerSector),
     type:team==='enemy'?rules.squad[slot%size]:'soldier',weaponId:WEAPON_IDS[slot%WEAPON_IDS.length],spawnOffset:{x:0,z:0},squadId:0,
-  })),timer:rules.interval,trilobiteTimer:0,nextId:0,waveId:0};
+  })),timer:team==='enemy'?-ENEMY_START_DELAY:rules.interval,trilobiteTimer:0,nextId:0,waveId:0};
   const despawn=useCallback(id=>{
     const s=state.current,index=s.slots.findIndex(u=>u.active&&u.id===id);
     if(index<0)return;s.slots[index]={...s.slots[index],active:false};publish();
@@ -75,21 +76,27 @@ export function useWavePool(team) {
     }
     const spawned=SECTORS.map(()=>0);
     if(team==='friendly'){
-      // Reserve slots and queue cargo-ship deliveries instead of instant activation.
-      for(let squad=0;squad<SECTORS.length;squad++){
-        const squadSlots=[];
-        for(let member=0;member<waveSize;member++){
-          let sectorIndex=squad,least=Infinity;
-          for(let sector=0;sector<SECTORS.length;sector++){
-            const population=counts[sector*2]+counts[sector*2+1];
-            if(population<least){least=population;sectorIndex=sector;}
-          }
-          const index=free[squad*waveSize+member];spawned[sectorIndex]++;
-          s.slots[index]={...s.slots[index],reserved:true,sectorIndex,id:++s.nextId,squadId:`friendly-${s.waveId}-${squad}`,
-            type:'soldier',weaponId:WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)],spawnOffset:{x:0,z:0}};
-          squadSlots.push({index});
+      // Reserve all slots first, then split them across a random number of ships
+      // (1–6) so each wave feels different — sometimes one big drop, sometimes
+      // many small ones, like real war logistics.
+      const allSlots=[];
+      for(let member=0;member<waveSize*SECTORS.length;member++){
+        let sectorIndex=Math.floor(member/waveSize),least=Infinity;
+        for(let sector=0;sector<SECTORS.length;sector++){
+          const population=counts[sector*2]+counts[sector*2+1];
+          if(population<least){least=population;sectorIndex=sector;}
         }
-        cargoShipState.pendingDeliveries.push({deliveryId:++cargoShipState.nextDeliveryId,slots:squadSlots,waveId:s.waveId});
+        const index=free[member];spawned[sectorIndex]++;
+        s.slots[index]={...s.slots[index],reserved:true,sectorIndex,id:++s.nextId,squadId:`friendly-${s.waveId}`,
+          type:'soldier',weaponId:WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)],spawnOffset:{x:0,z:0}};
+        allSlots.push({index});
+      }
+      const shipCount=Math.min(allSlots.length,1+Math.floor(random()*6));
+      const perShip=Math.ceil(allSlots.length/shipCount);
+      for(let ship=0;ship<shipCount;ship++){
+        const start=ship*perShip;
+        cargoShipState.pendingDeliveries.push({deliveryId:++cargoShipState.nextDeliveryId,
+          slots:allSlots.slice(start,start+perShip),waveId:s.waveId});
       }
       while(cargoShipState.pendingDeliveries.length>CARGO_SHIP.maxPending)cargoShipState.pendingDeliveries.shift();
     } else {
