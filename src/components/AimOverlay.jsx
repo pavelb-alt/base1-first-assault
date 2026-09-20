@@ -13,6 +13,6 @@ export default function AimOverlay() {
       <span className="absolute top-0 left-1/2 -translate-x-1/2 h-1.5 w-0.5 bg-white" />
       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-1.5 w-0.5 bg-white" />
     </div>
-    {!locked && <div className="absolute top-20 left-1/2 -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-white">Click battlefield to capture mouse · then hold left click to fire</div>}
+    {!locked && <div className="absolute top-20 left-1/2 -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-white">Click battlefield to capture mouse · Left click to fire · Right click to aim</div>}
   </>;
 }

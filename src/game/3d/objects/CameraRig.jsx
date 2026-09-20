@@ -123,7 +123,7 @@ export function CameraRig() {
       if (input.mouseDelta.x !== 0 || input.mouseDelta.y !== 0) {
         thirdPersonYaw.current -= input.mouseDelta.x * CAMERA.thirdPerson.mouseSensitivity;
         thirdPersonPitch.current = THREE.MathUtils.clamp(
-          thirdPersonPitch.current + input.mouseDelta.y * CAMERA.thirdPerson.mouseSensitivity,
+          thirdPersonPitch.current + input.mouseDelta.y * CAMERA.thirdPerson.mouseSensitivity * (input.rightMouseDown ? CAMERA.ads.sensitivityMult : 1),
           CAMERA.thirdPerson.minPitch,
           CAMERA.thirdPerson.maxPitch,
         );
@@ -132,17 +132,25 @@ export function CameraRig() {
       }
       gameState.cameraYaw = thirdPersonYaw.current;
 
-      // Follow the soldier
+      // Follow the soldier — ADS tightens the rig when right-click is held
       const pos = gameState.soldierPosition;
       const yaw = thirdPersonYaw.current;
       const pitch = thirdPersonPitch.current;
-      const d = CAMERA.thirdPerson.distance;
-      const h = CAMERA.thirdPerson.height;
+      const aiming = input.rightMouseDown;
+      const ads = CAMERA.ads;
+      const tp = CAMERA.thirdPerson;
+      const d = aiming ? ads.distance : tp.distance;
+      const h = aiming ? ads.height : tp.height;
+      const targetFov = aiming ? ads.fov : 60;
+      if (Math.abs(camera.fov - targetFov) > 0.1) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 10);
+        camera.updateProjectionMatrix();
+      }
 
       camera.position.set(
-        pos.x - d * Math.sin(yaw) * Math.cos(pitch) - CAMERA.thirdPerson.shoulder * Math.cos(yaw),
+        pos.x - d * Math.sin(yaw) * Math.cos(pitch) - (aiming ? ads.shoulder : tp.shoulder) * Math.cos(yaw),
         pos.y + h + d * Math.sin(pitch),
-        pos.z - d * Math.cos(yaw) * Math.cos(pitch) + CAMERA.thirdPerson.shoulder * Math.sin(yaw),
+        pos.z - d * Math.cos(yaw) * Math.cos(pitch) + (aiming ? ads.shoulder : tp.shoulder) * Math.sin(yaw),
       );
       // Keep the possessed camera on the near side of trench walls/ground.
       if(combat.physics) {

@@ -2,7 +2,7 @@
 // Source: https://kenney.nl/assets/blaster-kit
 // All ten inspected barrels face local -Z, but origins/grips/muzzles differ.
 const root = 'https://base44.app/api/apps/6aad7caf1cfd574f0bf92f13/files/mp/public/6aad7caf1cfd574f0bf92f13/';
-const WEAPON_SCALE_MULT = 1.7; // ~1.7× original size; grip-centered, muzzle auto-scales
+const WEAPON_SCALE_MULT = 2.6; // ~2.6× original size; grip-centered, muzzle auto-scales
 export const WEAPONS = {
   a: { url: root+'bd9372a9f_blaster-a.glb', scale: .75 * WEAPON_SCALE_MULT, grip: [0,-.17,.21], muzzle: [0,.07955,-.37], correction: [0,Math.PI,0] },
   b: { url: root+'70e456216_blaster-b.glb', scale: 1 * WEAPON_SCALE_MULT, grip: [0,-.115,.085], muzzle: [0,.01318,-.2601], correction: [0,Math.PI,0] },

@@ -1,12 +1,15 @@
 import { gameState } from '@/game/3d/world';
 
-export const input = { keys: {}, mouseDelta: { x: 0, y: 0 }, wheelDelta: 0, mouseDown: false };
+export const input = { keys: {}, mouseDelta: { x: 0, y: 0 }, wheelDelta: 0, mouseDown: false, rightMouseDown: false };
 export function clearInput() {
   input.keys = {}; input.mouseDelta.x = 0; input.mouseDelta.y = 0;
-  input.mouseDown = false; input.wheelDelta = 0;
+  input.mouseDown = false; input.rightMouseDown = false; input.wheelDelta = 0;
 }
 export function setFire(held) {
   input.mouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && gameState.possessedSoldierId !== null;
+}
+export function setAim(held) {
+  input.rightMouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && gameState.possessedSoldierId !== null;
 }
 export function setKey(code, held) { input.keys[code] = !!held; }
 export function look(dx, dy) {
@@ -17,14 +20,21 @@ export function look(dx, dy) {
 // Bound to the canvas, not overlay buttons; cleanup prevents remount duplicates.
 export function bindInput(canvas) {
   const down = e => {
-    if (e.button !== 0 || gameState.mode !== 'third_person') return;
-    if (document.pointerLockElement !== canvas) {
-      canvas.requestPointerLock?.()?.catch?.(() => {});
-      return;
+    if (gameState.mode !== 'third_person') return;
+    if (e.button === 0) {
+      if (document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock?.()?.catch?.(() => {});
+        return;
+      }
+      setFire(true);
+    } else if (e.button === 2) {
+      setAim(true);
     }
-    setFire(true);
   };
-  const up = e => { if (e.button === 0) setFire(false); };
+  const up = e => {
+    if (e.button === 0) setFire(false);
+    else if (e.button === 2) setAim(false);
+  };
   const move = e => { if (document.pointerLockElement === canvas) look(e.movementX, e.movementY); };
   const keyDown = e => {
     if (e.code === 'Escape' || e.code === 'Tab') { clearInput(); return; }
@@ -36,6 +46,7 @@ export function bindInput(canvas) {
   const lock = () => { if (document.pointerLockElement !== canvas) clearInput(); };
   canvas.addEventListener('mousedown', down);
   canvas.addEventListener('wheel', wheel, { passive: true });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('mouseup', up); window.addEventListener('mousemove', move);
   window.addEventListener('keydown', keyDown); window.addEventListener('keyup', keyUp);
   window.addEventListener('blur', clearInput);

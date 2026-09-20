@@ -200,4 +200,11 @@ export const CAMERA = {
     initialPitch: 0.4,
     mouseSensitivity: 0.0022,
   },
+  ads: {
+    distance: 3.2,       // closer camera for precision aiming
+    height: 1.8,         // lower eye line when aiming
+    shoulder: 0.15,      // tighter shoulder offset
+    fov: 45,             // narrower field of view
+    sensitivityMult: 0.5, // reduced mouse sensitivity while aiming
+  },
 };
