@@ -35,7 +35,7 @@ export function MainMenu({ onStart }) {
       <div className="absolute right-0 top-0 bottom-0 w-full md:w-1/2 flex flex-col items-center justify-center px-8">
         <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-2 tracking-wider text-center"
             style={{ textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}>
-          NEON TACTICIAN
+          BASE1: FIRST ASSAULT
         </h1>
         <div className="text-orange-400 text-sm font-semibold tracking-[0.3em] uppercase mb-10">
           Tactical Warfare Simulation
