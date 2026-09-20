@@ -51,20 +51,18 @@ export default function GamePage() {
     };
   }, []);
 
-  // Phase: menu → intro (mount game paused, play video)
+  // Phase: menu → intro (mount game running so cargo ships land during the video)
   const startMission = useCallback(() => {
     if (initStarted.current) return;
     initStarted.current = true;
-    gameState.paused = true;
-    gameState.preparing = false;
+    gameState.paused = false;
+    gameState.preparing = true; // block player input during video
     setPhase('intro');
   }, []);
 
-  // Phase: intro → handoff (unpause, frame landing area, wait for first squad)
+  // Phase: intro → handoff (game already running; just frame the landing area)
   const onVideoComplete = useCallback(() => {
     setPhase('handoff');
-    gameState.preparing = true;
-    EventBus.emit('resume-game');
     EventBus.emit('frame-landing-area');
   }, []);
 
