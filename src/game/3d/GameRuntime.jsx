@@ -6,7 +6,7 @@ import { combat } from '@/game/3d/combat';
 import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
-import { MAP, FRONT, BALANCE } from '@/game/config';
+import { MAP, FRONT, BALANCE, BASES, BASE } from '@/game/config';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
 import { updateSpatial, resetSpatial } from '@/game/3d/spatial';
@@ -64,7 +64,7 @@ export function GameRuntime() {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetSpatial();
       performance.current={frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0};
       frames.current = 0; if (window.game) window.game.ready = false;
-      for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; }
+      for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; unit.breached = false; }
       EventBus.emit('release-soldier');
       EventBus.emit('reset-camera');
     };
@@ -77,6 +77,27 @@ export function GameRuntime() {
       updateSpatial(combat.units,battle.elapsed);
       const p=performance.current;p.frames++;p.seconds+=delta;p.maxFrameMs=Math.max(p.maxFrameMs,delta*1000);
       p.drawCalls=gl.info.render.calls;p.triangles=gl.info.render.triangles;
+
+      // Base breach detection — units that reach the opposing base deal damage.
+      if (!battle.gameOver) {
+        const fb = BASES.friendly.position, eb = BASES.enemy.position;
+        for (const u of combat.units) {
+          if (!u.alive || !u.bodyRef?.current || u.breached) continue;
+          const pos = u.bodyRef.current.translation();
+          const targetBase = u.team === 'enemy' ? fb : eb;
+          const dist = Math.hypot(pos.x - targetBase[0], pos.z - targetBase[2]);
+          if (dist < BASE.breachRadius) {
+            u.breached = true;
+            const target = u.team === 'enemy' ? 'friendly' : 'enemy';
+            battle.baseHealth[target] -= BASE.breachDamage;
+            if (battle.baseHealth[target] <= 0) {
+              battle.baseHealth[target] = 0;
+              battle.gameOver = u.team === 'enemy' ? 'defeat' : 'victory';
+              EventBus.emit('game-over', battle.gameOver);
+            }
+          }
+        }
+      }
     }
     // Inside Physics; assets, bodies, attachments and a completed prior frame are required.
     if (!window.game?.ready) {

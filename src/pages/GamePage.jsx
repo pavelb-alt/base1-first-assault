@@ -10,6 +10,7 @@ export default function GamePage() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [waitingForReinforcements, setWaitingForReinforcements] = useState(false);
+  const [gameOver, setGameOver] = useState(null);
 
   // EventBus subscriptions
   useEffect(() => {
@@ -24,13 +25,17 @@ export default function GamePage() {
     EventBus.on('mode-changed', onMode);
     EventBus.on('soldier-loaded', onLoaded);
     EventBus.on('soldier-error', onError);
+    const onGameOver = (result) => setGameOver(result);
+
     EventBus.on('no-eligible-soldier', onNoEligible);
+    EventBus.on('game-over', onGameOver);
 
     return () => {
       EventBus.off('mode-changed', onMode);
       EventBus.off('soldier-loaded', onLoaded);
       EventBus.off('soldier-error', onError);
       EventBus.off('no-eligible-soldier', onNoEligible);
+      EventBus.off('game-over', onGameOver);
     };
   }, []);
 
@@ -39,6 +44,7 @@ export default function GamePage() {
     EventBus.emit('mode-changed', 'strategic');
     setMode('strategic');
     setWaitingForReinforcements(false);
+    setGameOver(null);
   };
 
   return (
@@ -104,6 +110,28 @@ export default function GamePage() {
           >
             Reset Test
           </button>
+
+          {/* Victory / Defeat overlay */}
+          {gameOver && (
+            <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
+              <div className="text-center max-w-md px-6">
+                <div className={`text-5xl font-extrabold mb-2 ${gameOver === 'victory' ? 'text-green-400' : 'text-red-400'}`}>
+                  {gameOver === 'victory' ? '★ VICTORY ★' : '✖ DEFEAT ✖'}
+                </div>
+                <div className="text-slate-300 text-sm mb-6">
+                  {gameOver === 'victory'
+                    ? 'Friendly forces destroyed the enemy base. The battlefield is yours.'
+                    : 'Enemy forces breached your base. The front has collapsed.'}
+                </div>
+                <button
+                  className="px-8 py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold text-lg transition-colors shadow-lg"
+                  onClick={handleReset}
+                >
+                  Restart Match
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Loading overlay */}
           {!loaded && !error && (

@@ -174,6 +174,13 @@ export const COMBAT = {
   projectileLifetime: 3,    // max seconds a projectile exists
 };
 
+// --- Base destruction -------------------------------------------------------
+export const BASE = {
+  health: 100,
+  breachDamage: 10,
+  breachRadius: 6, // distance from base center to count as a breach
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
