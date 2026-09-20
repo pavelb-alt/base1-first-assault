@@ -221,6 +221,38 @@ export const CARGO_SHIP = {
   ],
 };
 
+// --- Sky battle (aerial combat, visual only, no ground interaction) ----------
+export const SKY_BATTLE = {
+  maxShips: 12,             // 6 per side
+  maxBolts: 48,             // pooled, capped
+  maxExplosions: 12,
+  shipScale: 2.5,           // world units — visible from ground
+  altitudeBands: [20, 28, 42, 50, 24, 46], // avoids cargo cruise altitude (35)
+  bound: 55,                // stays clear of cargo landing zones (z 56-58)
+  shipHealth: 100,
+  boltDamage: 25,
+  boltSpeed: 45,
+  boltLifetime: 2,
+  shipSpeedMin: 18, shipSpeedMax: 26,
+  turnRateMin: 1.2, turnRateMax: 1.8,
+  fireAngleThreshold: 0.35, // ~20° — fire only when roughly aligned
+  fireCooldownMin: 0.3, fireCooldownMax: 1.5,
+  respawnDelayMin: 3, respawnDelayMax: 5,
+  explosionLifetime: 0.6,
+  models: [
+    'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/12a147ef0_craft_speederB.glb',
+    'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/526af9e5f_craft_speederD.glb',
+    'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/5affcd1d1_craft_racer.glb',
+  ],
+  colors: {
+    friendlyAccent: '#ff8c42',
+    enemyAccent: '#e53e3e',
+    friendlyBolt: '#60a5fa',
+    enemyBolt: '#f87171',
+    explosion: '#ffaa44',
+  },
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
