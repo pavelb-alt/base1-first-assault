@@ -8,6 +8,8 @@ import { recordWave } from '@/game/3d/battleMetrics';
 import { random } from '@/game/3d/random';
 import { WEAPON_IDS } from '@/game/3d/weapons';
 import { preferredSpawnSection } from '@/game/3d/navigation/frontline';
+import { cargoShipState } from '@/game/3d/objects/cargoShipState';
+import { CARGO_SHIP } from '@/game/config';
 
 function spawnPosition(sectorIndex,team,member,waveId,counts) {
   const sector=SECTORS[sectorIndex];
@@ -32,12 +34,27 @@ export function useWavePool(team) {
     if(index<0)return;s.slots[index]={...s.slots[index],active:false};publish();
   },[]);
   useEffect(()=>{
-    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false}));s.timer=rules.interval;s.trilobiteTimer=0;s.waveId=0;publish();};
+    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false,reserved:false}));s.timer=rules.interval;s.trilobiteTimer=0;s.waveId=0;if(team==='friendly')cargoShipState.reset();publish();};
     EventBus.on('reset-game',reset);return()=>EventBus.off('reset-game',reset);
   },[rules]);
   useFrame((_,delta)=>{
     if(gameState.paused)return;
-    const s=state.current;s.timer=Math.min(rules.interval,s.timer+delta);
+    const s=state.current;
+    // Activate soldiers from landed cargo ships (friendly only).
+    if(team==='friendly'&&cargoShipState.readyDeliveries.length>0){
+      let activated=false;
+      for(const delivery of cargoShipState.readyDeliveries){
+        for(const {index,spawnOffset} of delivery.slots){
+          if(s.slots[index]&&s.slots[index].reserved){
+            s.slots[index]={...s.slots[index],active:true,reserved:false,spawnOffset};
+            activated=true;
+          }
+        }
+      }
+      cargoShipState.readyDeliveries.length=0;
+      if(activated)publish();
+    }
+    s.timer=Math.min(rules.interval,s.timer+delta);
     // Carry fractional squad budgets across waves: 2 then 3 enemies per sector,
     // preserving the full five-member composition over each pair of waves.
     const budget=team==='enemy'?rules.squad.length*(rules.spawnScale??1):rules.perSector;
@@ -47,7 +64,7 @@ export function useWavePool(team) {
     // Slots belong to the faction pool, not permanently to a sector. Casualties
     // on one flank must not wait for an unrelated flank to free its own slots.
     const free=[];
-    s.slots.forEach((u,i)=>{if(!u.active)free.push(i);});
+    s.slots.forEach((u,i)=>{if(!u.active&&!(team==='friendly'&&u.reserved))free.push(i);});
     if(free.length<waveSize*SECTORS.length)return;
     s.waveId++;
     const counts=FRONT.sectionCenters.map(()=>0);
@@ -57,20 +74,32 @@ export function useWavePool(team) {
       counts[section]++;
     }
     const spawned=SECTORS.map(()=>0);
-    for(let squad=0;squad<SECTORS.length;squad++)for(let member=0;member<waveSize;member++){
-      let sectorIndex=squad;
-      if(team==='friendly') {
-        let least=Infinity;
-        for(let sector=0;sector<SECTORS.length;sector++) {
-          const population=counts[sector*2]+counts[sector*2+1];
-          if(population<least){least=population;sectorIndex=sector;}
+    if(team==='friendly'){
+      // Reserve slots and queue cargo-ship deliveries instead of instant activation.
+      for(let squad=0;squad<SECTORS.length;squad++){
+        const squadSlots=[];
+        for(let member=0;member<waveSize;member++){
+          let sectorIndex=squad,least=Infinity;
+          for(let sector=0;sector<SECTORS.length;sector++){
+            const population=counts[sector*2]+counts[sector*2+1];
+            if(population<least){least=population;sectorIndex=sector;}
+          }
+          const index=free[squad*waveSize+member];spawned[sectorIndex]++;
+          s.slots[index]={...s.slots[index],reserved:true,sectorIndex,id:++s.nextId,squadId:`friendly-${s.waveId}-${squad}`,
+            type:'soldier',weaponId:WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)],spawnOffset:{x:0,z:0}};
+          squadSlots.push({index});
         }
+        cargoShipState.pendingDeliveries.push({deliveryId:++cargoShipState.nextDeliveryId,slots:squadSlots,waveId:s.waveId});
       }
-      const index=free[squad*waveSize+member];spawned[sectorIndex]++;
-      s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`${team}-${s.waveId}-${squad}`, 
-        type:team==='enemy'?rules.squad[(waveOffset+member)%rules.squad.length]:'soldier',
-        weaponId:team==='friendly'?WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)]:null,
-        spawnOffset:spawnPosition(sectorIndex,team,member,s.waveId,counts)};
+      while(cargoShipState.pendingDeliveries.length>CARGO_SHIP.maxPending)cargoShipState.pendingDeliveries.shift();
+    } else {
+      for(let squad=0;squad<SECTORS.length;squad++)for(let member=0;member<waveSize;member++){
+        let sectorIndex=squad;
+        const index=free[squad*waveSize+member];spawned[sectorIndex]++;
+        s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`${team}-${s.waveId}-${squad}`, 
+          type:rules.squad[(waveOffset+member)%rules.squad.length],
+          spawnOffset:spawnPosition(sectorIndex,team,member,s.waveId,counts)};
+      }
     }
     s.timer=0;recordWave(team,s.waveId,spawned);publish();
     // Trilobite spawns independently once every trilobiteInterval seconds.

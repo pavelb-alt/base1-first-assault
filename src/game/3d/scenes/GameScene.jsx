@@ -12,6 +12,7 @@ import { ProjectileManager } from '@/game/3d/objects/ProjectileManager';
 import { WeaponEffects } from '@/game/3d/objects/WeaponEffects';
 import { BattlefieldExplosions } from '@/game/3d/objects/BattlefieldExplosions';
 import { HealthBars } from '@/game/3d/objects/HealthBars';
+import { CargoShipManager } from '@/game/3d/objects/CargoShipManager';
 import { gameState } from '@/game/3d/world';
 import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
@@ -49,6 +50,7 @@ export function GameScene() {
           <HealthBars />
           <GameRuntime />
         </Physics>
+        <CargoShipManager />
       </Suspense>
     </>
   );

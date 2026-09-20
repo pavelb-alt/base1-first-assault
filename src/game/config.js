@@ -199,6 +199,27 @@ export const EXPLOSIONS = {
   flashCapacity: 8, smokeCapacity: 24, debrisCapacity: 64,
 };
 
+// --- Cargo ship delivery (friendly reinforcements) ---------------------------
+export const CARGO_SHIP = {
+  modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/50fa421c8_141c71ee3_craft_cargoA.glb',
+  targetLength: 5,       // ~7 soldier heights long
+  maxShips: 3,           // simultaneous in-flight ships
+  maxPending: 6,         // queued deliveries cap; oldest dropped if exceeded
+  approachSpeed: 25,    // units/sec horizontal flight
+  descentSpeed: 12,     // units/sec vertical descent
+  takeoffSpeed: 20,    // units/sec departure
+  landingPause: 2.5,   // seconds on ground unloading
+  cruiseAltitude: 35,  // approach/departure flight height
+  soldierSpacing: 1.5, // lateral spacing between spawned soldiers
+  soldierOffset: 4,    // X offset from ship center for soldier spawn line
+  landingZones: [
+    { id: 0, x: -45, z: 56 },
+    { id: 1, x: -15, z: 58 },
+    { id: 2, x:  15, z: 58 },
+    { id: 3, x:  45, z: 56 },
+  ],
+};
+
 // --- Camera config ----------------------------------------------------------
 export const CAMERA = {
   strategic: {
