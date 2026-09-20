@@ -1,6 +1,7 @@
 import { combat } from '@/game/3d/combat';
 import { BALANCE } from '@/game/config';
 import { visitNearby } from '@/game/3d/spatial';
+import { steerAroundOutposts } from '@/game/3d/dressing/outpostLayout';
 
 export function isGrounded(entry) {
   const body=entry.bodyRef.current, ctx=combat.physics;
@@ -14,11 +15,15 @@ export function stop(entry, flying=false) {
   const body=entry.bodyRef.current,p=body.translation(),v=body.linvel();
   body.setLinvel({x:0,y:flying?(entry.hoverHeight-p.y)*5:v.y,z:0},true);
 }
-export function moveToward(entry,target,delta,{flying=false,separate=true}={}) {
+export function moveToward(entry,target,delta,{flying=false,separate=true,avoidOutposts=true}={}) {
   const body=entry.bodyRef.current,p=body.translation(),v=body.linvel();
-  let dx=target.x-p.x,dz=target.z-p.z;
+  const destination=!flying&&avoidOutposts?steerAroundOutposts(p,target):target;
+  let dx=destination.x-p.x,dz=destination.z-p.z;
   const distance=Math.hypot(dx,dz);
-  if(distance<0.45){stop(entry,flying);return true;}
+  if(distance<0.45){
+    if(destination!==target)return false;
+    stop(entry,flying);return true;
+  }
   dx/=distance;dz/=distance;
   if(separate)visitNearby(p.x,p.z,1.6,(u,q,d2)=>{
     if(u===entry || d2<0.01 || Math.abs(q.y-p.y)>1.3)return;
