@@ -23,8 +23,6 @@ const BG_COLOR = new THREE.Color('#1a1a1a');
 // Shared geometry — a horizontal bar centered on origin, anchored left for fill scaling
 const bgGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT);
 const fillGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT);
-// Shift fill geometry so it scales from the left edge
-fillGeo.translate(BAR_WIDTH / 2, 0, 0);
 
 const dummy = new THREE.Object3D();
 const camPos = new THREE.Vector3();
@@ -48,6 +46,7 @@ export function HealthBars() {
     let count = 0;
     for (const u of combat.units) {
       if (!u.alive || !u.bodyRef?.current) continue;
+      if (gameState.possessedSoldierId === u.id) continue;
       if (count >= MAX) break;
 
       const p = u.bodyRef.current.translation();
