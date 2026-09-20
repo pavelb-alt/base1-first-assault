@@ -77,11 +77,15 @@ export function updateFriendly(entry,delta,enemy) {
   if(battle.elapsed<nav.nextCheck)return false;
   nav.nextCheck=battle.elapsed+0.5;
   const a=entry.assignment;
-  let resistance=false;
-  visitNearby(a.x,a.z,FRONT.resistanceRadius,u=>{if(u.team==='enemy')resistance=true;});
-  if(resistance){nav.clearSince=null;return false;}
+  // After holding long enough, push forward regardless of nearby enemies.
+  const heldTooLong = nav.started != null && battle.elapsed - nav.started > FRONT.maxHoldTime;
+  if(!heldTooLong){
+    let resistance=false;
+    visitNearby(a.x,a.z,FRONT.resistanceRadius,u=>{if(u.team==='enemy')resistance=true;});
+    if(resistance){nav.clearSince=null;return false;}
+  }
   if(nav.clearSince===null)nav.clearSince=battle.elapsed;
-  if(battle.elapsed-nav.clearSince<FRONT.clearDelay)return false;
+  if(!heldTooLong && battle.elapsed-nav.clearSince<FRONT.clearDelay)return false;
   const next=a.row+1;
   progress[a.section]=Math.max(progress[a.section],next);
   if(next<FRONT.rows.length)reservePosition(entry,next);
