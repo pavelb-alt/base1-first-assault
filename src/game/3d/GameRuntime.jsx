@@ -10,6 +10,7 @@ import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE } from '@/game/config';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
+import { coverSnapshot, resetCombatCover } from '@/game/3d/navigation/coverTactics';
 import { updateSpatial, resetSpatial } from '@/game/3d/spatial';
 const pos = new THREE.Vector3();
 const dir = new THREE.Vector3();
@@ -36,6 +37,7 @@ export function GameRuntime() {
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
       getFrontline: () => frontlineSnapshot(),
+      getOutposts: () => coverSnapshot(),
       getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],capPerTeam:BALANCE.friendly.maxAlive}),
       getPerformance: () => ({...performance.current,averageFps:performance.current.seconds?performance.current.frames/performance.current.seconds:0}),
       getSoldierPosition: () => ({...gameState.soldierPosition}),
@@ -63,7 +65,7 @@ export function GameRuntime() {
       pause: () => EventBus.emit('pause-game'), resume: () => EventBus.emit('resume-game'),
     };
     const reset = () => {
-      clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetSpatial();
+      clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       performance.current={frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0};
       frames.current = 0; if (window.game) window.game.ready = false;
       for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; unit.breached = false; }

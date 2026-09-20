@@ -3,6 +3,7 @@ import { battle } from '@/game/3d/battleMetrics';
 import { walkRoute, firingPosition } from '@/game/3d/terrain';
 import { visitNearby } from '@/game/3d/spatial';
 import { followRoute, stop } from '@/game/3d/navigation/motion';
+import { releaseCombatCover, updateCombatCover } from '@/game/3d/navigation/coverTactics';
 
 const reservations=new Map();
 const progress=FRONT.sectionCenters.map(()=>0);
@@ -15,6 +16,7 @@ export function recordTraversal(type,seconds) {
 export function resetFrontline() { reservations.clear();progress.fill(0);allocationCursor=0;for(const k of Object.keys(metrics))delete metrics[k]; }
 export function releasePosition(entry) {
   if(entry?.positionId && reservations.get(entry.positionId)===entry)reservations.delete(entry.positionId);
+  releaseCombatCover(entry);
   if(entry)entry.positionId=null;
 }
 function count(row,section) {
@@ -60,6 +62,7 @@ export function updateFriendly(entry,delta,enemy) {
     entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:BASES.enemy.position[0]+(entry.id%5-2)*1.5,z:BASES.enemy.position[2]+5}),index:0};
   }
   const nav=entry.nav;
+  if(updateCombatCover(entry,enemy,delta)) {nav.clearSince=null;nav.fighting=!!entry.aiTarget;return false;}
   if(enemy) {nav.clearSince=null;stop(entry);entry.aiTarget=enemy;nav.fighting=true;return false;}
   nav.fighting=false;
   if(nav.phase==='base') {

@@ -5,10 +5,11 @@ import { terrainHeight, trenchCenter } from '@/game/3d/terrain';
 import { visitNearby } from '@/game/3d/spatial';
 import { isGrounded, moveToward, stop } from '@/game/3d/navigation/motion';
 import { recordTraversal } from '@/game/3d/navigation/frontline';
+import { releaseCombatCover, updateCombatCover } from '@/game/3d/navigation/coverTactics';
 
 const landings=new Map();
 export function resetCrossings(){landings.clear();}
-export function releaseCrossing(entry){if(entry.nav?.landingKey)landings.delete(entry.nav.landingKey);}
+export function releaseCrossing(entry){if(entry.nav?.landingKey)landings.delete(entry.nav.landingKey);releaseCombatCover(entry);}
 function allocateLink(entry) {
   const nav=entry.nav,sector=SECTORS[entry.sectorIndex];
   const row=FRONT.rows[FRONT.rows.length-1-nav.front];
@@ -68,6 +69,8 @@ export function updateEnemy(entry,delta,enemy) {
     }
     return false;
   }
+  // Nearby ground units detour through outpost doors and hold protected interior slots.
+  if(entry.type!=='eyedrone'&&updateCombatCover(entry,enemy,delta))return false;
   // Ground enemies stop to engage visible defenders; drones keep altitude.
   if(enemy){stop(entry,entry.type==='eyedrone');entry.aiTarget=enemy;return false;}
   entry.aiTarget=null;
