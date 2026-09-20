@@ -285,10 +285,10 @@ export const CAMERA = {
     mouseSensitivity: 0.0022,
   },
   ads: {
-    distance: 2.2,       // closer camera for precision aiming
-    height: 1.8,         // lower eye line when aiming
-    shoulder: 0.15,      // tighter shoulder offset
-    fov: 45,             // narrower field of view
+    distance: 2.6,       // pulled back slightly so the character stays in frame
+    height: 1.3,         // lower eye line so aiming angle tilts down toward target
+    shoulder: 0.25,      // slightly wider offset to keep character visible
+    fov: 50,             // slightly wider to avoid clipping the model out
     sensitivityMult: 0.5, // reduced mouse sensitivity while aiming
   },
 };
