@@ -61,7 +61,7 @@ export const FRONT = {
   friendlyForward: -1, enemyForward: 1,
   // Two mirrored WWI systems: rear/artillery, support, then front line.
   // The 28m center gap is No Man's Land rather than another trench.
-  rows: [44, 30, 14, -14, -30, -44],
+  rows: [44, 30, 14],
   sectionCenters: [-56.25, -33.75, -11.25, 11.25, 33.75, 56.25],
   crossings: [-67.5, -45, -22.5, 0, 22.5, 45, 67.5],
   sectionWidth: 22.5, slotsPerSection: 9,
@@ -74,9 +74,6 @@ export const FRONT = {
     { role: 'artillery', halfWidth: 1.85, depth: 0.6, zigAmplitude: 0.45 },
     { role: 'support', halfWidth: 2.15, depth: 0.75, zigAmplitude: 0.75 },
     { role: 'front', halfWidth: 3.15, depth: 1.15, zigAmplitude: 1.35 },
-    { role: 'front', halfWidth: 3.15, depth: 1.15, zigAmplitude: 1.35 },
-    { role: 'support', halfWidth: 2.15, depth: 0.75, zigAmplitude: 0.75 },
-    { role: 'artillery', halfWidth: 1.85, depth: 0.6, zigAmplitude: 0.45 },
   ],
   communicationWidth: 1.35,
   zigLength: 7.5, zigAmplitude: 0.55,

@@ -10,7 +10,6 @@ export function TrenchWire(){
   const posts=useRef();
   const belts=useMemo(()=>[
     {z:FRONT.rows[2]-7},{z:FRONT.rows[2]-10.5},
-    {z:FRONT.rows[3]+7},{z:FRONT.rows[3]+10.5},
   ],[]);
   const xs=useMemo(()=>Array.from({length:25},(_,i)=>-MAP.HALF*0.84+i*(MAP.HALF*1.68/24)),[]);
   const wireGeometry=useMemo(()=>{

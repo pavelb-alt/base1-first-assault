@@ -94,7 +94,7 @@ export function updateFriendly(entry,delta,enemy) {
   const next=a.row+1;
   // Tower defense: friendly NPCs hold at the midline (row 3, z=-14) and do NOT
   // advance into enemy territory. Row indices 0-2 are enemy-side; 3-5 are friendly.
-  const DEFENSIVE_HOLD_ROW = FRONT.mainRow; // row 2 (z=-14) — the front line facing No Man's Land
+  const DEFENSIVE_HOLD_ROW = FRONT.mainRow; // row 2 (z=14) — the front line facing No Man's Land
   if(next > DEFENSIVE_HOLD_ROW) {
     // Hold position at the defensive line — don't push forward
     nav.clearSince=null;

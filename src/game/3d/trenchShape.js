@@ -88,7 +88,7 @@ function addPolyline(points) {
     COMMUNICATION_SEGMENTS.push({x:(a.x+b.x)/2,z:(a.z+b.z)/2,width:Math.hypot(dx,dz),rotation:-Math.atan2(dz,dx)});
   }
 }
-for(const [rear,support,front] of [[0,1,2],[5,4,3]]) {
+for(const [rear,support,front] of [[0,1,2]]) {
   const towardFront=Math.sign(FRONT.rows[front]-FRONT.rows[support]);
   for(const anchor of [-45,0,45]) {
     const rearZ=trenchCenter(rear,anchor),supportZ=trenchCenter(support,anchor);
@@ -108,7 +108,7 @@ for(const [rear,support,front] of [[0,1,2],[5,4,3]]) {
 
 // Large rear firing pits echo the artillery boxes shown behind the support line.
 export const ARTILLERY_BAYS=[];
-for(const row of [0,5]) {
+for(const row of [0]) {
   const outward=Math.sign(FRONT.rows[row]);
   for(const x of [-34,0,34]) ARTILLERY_BAYS.push({x,z:FRONT.rows[row]+outward*5.2,width:11,depth:6.5});
 }
