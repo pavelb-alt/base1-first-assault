@@ -58,6 +58,7 @@ export function releaseCombatCover(entry) {
   if (entry.combatCover && reservations.get(entry.combatCover.slotId) === entry) reservations.delete(entry.combatCover.slotId);
   entry.combatCover = null;
   entry.outpostBreach = null;
+  entry.outpostAvoidance = null;
   activeBreaches.delete(entry);
 }
 

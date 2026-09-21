@@ -39,21 +39,40 @@ function segmentHitsBox(from, to, outpost, margin) {
   return tMax >= 0 && tMin <= 1;
 }
 
-// Regular advance routes go around ruins. Deliberate cover/breach routes disable
-// this steering and use the wide north/south doorways instead.
-export function steerAroundOutposts(from, target, margin = 0.75) {
+// Regular advance routes go around ruins. A per-unit avoidance record makes the
+// chosen side sticky: first move beside the ruin, then pass its far corner.
+// This prevents crowded units from switching corners every frame and deadlocking.
+export function steerAroundOutposts(from, target, margin = 0.75, avoidance = null, unitId = 0) {
+  const clearanceX = OUTPOST.halfWidth + margin + 0.6;
+  const clearanceZ = OUTPOST.halfDepth + margin + 0.6;
   const inside = outpostContaining(from);
   if (inside) {
     const side = target.z < inside.z ? -1 : 1;
-    return { x: inside.x, z: inside.z + side * (OUTPOST.halfDepth + margin + 0.35) };
+    return { x: inside.x, z: inside.z + side * clearanceZ };
   }
+
+  let active = avoidance?.outpostId ? OUTPOSTS.find(o => o.id === avoidance.outpostId) : null;
+  if (active) {
+    const bypassX = active.x + avoidance.sideX * clearanceX;
+    if (avoidance.phase === 'side') {
+      if (Math.abs(from.x - bypassX) < 0.55) avoidance.phase = 'pass';
+      else return { x: bypassX, z: from.z };
+    }
+    const passZ = active.z + avoidance.sideZ * clearanceZ;
+    if (Math.abs(from.z - passZ) < 0.55) {
+      avoidance.outpostId = null;
+      avoidance.phase = null;
+      active = null;
+    } else return { x: bypassX, z: passZ };
+  }
+
   for (const outpost of OUTPOSTS) {
     if (!segmentHitsBox(from, target, outpost, margin)) continue;
-    const sideX = from.x < outpost.x ? -1 : 1;
-    const bypassX = outpost.x + sideX * (OUTPOST.halfWidth + margin + 0.35);
-    const alreadyBeside = Math.abs(from.x - outpost.x) >= OUTPOST.halfWidth + margin - 0.15;
-    const sideZ = (alreadyBeside ? target.z : from.z) < outpost.z ? -1 : 1;
-    return { x: bypassX, z: outpost.z + sideZ * (OUTPOST.halfDepth + margin + 0.35) };
+    const centered = Math.abs(from.x - outpost.x) < 0.25;
+    const sideX = centered ? (unitId % 2 ? -1 : 1) : (from.x < outpost.x ? -1 : 1);
+    const sideZ = target.z < outpost.z ? -1 : 1;
+    if (avoidance) Object.assign(avoidance, { outpostId: outpost.id, sideX, sideZ, phase: 'side' });
+    return { x: outpost.x + sideX * clearanceX, z: from.z };
   }
   return target;
 }

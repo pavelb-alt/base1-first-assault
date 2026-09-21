@@ -29,7 +29,10 @@ export function stop(entry, flying=false) {
 }
 export function moveToward(entry,target,delta,{flying=false,separate=true,avoidOutposts=true}={}) {
   const body=entry.bodyRef.current,p=body.translation(),v=body.linvel();
-  const destination=!flying&&avoidOutposts?steerAroundOutposts(p,target):target;
+  if(!entry.outpostAvoidance)entry.outpostAvoidance={outpostId:null,phase:null};
+  const destination=!flying&&avoidOutposts
+    ? steerAroundOutposts(p,target,0.75,entry.outpostAvoidance,entry.id)
+    : target;
   let dx=destination.x-p.x,dz=destination.z-p.z;
   const distance=Math.hypot(dx,dz);
   if(distance<0.45){
