@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { FRONT, MAP } from '@/game/config';
 import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays } from '@/game/3d/trenchShape';
 import { TrenchWire } from '@/game/3d/objects/TrenchWire';
+import { AntiTankObstacles } from '@/game/3d/objects/AntiTankObstacles';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { createGroundMaterial, setGroundNightFactor } from '@/game/3d/dressing/groundAppearance';
@@ -87,5 +88,6 @@ export function TrenchTerrain(){
     <instancedMesh ref={bayBanks} args={[box,communicationBankMaterial,artilleryBays.length*3]} castShadow receiveShadow frustumCulled={false}/>
     <instancedMesh ref={mesh} args={[box,coverMaterial,covers.length]} castShadow receiveShadow frustumCulled={false}/>
     <TrenchWire/>
+    <AntiTankObstacles/>
   </>;
 }
