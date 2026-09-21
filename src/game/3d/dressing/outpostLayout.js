@@ -1,13 +1,7 @@
-// Enterable ruins distributed between trench lines. All entrances run north/south
-// so the main faction advance can flow through each structure.
-export const OUTPOSTS = [
-  { id: 'west-north', x: -48, z: -34, rotation: 0 },
-  { id: 'center-north', x: -8, z: -34, rotation: 0 },
-  { id: 'east-mid', x: 45, z: -10, rotation: 0 },
-  { id: 'west-mid', x: -43, z: 12, rotation: 0 },
-  { id: 'center-south', x: 8, z: 34, rotation: 0 },
-  { id: 'east-south', x: 48, z: 34, rotation: 0 },
-];
+// Battlefield no longer mounts ruined outposts. Keep the navigation/cover
+// registry empty too: ghost footprints otherwise divert both factions away
+// from the real trench ramps and assign cover inside nonexistent buildings.
+export const OUTPOSTS = [];
 
 export const OUTPOST = {
   halfWidth: 5,
