@@ -16,8 +16,22 @@ function hedgehogGeometry() {
     g.applyMatrix4(m);
     geos.push(g);
   }
-  const merged = geos[0].clone();
-  for (let i = 1; i < geos.length; i++) merged.merge(geos[i]);
+  // BufferGeometry has no merge() method in current Three.js.
+  // Flatten the three beams and combine matching vertex attributes once.
+  const parts = geos.map(g => g.toNonIndexed());
+  const merged = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv']) {
+    const attributes = parts.map(g => g.getAttribute(name));
+    const values = new Float32Array(attributes.reduce((n, a) => n + a.array.length, 0));
+    let offset = 0;
+    for (const attribute of attributes) {
+      values.set(attribute.array, offset);
+      offset += attribute.array.length;
+    }
+    merged.setAttribute(name, new THREE.BufferAttribute(values, attributes[0].itemSize));
+  }
+  for (const geometry of [...geos, ...parts]) geometry.dispose();
+  merged.computeBoundingSphere();
   return merged;
 }
 
