@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EventBus } from '@/game/EventBus';
-import { TOWER_DEFENSE } from '@/game/config';
+import { TOWER_DEFENSE, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { gameState } from '@/game/3d/world';
 
@@ -10,6 +10,7 @@ export function TowerDefenseHUD({ visible }) {
   const [scrap, setScrap] = useState(towerDefenseState.scrap);
   const [wave, setWave] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [level, setLevel] = useState(1);
   const [showPieMenu, setShowPieMenu] = useState(false);
   const [piePos, setPiePos] = useState({ x: 0, y: 0 });
   const [worldPos, setWorldPos] = useState(null);
@@ -17,9 +18,11 @@ export function TowerDefenseHUD({ visible }) {
   useEffect(() => {
     const onCurrency = (amt) => setScrap(amt);
     const onWave = (w) => setWave(w);
+    const onLevelChanged = (l) => setLevel(l);
     EventBus.on('currency-changed', onCurrency);
     EventBus.on('wave-changed', onWave);
-    return () => { EventBus.off('currency-changed', onCurrency); EventBus.off('wave-changed', onWave); };
+    EventBus.on('level-changed', onLevelChanged);
+    return () => { EventBus.off('currency-changed', onCurrency); EventBus.off('wave-changed', onWave); EventBus.off('level-changed', onLevelChanged); };
   }, []);
 
   // Survival timer
@@ -132,7 +135,9 @@ export function TowerDefenseHUD({ visible }) {
           fontFamily: 'ui-monospace, monospace',
         }}
       >
-        <div style={{ color: '#ff9b5a', fontWeight: 800, letterSpacing: '0.1em' }}>WAVE {wave}/{TOWER_DEFENSE.maxWaves}</div>
+        <div style={{ color: '#ff9b5a', fontWeight: 800, letterSpacing: '0.1em' }}>
+          {level === 2 ? '🌙 NIGHT' : '☀ DAY'} WAVE {wave}/{getMaxWaves(level)}
+        </div>
         <div>⏱ {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</div>
       </div>
 

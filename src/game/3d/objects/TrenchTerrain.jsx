@@ -6,7 +6,7 @@ import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communicat
 import { TrenchWire } from '@/game/3d/objects/TrenchWire';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
-import { createGroundMaterial } from '@/game/3d/dressing/groundAppearance';
+import { createGroundMaterial, setGroundNightFactor } from '@/game/3d/dressing/groundAppearance';
 
 // One surface for visible earth AND fixed concave collision; no plane over the cutouts.
 const ground = new THREE.BufferGeometry();
@@ -35,6 +35,11 @@ const communicationFloorMaterial=new THREE.MeshStandardMaterial({color:FRONT.ear
 const communicationBankMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.wall,roughness:1});
 export function TrenchTerrain(){
   const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef();
+  useLayoutEffect(()=>{
+    const onLevelChanged=(level)=>setGroundNightFactor(level===2?1:0);
+    EventBus.on('level-changed',onLevelChanged);
+    return()=>EventBus.off('level-changed',onLevelChanged);
+  },[]);
   useLayoutEffect(()=>{
     const m=new THREE.Object3D();
     covers.forEach((c,i)=>{m.position.set(c.x,FRONT.parapetHeight/2,c.z);m.rotation.y=c.rotation;m.scale.set(c.width,FRONT.parapetHeight,FRONT.edgeThickness);m.updateMatrix();mesh.current.setMatrixAt(i,m.matrix);});

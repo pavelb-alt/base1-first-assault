@@ -13,4 +13,5 @@ export const gameState = {
   loaded: false,               // model finished loading
   error: null,                 // model load error message
   preparing: false,            // opening-flow handoff: physics runs, player input blocked
+  currentLevel: 1,             // 1=day, 2=night — drives atmosphere and wave difficulty
 };

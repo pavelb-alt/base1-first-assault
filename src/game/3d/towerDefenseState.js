@@ -16,6 +16,12 @@ export const towerDefenseState = {
     this.startTime = 0;
     EventBus.emit('currency-changed', this.scrap);
   },
+  // Level transition: keep towers & scrap, reset wave counter and survival timer.
+  transitionLevel() {
+    this.wave = 0;
+    this.startTime = Date.now();
+    EventBus.emit('wave-changed', 0);
+  },
   addScrap(amount) {
     this.scrap += amount;
     EventBus.emit('currency-changed', this.scrap);

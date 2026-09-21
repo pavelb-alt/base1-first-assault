@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { BALANCE, FRONT, MAP, SECTORS } from '@/game/config';
+import { BALANCE, FRONT, MAP, SECTORS, getEnemyRules } from '@/game/config';
 const ENEMY_START_DELAY = BALANCE.enemy.startDelay ?? 0;
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
@@ -23,7 +23,9 @@ function spawnPosition(sectorIndex,team,member,waveId,counts) {
 }
 // Reusable population pools. Sectors allocate width, never constrain navigation.
 export function useWavePool(team) {
-  const rules=BALANCE[team],size=team==='enemy'?rules.squad.length:rules.perSector;
+  const levelRef=useRef(gameState.currentLevel);
+  const rulesRef=useRef(team==='enemy'?getEnemyRules(levelRef.current):BALANCE[team]);
+  const rules=rulesRef.current,size=team==='enemy'?rules.squad.length:rules.perSector;
   const [,publish]=useReducer(n=>n+1,0);
   const state=useRef(null);
   if(!state.current)state.current={slots:Array.from({length:rules.maxAlive},(_,slot)=>({
@@ -35,12 +37,23 @@ export function useWavePool(team) {
     if(index<0)return;s.slots[index]={...s.slots[index],active:false};publish();
   },[]);
   useEffect(()=>{
-    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false,reserved:false}));s.timer=rules.interval;s.trilobiteTimer=0;s.waveId=0;if(team==='friendly')cargoShipState.reset();publish();};
-    EventBus.on('reset-game',reset);return()=>EventBus.off('reset-game',reset);
-  },[rules]);
+    const reset=()=>{const s=state.current;s.slots=s.slots.map(u=>({...u,active:false,reserved:false}));s.timer=rulesRef.current.interval;s.trilobiteTimer=0;s.waveId=0;if(team==='friendly')cargoShipState.reset();publish();};
+    const onLevelChanged=()=>{
+      levelRef.current=gameState.currentLevel;
+      rulesRef.current=team==='enemy'?getEnemyRules(levelRef.current):BALANCE[team];
+      const nr=rulesRef.current,ns=team==='enemy'?nr.squad.length:nr.perSector;
+      const s=state.current;
+      s.slots=s.slots.map((u,slot)=>({...u,active:false,reserved:false,
+        type:team==='enemy'?nr.squad[slot%ns]:'soldier'}));
+      s.timer=team==='enemy'?-(nr.startDelay??0):nr.interval;
+      s.trilobiteTimer=0;s.waveId=0;publish();
+    };
+    EventBus.on('reset-game',reset);EventBus.on('level-changed',onLevelChanged);
+    return()=>{EventBus.off('reset-game',reset);EventBus.off('level-changed',onLevelChanged);};
+  },[]);
   useFrame((_,delta)=>{
     if(gameState.paused)return;
-    const s=state.current;
+    const s=state.current,rules=rulesRef.current;
     // Activate soldiers from landed cargo ships (friendly only).
     if(team==='friendly'&&cargoShipState.readyDeliveries.length>0){
       let activated=false;

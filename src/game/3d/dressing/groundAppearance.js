@@ -99,10 +99,13 @@ export function groundTexture() {
   return texture;
 }
 
+const nightTint={value:0};
+export function setGroundNightFactor(v){nightTint.value=v;}
 export function createGroundMaterial() {
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   material.onBeforeCompile=shader=>{
     shader.uniforms.dressingMap={value:groundTexture()};
+    shader.uniforms.nightTint=nightTint;
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
       attribute float dressingFlat;
       varying vec2 vDressingUv;
@@ -112,11 +115,13 @@ export function createGroundMaterial() {
       vDressingFlat = dressingFlat;`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
       uniform sampler2D dressingMap;
+      uniform float nightTint;
       varying vec2 vDressingUv;
       varying float vDressingFlat;`)
       .replace('#include <color_fragment>',`#include <color_fragment>
-      diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(dressingMap,vDressingUv).rgb, vDressingFlat);`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(dressingMap,vDressingUv).rgb, vDressingFlat);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-v1';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-night-v2';
   return material;
 }

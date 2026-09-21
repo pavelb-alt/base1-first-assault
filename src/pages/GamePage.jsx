@@ -29,6 +29,8 @@ export default function GamePage() {
   const [gameOver, setGameOver] = useState(null);
   const [scrapAmount, setScrapAmount] = useState(towerDefenseState.scrap);
   const [waveNumber, setWaveNumber] = useState(0);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [levelTransition, setLevelTransition] = useState(false);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -40,9 +42,15 @@ export default function GamePage() {
       setTimeout(() => setWaitingForReinforcements(false), 3000);
     };
     const onGameOver = (result) => setGameOver(result);
-
     const onCurrency = (amt) => setScrapAmount(amt);
     const onWave = (w) => setWaveNumber(w);
+    const onLevelTransition = () => setLevelTransition(true);
+    const onLevelChanged = (level) => {
+      setCurrentLevel(level);
+      setLevelTransition(false);
+      setWaveNumber(0);
+      if (level === 1) setGameOver(null);
+    };
 
     EventBus.on('mode-changed', onMode);
     EventBus.on('soldier-loaded', onLoaded);
@@ -51,6 +59,8 @@ export default function GamePage() {
     EventBus.on('game-over', onGameOver);
     EventBus.on('currency-changed', onCurrency);
     EventBus.on('wave-changed', onWave);
+    EventBus.on('level-transition', onLevelTransition);
+    EventBus.on('level-changed', onLevelChanged);
 
     return () => {
       EventBus.off('mode-changed', onMode);
@@ -60,6 +70,8 @@ export default function GamePage() {
       EventBus.off('game-over', onGameOver);
       EventBus.off('currency-changed', onCurrency);
       EventBus.off('wave-changed', onWave);
+      EventBus.off('level-transition', onLevelTransition);
+      EventBus.off('level-changed', onLevelChanged);
     };
   }, []);
 
@@ -130,6 +142,8 @@ export default function GamePage() {
     setGameOver(null);
     setScrapAmount(towerDefenseState.scrap);
     setWaveNumber(0);
+    setCurrentLevel(1);
+    setLevelTransition(false);
     setPhase('menu');
   }, []);
 
@@ -224,7 +238,7 @@ export default function GamePage() {
                 {mode === 'strategic' ? '◉ STRATEGIC VIEW' : '🎮 THIRD-PERSON'}
               </div>
               <div className="text-slate-400 text-xs mt-0.5">
-                {mode === 'strategic' ? 'Overview Mode' : 'Possessing Soldier'}
+                {currentLevel === 1 ? 'Day Operation' : 'Night Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
               </div>
             </div>
 
@@ -325,6 +339,17 @@ export default function GamePage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Level transition overlay (day → night cinematic) */}
+        {levelTransition && (
+          <div className="absolute inset-0 grid place-items-center bg-black/95 pointer-events-auto z-40">
+            <div className="text-center">
+              <div className="text-blue-300 text-5xl font-extrabold mb-2 tracking-wider animate-pulse">LEVEL 2</div>
+              <div className="text-slate-300 text-xl font-semibold tracking-widest">— NIGHT —</div>
+              <div className="text-slate-500 text-sm mt-4 italic">The fog rolls in…</div>
+            </div>
           </div>
         )}
 

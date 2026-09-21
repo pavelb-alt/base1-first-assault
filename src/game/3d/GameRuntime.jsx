@@ -7,7 +7,7 @@ import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
-import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE } from '@/game/config';
+import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
@@ -30,6 +30,7 @@ function weaponState(u) {
 export function GameRuntime() {
   const frames = useRef(0);
   const performance = useRef({frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0});
+  const levelTransition = useRef({ active: false, timer: 0 });
   useEffect(() => {
     const selected = () => combat.units.find(u => u.team === 'friendly' && u.id === gameState.possessedSoldierId);
     window.game = {
@@ -69,6 +70,9 @@ export function GameRuntime() {
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
+      levelTransition.current = { active: false, timer: 0 };
+      gameState.currentLevel = 1;
+      EventBus.emit('level-changed', 1);
       performance.current={frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0};
       frames.current = 0; if (window.game) window.game.ready = false;
       for (const unit of combat.units) { unit.alive = false; unit.aiTarget = null; unit.breached = false; }
@@ -80,6 +84,18 @@ export function GameRuntime() {
   }, []);
   useFrame(({gl}, delta) => {
     if (!gameState.paused) {
+      // Level transition: pause game logic during the cinematic, then advance.
+      if (levelTransition.current.active) {
+        levelTransition.current.timer += delta;
+        if (levelTransition.current.timer >= 3) {
+          levelTransition.current.active = false;
+          gameState.currentLevel = 2;
+          towerDefenseState.transitionLevel();
+          battle.waves.enemy = 0;
+          EventBus.emit('level-changed', 2);
+        }
+        return;
+      }
       battle.elapsed += delta;
       updateSpatial(combat.units,battle.elapsed);
       const p=performance.current;p.frames++;p.seconds+=delta;p.maxFrameMs=Math.max(p.maxFrameMs,delta*1000);
@@ -90,10 +106,17 @@ export function GameRuntime() {
       if (battle.waves.enemy > towerDefenseState.wave) {
         towerDefenseState.wave = battle.waves.enemy;
         EventBus.emit('wave-changed', towerDefenseState.wave);
-        // Victory after surviving all waves
-        if (towerDefenseState.wave >= TOWER_DEFENSE.maxWaves && !battle.gameOver) {
-          battle.gameOver = 'victory';
-          EventBus.emit('game-over', 'victory');
+        // Victory after surviving all waves — day level transitions to night
+        const maxWaves = getMaxWaves(gameState.currentLevel);
+        if (towerDefenseState.wave >= maxWaves && !battle.gameOver) {
+          if (gameState.currentLevel === 1) {
+            levelTransition.current.active = true;
+            levelTransition.current.timer = 0;
+            EventBus.emit('level-transition');
+          } else {
+            battle.gameOver = 'victory';
+            EventBus.emit('game-over', 'victory');
+          }
         }
       }
 

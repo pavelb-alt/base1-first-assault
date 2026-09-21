@@ -355,6 +355,56 @@ export const TOWER_DEFENSE = {
   },
 };
 
+// --- Level system (day → night campaign) ------------------------------------
+export const LEVELS = {
+  day: {
+    id: 1,
+    name: 'DAY',
+    maxWaves: 20,
+    atmosphere: {
+      sky: '#9eb9ca', horizon: '#ead2ae', sun: '#fff0ce',
+      sunPosition: [-50, 80, 140], sunIntensity: 3.6,
+      fogNear: 150, fogFar: 460,
+      ambient: 0.36, hemisphere: 1.05, skyColor: '#d9ecf5', groundColor: '#a99476',
+    },
+  },
+  night: {
+    id: 2,
+    name: 'NIGHT',
+    maxWaves: 25,
+    atmosphere: {
+      sky: '#0a0e1a', horizon: '#1a2030', sun: '#8fa8d0',
+      sunPosition: [-30, 70, 90], sunIntensity: 1.2,
+      fogNear: 30, fogFar: 120,
+      ambient: 0.12, hemisphere: 0.35, skyColor: '#2a3550', groundColor: '#1a1e2a',
+    },
+  },
+};
+
+export function getLevelConfig(level) {
+  return level === 2 ? LEVELS.night : LEVELS.day;
+}
+export function getAtmosphere(level) {
+  return getLevelConfig(level).atmosphere;
+}
+export function getMaxWaves(level) {
+  return getLevelConfig(level).maxWaves;
+}
+export function getEnemyRules(level) {
+  if (level === 2) {
+    return {
+      ...BALANCE.enemy,
+      interval: 10,
+      maxAlive: 84,
+      spawnScale: 1.3,
+      startDelay: 8,
+      squad: ['quadshell', 'eyedrone', 'trilobite', 'eyedrone', 'trilobite'],
+      trilobiteInterval: 20,
+    };
+  }
+  return BALANCE.enemy;
+}
+
 // --- Opening flow (main menu, intro video, handoff) -------------------------
 export const OPENING = {
   menuBackgroundUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/0802417bf_948de030c_image.png',
