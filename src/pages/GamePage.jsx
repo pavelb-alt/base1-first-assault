@@ -76,11 +76,16 @@ export default function GamePage() {
   }, []);
 
   // Phase: menu → intro (mount game running so cargo ships land during the video)
-  const startMission = useCallback(() => {
+  const startMission = useCallback((level = 1) => {
     if (initStarted.current) return;
     initStarted.current = true;
     gameState.paused = false;
     gameState.preparing = true; // block player input during video
+    if (level === 2) {
+      gameState.currentLevel = 2;
+      towerDefenseState.reset();
+      EventBus.emit('level-changed', 2);
+    }
     setPhase('intro');
   }, []);
 

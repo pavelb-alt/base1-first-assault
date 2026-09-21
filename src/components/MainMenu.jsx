@@ -21,6 +21,7 @@ export function MainMenu({ onStart }) {
   const [showControls, setShowControls] = useState(false);
 
   const handleStart = useCallback(() => { onStart(); }, [onStart]);
+  const handleStartNight = useCallback(() => { onStart(2); }, [onStart]);
 
   return (
     <div className="absolute inset-0 z-50 overflow-hidden">
@@ -46,6 +47,13 @@ export function MainMenu({ onStart }) {
           className="px-12 py-4 bg-orange-600 hover:bg-orange-500 active:bg-orange-700 text-white text-xl font-bold rounded-lg shadow-xl transition-colors mb-4 focus:outline-none focus:ring-4 focus:ring-orange-400/50"
         >
           START MISSION
+        </button>
+
+        <button
+          onClick={handleStartNight}
+          className="px-8 py-2 bg-indigo-700/90 hover:bg-indigo-600 active:bg-indigo-800 text-white text-base font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4"
+        >
+          ☾ NIGHT LEVEL (TEST)
         </button>
 
         <button
