@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { combat } from '@/game/3d/combat';
 import { gameState } from '@/game/3d/world';
-import { MAP, BASES, FRONT } from '@/game/config';
+import { MAP, BASES, FRONT, PERFORMANCE } from '@/game/config';
 
 const SIZE = 160; // px
 const PADDING = 6;
@@ -25,10 +25,12 @@ export function Minimap() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let raf;
+    let lastDraw = -Infinity;
 
-    const draw = () => {
+    const draw = (now) => {
       raf = requestAnimationFrame(draw);
-      if (gameState.paused) return;
+      if (gameState.paused || now - lastDraw < 1000 / PERFORMANCE.minimapHz) return;
+      lastDraw = now;
 
       ctx.clearRect(0, 0, SIZE, SIZE);
 
@@ -84,7 +86,7 @@ export function Minimap() {
       }
     };
 
-    draw();
+    raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, []);
 

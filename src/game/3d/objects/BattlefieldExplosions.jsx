@@ -5,7 +5,7 @@ import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { dressingNoise } from '@/game/3d/dressing/groundAppearance';
 import { terrainHeight } from '@/game/3d/terrain';
-import { EXPLOSIONS as E, CINEMATIC as C } from '@/game/config';
+import { EXPLOSIONS as E, CINEMATIC as C, PERFORMANCE } from '@/game/config';
 import { blastLayer } from '@/game/3d/objects/blastMaterial';
 
 export const explosionVisuals = { bursts: 0, smoke: 0, fire: 0, debris: 0 };
@@ -50,23 +50,24 @@ export function BattlefieldExplosions() {
       const x = (noise() * 2 - 1) * E.areaX;
       const z = E.areaZMin + noise() * (E.areaZMax - E.areaZMin);
       const y = terrainHeight(x, z) + 0.25, power = 0.8 + noise() * 0.6;
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < Math.ceil(7 * PERFORMANCE.ambientParticleScale); i++) {
         const a = noise() * Math.PI * 2;
         emit('fire', x + Math.cos(a) * .6, y + .25 + noise(), z + Math.sin(a) * .6,
           Math.cos(a) * 1.4, 1.5 + noise() * 2, Math.sin(a) * 1.4, power * (.7 + noise()), C.fireLife * (.65 + noise() * .35));
       }
-      for (let i = 0; i < 9; i++) {
+      for (let i = 0; i < Math.ceil(9 * PERFORMANCE.ambientParticleScale); i++) {
         const a = noise() * Math.PI * 2;
         emit('smoke', x + Math.cos(a) * .7, y + .5, z + Math.sin(a) * .7,
           Math.cos(a) * 1.2 + .6, 1.1 + noise() * 1.8, Math.sin(a) * 1.2,
           power * (.7 + noise() * .8), C.smokeLife * (.8 + noise() * .2));
       }
-      for (let i = 0; i < 12; i++) {
-        const a = i / 12 * Math.PI * 2, speed = 2.8 + noise() * 2;
+      const dustCount = Math.ceil(12 * PERFORMANCE.ambientParticleScale);
+      for (let i = 0; i < dustCount; i++) {
+        const a = i / dustCount * Math.PI * 2, speed = 2.8 + noise() * 2;
         emit('smoke', x, y, z, Math.cos(a) * speed, .1, Math.sin(a) * speed,
           power * (.6 + noise() * .4), C.dustLife, true);
       }
-      for (let i = 0; i < 24; i++) {
+      for (let i = 0; i < Math.ceil(24 * PERFORMANCE.ambientParticleScale); i++) {
         const a = noise() * Math.PI * 2, speed = 2 + noise() * 6;
         emit('debris', x, y, z, Math.cos(a) * speed, 4 + noise() * 7, Math.sin(a) * speed,
           .5 + noise() * 1.2, 1.5);

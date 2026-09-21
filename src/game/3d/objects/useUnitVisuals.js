@@ -1,8 +1,15 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { AnimationMixer } from 'three';
+import { AnimationMixer, Frustum, Matrix4, Sphere } from 'three';
 import { PERFORMANCE } from '@/game/config';
 import { gameState } from '@/game/3d/world';
+
+// One shared frustum calculation per rendered frame, not per soldier.
+const viewFrustum = new Frustum();
+const viewMatrix = new Matrix4();
+const bounds = new Sphere();
+let viewTime = -1;
+let viewCamera = null;
 
 // Only visual animation is throttled. Movement, targeting, physics and shots
 // still run at their original cadence, including for distant/offscreen units.
@@ -31,16 +38,32 @@ export function useUnitVisuals(animations, model, groupRef, bodyRef, active, tea
     };
   }, [animations, groupRef, state]);
 
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, clock }, delta) => {
     visualFrame.current = false;
     if (!active || gameState.paused || !bodyRef.current) return;
     const position = bodyRef.current.translation();
     const distanceSq = camera.position.distanceToSquared(position);
     const controlled = team === 'friendly' && gameState.possessedSoldierId === id;
-    const shadows = controlled || distanceSq < PERFORMANCE.unitShadowDistance ** 2;
+    const shadows = PERFORMANCE.shadows && (controlled || distanceSq < PERFORMANCE.unitShadowDistance ** 2);
     if (state.shadows !== shadows) {
       for (const mesh of state.meshes) mesh.castShadow = shadows;
       state.shadows = shadows;
+    }
+    // Offscreen movement, shots and physics continue; only invisible posing sleeps.
+    if (!controlled) {
+      if (viewTime !== clock.elapsedTime || viewCamera !== camera) {
+        camera.updateMatrixWorld();
+        viewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        viewFrustum.setFromProjectionMatrix(viewMatrix);
+        viewTime = clock.elapsedTime;
+        viewCamera = camera;
+      }
+      bounds.center.set(position.x, position.y + 2, position.z);
+      bounds.radius = 6; // conservative margin for the largest enemy and weapon
+      if (!viewFrustum.intersectsSphere(bounds)) {
+        elapsed.current = Math.min(elapsed.current + delta, 0.25);
+        return;
+      }
     }
     const interval = controlled ? 0 : 1 / (distanceSq < PERFORMANCE.nearAnimationDistance ** 2
       ? PERFORMANCE.nearAnimationHz : PERFORMANCE.farAnimationHz);

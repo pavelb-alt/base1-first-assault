@@ -100,6 +100,7 @@ export function GameRuntime() {
       updateSpatial(combat.units,battle.elapsed);
       const p=performance.current;p.frames++;p.seconds+=delta;p.maxFrameMs=Math.max(p.maxFrameMs,delta*1000);
       p.drawCalls=gl.info.render.calls;p.triangles=gl.info.render.triangles;
+      p.pixelRatio=gl.getPixelRatio();p.shadows=gl.shadowMap.enabled;
 
       // Tower defense: track waves and survival timer
       if (towerDefenseState.startTime === 0) towerDefenseState.startTime = Date.now();

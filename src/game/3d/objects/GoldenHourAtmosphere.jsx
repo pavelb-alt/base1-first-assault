@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { Stars } from '@react-three/drei';
-import { getAtmosphere, MAP } from '@/game/config';
+import { getAtmosphere, MAP, PERFORMANCE } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { EventBus } from '@/game/EventBus';
 
@@ -48,7 +48,7 @@ export function GoldenHourAtmosphere() {
     {isNight && <Stars radius={400} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />}
     <ambientLight intensity={C.ambient} />
     <hemisphereLight intensity={C.hemisphere} color={C.skyColor} groundColor={C.groundColor} />
-    <directionalLight name={isNight ? "Moonlight" : "High daylight sun"} castShadow position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
+    <directionalLight name={isNight ? "Moonlight" : "High daylight sun"} castShadow={PERFORMANCE.shadows} position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
       shadow-mapSize={[2048, 2048]} shadow-camera-left={-MAP.HALF-25} shadow-camera-right={MAP.HALF+25}
       shadow-camera-top={MAP.HALF+25} shadow-camera-bottom={-MAP.HALF-25}
       shadow-camera-near={1} shadow-camera-far={450} shadow-bias={-0.0003} shadow-normalBias={0.035} />

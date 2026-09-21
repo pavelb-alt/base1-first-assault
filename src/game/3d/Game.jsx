@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { GameScene } from '@/game/3d/scenes/GameScene';
 import { PERFORMANCE } from '@/game/config';
+import { RenderBudget } from '@/game/3d/RenderBudget';
 
 /**
  * 3D (React Three Fiber) flavor of the engine contract. The Canvas creates
@@ -11,13 +12,15 @@ import { PERFORMANCE } from '@/game/config';
 export default function Game({ onReady }) {
   return (
     <Canvas
-      shadows
-      dpr={[1, PERFORMANCE.maxDpr]}
+      shadows={PERFORMANCE.shadows}
+      dpr={PERFORMANCE.maxDpr}
+      gl={{ antialias: PERFORMANCE.antialias, powerPreference: 'high-performance' }}
       camera={{ fov: 55, near: 0.1, far: 1200, position: [0, 350, 270] }}
       onCreated={(state) => {
         if (typeof onReady === 'function') onReady(state);
       }}
     >
+      <RenderBudget />
       <GameScene />
     </Canvas>
   );

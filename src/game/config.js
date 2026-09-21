@@ -7,11 +7,16 @@ export const GAME_PERSPECTIVE = 'top-down';
 
 // Rendering only: simulation, spawn budgets and weapon timing are unchanged.
 export const PERFORMANCE = {
-  maxDpr: 1.25,
-  nearAnimationDistance: 55,
-  nearAnimationHz: 30,
-  farAnimationHz: 15,
-  unitShadowDistance: 65,
+  minDpr: 0.6, maxDpr: 0.85,
+  shadows: false,
+  antialias: false,
+  targetFps: 45,
+  nearAnimationDistance: 35,
+  nearAnimationHz: 20,
+  farAnimationHz: 8,
+  unitShadowDistance: 0,
+  minimapHz: 10,
+  ambientParticleScale: 0.3,
 };
 
 // --- Map dimensions ---------------------------------------------------------
