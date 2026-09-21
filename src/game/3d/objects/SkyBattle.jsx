@@ -12,11 +12,11 @@ import { gameState } from '@/game/3d/world';
 for (const url of SKY_BATTLE.models) useGLTF.preload(url);
 
 // Shared geometry and materials (created once, reused across all instances)
-const boltGeometry = new THREE.SphereGeometry(0.3, 6, 6);
-const boltMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const boltGeometry = new THREE.SphereGeometry(0.4, 6, 6);
+const boltMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, toneMapped: false });
 const explosionGeometry = new THREE.SphereGeometry(1, 8, 8);
 const explosionMaterial = new THREE.MeshBasicMaterial({
-  color: 0xffffff, transparent: true, opacity: 0.75,
+  color: 0xffffff, transparent: true, opacity: 0.75, fog: false, toneMapped: false,
 });
 const smokeGeometry = new THREE.SphereGeometry(1, 6, 6);
 const smokeMaterial = new THREE.MeshBasicMaterial({
@@ -59,9 +59,15 @@ function recolorShipModel(model, team) {
         const hsl = {};
         clone.color.getHSL(hsl);
         const originalLightness = hsl.l;
-        clone.color.copy(hsl.s > 0.15 ? accentColor : hullColor);
+        const teamColor = hsl.s > 0.15 ? accentColor : hullColor;
+        clone.color.copy(teamColor);
         clone.color.multiplyScalar(THREE.MathUtils.lerp(0.72, 1.18, originalLightness));
+        if ('emissive' in clone) {
+          clone.emissive.copy(teamColor);
+          clone.emissiveIntensity = 0.65;
+        }
       }
+      clone.fog = false;
       return clone;
     });
     child.material = Array.isArray(child.material) ? newMaterials : newMaterials[0];

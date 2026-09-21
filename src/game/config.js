@@ -239,7 +239,7 @@ export const SKY_BATTLE = {
   maxBolts: 120,            // pooled, capped
   maxExplosions: 28,
   maxSmoke: 200,            // crash smoke-trail puffs, pooled
-  shipScale: 2.5,           // world units — visible from ground
+  shipScale: 3.5,           // larger silhouettes stay readable during night dogfights
   altitudeBands: [18, 22, 26, 30, 40, 44, 48, 52, 24, 46, 20, 50, 28], // avoids cargo cruise altitude (35)
   bound: 115,               // soft airspace boundary; fighters turn inward before reaching it
   flight: {
