@@ -31,6 +31,7 @@ export default function GamePage() {
   const [waveNumber, setWaveNumber] = useState(0);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [levelTransition, setLevelTransition] = useState(false);
+  const [tankCount, setTankCount] = useState(0);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function GamePage() {
       setWaveNumber(0);
       if (level === 1) setGameOver(null);
     };
+    const onTankCount = (count) => setTankCount(count);
 
     EventBus.on('mode-changed', onMode);
     EventBus.on('soldier-loaded', onLoaded);
@@ -61,6 +63,7 @@ export default function GamePage() {
     EventBus.on('wave-changed', onWave);
     EventBus.on('level-transition', onLevelTransition);
     EventBus.on('level-changed', onLevelChanged);
+    EventBus.on('tank-count-changed', onTankCount);
 
     return () => {
       EventBus.off('mode-changed', onMode);
@@ -72,6 +75,7 @@ export default function GamePage() {
       EventBus.off('wave-changed', onWave);
       EventBus.off('level-transition', onLevelTransition);
       EventBus.off('level-changed', onLevelChanged);
+      EventBus.off('tank-count-changed', onTankCount);
     };
   }, []);
 
@@ -149,6 +153,7 @@ export default function GamePage() {
     setWaveNumber(0);
     setCurrentLevel(1);
     setLevelTransition(false);
+    setTankCount(0);
     setPhase('menu');
   }, []);
 
@@ -246,6 +251,13 @@ export default function GamePage() {
                 {currentLevel === 1 ? 'Day Operation' : 'Night Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
               </div>
             </div>
+
+            {/* Tank counter */}
+            {tankCount > 0 && (
+              <div className="absolute top-16 left-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
+                <span className="text-orange-400 font-bold text-sm">🛡 Tanks: {tankCount}</span>
+              </div>
+            )}
 
             {/* Control hints */}
             <div className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">

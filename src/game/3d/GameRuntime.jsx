@@ -9,6 +9,7 @@ import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { tankState } from '@/game/3d/objects/tankState';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
 import { coverSnapshot, resetCombatCover } from '@/game/3d/navigation/coverTactics';
@@ -50,6 +51,7 @@ export function GameRuntime() {
       getSoldierIds: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(u => u.id),
       getSoldierCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getEnemyCount: () => combat.units.filter(u => u.team === 'enemy' && u.alive).length,
+      getTankCount: () => combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).length,
       getFriendlyCombatCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getWeapons: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(weaponState),
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,
@@ -70,6 +72,7 @@ export function GameRuntime() {
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
+      tankState.reset();
       levelTransition.current = { active: false, timer: 0 };
       gameState.currentLevel = 1;
       EventBus.emit('level-changed', 1);

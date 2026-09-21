@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
-import { ENEMY_TYPES, SOLDIER } from '@/game/config';
+import { ENEMY_TYPES, SOLDIER, TANK } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 
 const BAR_WIDTH = 1.0;
@@ -10,6 +10,7 @@ const BAR_HEIGHT = 0.12;
 const BAR_OFFSET = 0.35; // gap above the unit
 
 function unitTopY(entry) {
+  if (entry.type === 'tank') return TANK.colliderY * 2 + 1.0 + BAR_OFFSET;
   if (entry.type === 'trilobite') return ENEMY_TYPES.trilobite.colliderY * 2.4 + BAR_OFFSET;
   if (entry.type === 'eyedrone') return ENEMY_TYPES.eyedrone.hoverHeight + 1.2 + BAR_OFFSET;
   if (entry.type === 'quadshell') return ENEMY_TYPES.quadshell.colliderY * 2 + BAR_OFFSET;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
-import { COMBAT, TOWER_DEFENSE } from '@/game/config';
+import { COMBAT, TOWER_DEFENSE, TANK } from '@/game/config';
+import { visitNearby } from '@/game/3d/spatial';
 import { AIM } from '@/game/3d/weapons';
 import { random } from '@/game/3d/random';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
@@ -85,7 +86,16 @@ export function applyImpact(hit, shot) {
   });
   combat.stats.impactBursts++;
   if (target && target.alive && target.team !== shot.team) {
-    const damage = Math.min(target.health, shot.damage);
+    let damage = Math.min(target.health, shot.damage);
+    // Cover aura: friendly infantry near a tank take reduced damage
+    if (target.team === 'friendly' && target.type !== 'tank' && target.bodyRef?.current) {
+      const tp = target.bodyRef.current.translation();
+      let hasCover = false;
+      visitNearby(tp.x, tp.z, TANK.coverAuraRadius, (u) => {
+        if (u.team === 'friendly' && u.type === 'tank' && u.alive) hasCover = true;
+      });
+      if (hasCover) damage *= TANK.coverDamageReduction;
+    }
     target.health -= damage;
     if (target.health === 0) {
       target.alive = false;

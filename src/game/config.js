@@ -119,6 +119,7 @@ export const BALANCE = {
     quadshell:{ health: 120, damage: 7, cooldown: 0.125, range: 14, aiSpread: 0.05 },
     eyedrone: { health: 100, damage: 6, cooldown: 0.125, range: 17, aiSpread: 0.05 },
     trilobite:{ health: 320, damage: 14, cooldown: 0.25, range: 13, aiSpread: 0.05 },
+    tank:     { health: 800, damage: 20, cooldown: 2, range: 18, aiSpread: 0.03 },
   },
   // 216 units * 8 rounds/sec * 3 seconds, rounded up. Separate team pools
   // prevent update order from starving one faction's shots.
@@ -358,6 +359,29 @@ export const TOWER_DEFENSE = {
       baseRadius: 0.9,
     },
   },
+};
+
+// --- Friendly tanks (defensive bulwark) --------------------------------------
+export const TANK = {
+  hullColor: '#6b6b50',
+  trackColor: '#3a3a30',
+  turretColor: '#5a5a45',
+  barrelColor: '#2a2a25',
+  accentColor: '#cf8140',
+  colliderHalfWidth: 1.25,
+  colliderHalfHeight: 0.5,
+  colliderHalfDepth: 1.75,
+  colliderY: 0.5,
+  moveSpeed: 1.5,
+  initialFacing: Math.PI,
+  coverAuraRadius: 5,
+  coverDamageReduction: 0.5,
+};
+
+export const TANK_DELIVERY = {
+  interval: 45,
+  startDelay: 20,
+  maxAlive: 4,
 };
 
 // --- Level system (day → night campaign) ------------------------------------
