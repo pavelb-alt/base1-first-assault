@@ -22,6 +22,11 @@ const smokeGeometry = new THREE.SphereGeometry(1, 6, 6);
 const smokeMaterial = new THREE.MeshBasicMaterial({
   color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false,
 });
+const navigationLightGeometry = new THREE.SphereGeometry(0.11, 6, 6);
+const navigationLightMaterials = {
+  friendly: new THREE.MeshBasicMaterial({ color: SKY_BATTLE.colors.friendlyNavigation, fog: false, toneMapped: false }),
+  enemy: new THREE.MeshBasicMaterial({ color: SKY_BATTLE.colors.enemyNavigation, fog: false, toneMapped: false }),
+};
 
 // Fireball fades hot-yellow -> deep orange over its life.
 const _hotColor = new THREE.Color('#fff2c0');
@@ -39,8 +44,8 @@ const _lookTarget = new THREE.Vector3();
 const _dummy = new THREE.Object3D();
 
 /**
- * Clone accent materials (saturated colors) and recolor to team color.
- * Preserve body/structure materials (low saturation) unchanged.
+ * Give every fighter a restrained charcoal/gunmetal military finish.
+ * Team readability comes from navigation lights rather than painted hulls.
  */
 function recolorShipModel(model, team) {
   const hullColor = new THREE.Color(team === 'friendly'
@@ -59,12 +64,14 @@ function recolorShipModel(model, team) {
         const hsl = {};
         clone.color.getHSL(hsl);
         const originalLightness = hsl.l;
-        const teamColor = hsl.s > 0.15 ? accentColor : hullColor;
-        clone.color.copy(teamColor);
-        clone.color.multiplyScalar(THREE.MathUtils.lerp(0.72, 1.18, originalLightness));
+        const finishColor = hsl.s > 0.15 ? accentColor : hullColor;
+        clone.color.copy(finishColor);
+        clone.color.multiplyScalar(THREE.MathUtils.lerp(0.76, 1.2, originalLightness));
+        if ('metalness' in clone) clone.metalness = Math.max(clone.metalness, 0.55);
+        if ('roughness' in clone) clone.roughness = Math.max(clone.roughness, 0.48);
         if ('emissive' in clone) {
-          clone.emissive.copy(teamColor);
-          clone.emissiveIntensity = 0.65;
+          clone.emissive.copy(hullColor);
+          clone.emissiveIntensity = 0.08;
         }
       }
       clone.fog = false;
@@ -94,6 +101,13 @@ function createShipModel(sourceScene, team) {
 
   const wrapper = new THREE.Group();
   wrapper.add(clone);
+
+  // Compact, high-contrast formation lights remain readable without tinting the hull.
+  for (const [x, y, z] of [[-1.25, 0.08, 0], [1.25, 0.08, 0], [0, 0.12, -1.15]]) {
+    const light = new THREE.Mesh(navigationLightGeometry, navigationLightMaterials[team]);
+    light.position.set(x, y, z);
+    wrapper.add(light);
+  }
   return wrapper;
 }
 
@@ -105,7 +119,7 @@ export function SkyBattle() {
   const [, forceRender] = useReducer(n => n + 1, 0);
   const apiSet = useRef(false);
 
-  // Create 12 ship model instances (cached — only runs when GLTF results change)
+  // Create the pooled ship model instances (cached — only runs when GLTF results change)
   const shipModels = useMemo(() => {
     const sources = [modelA.scene, modelB.scene, modelC.scene];
     const models = [];

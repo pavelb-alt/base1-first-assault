@@ -279,10 +279,13 @@ export const SKY_BATTLE = {
     'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/5affcd1d1_craft_racer.glb',
   ],
   colors: {
-    friendlyHull: '#b85f27',
-    friendlyAccent: '#ff9a4d',
-    enemyHull: '#17191d',
-    enemyAccent: '#5b2020',
+    // Both fleets use dark military finishes; team identity comes from small lights.
+    friendlyHull: '#242c31',
+    friendlyAccent: '#46545a',
+    enemyHull: '#171b20',
+    enemyAccent: '#353c43',
+    friendlyNavigation: '#70e8ff',
+    enemyNavigation: '#b9a0ff',
     friendlyBolt: '#60a5fa',
     enemyBolt: '#f87171',
     explosion: '#ffaa44',
