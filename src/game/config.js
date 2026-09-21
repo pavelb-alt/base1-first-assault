@@ -390,6 +390,18 @@ export function getAtmosphere(level) {
 export function getMaxWaves(level) {
   return getLevelConfig(level).maxWaves;
 }
+export const NIGHT_FLARES = {
+  color: '#fff1b8',
+  minInterval: 9,
+  maxInterval: 16,
+  riseDuration: 1.6,
+  burnDuration: 6,
+  height: 42,
+  descent: 8,
+  intensity: 85,
+  radius: 58,
+};
+
 export function getEnemyRules(level) {
   if (level === 2) {
     return {

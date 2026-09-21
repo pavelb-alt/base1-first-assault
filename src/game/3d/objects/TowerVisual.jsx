@@ -39,7 +39,7 @@ function Part({ geo = box, material = steel, ...props }) {
 export function TowerVisual({ tower }) {
   const root = useRef(), head = useRef(), elevation = useRef(), recoil = useRef();
   const rotor = useRef(), flash = useRef(), pulse = useRef();
-  const deploy = useRef(), exhaust = useRef(), exhaustCore = useRef(), dust = useRef();
+  const deploy = useRef(), exhaust = useRef(), exhaustCore = useRef(), dust = useRef(), range = useRef();
   const legRefs = useRef([]);
   const state = useRef({ age: 0, shot: 0, kick: 0, flash: 0, spin: 0, dustTriggered: false });
   const cfg = TOWER_DEFENSE.towers[tower.type];
@@ -52,6 +52,7 @@ export function TowerVisual({ tower }) {
     if (gameState.paused || !root.current) return;
     const s = state.current;
     s.age += dt;
+    range.current.visible = s.age < 3;
 
     // ===== Rocket-landing deployment =====
     const DESC = V.descentDuration;
@@ -141,7 +142,7 @@ export function TowerVisual({ tower }) {
 
   return (
     <group position={[tower.position.x, 0, tower.position.z]} name={`tower-${tower.id}`}>
-      <mesh geometry={ring} material={rangeMat} rotation={[-Math.PI / 2, 0, 0]} scale={[cfg.range, cfg.range, 0.18]} position={[0, 0.035, 0]} />
+      <mesh ref={range} geometry={ring} material={rangeMat} rotation={[-Math.PI / 2, 0, 0]} scale={[cfg.range, cfg.range, 0.18]} position={[0, 0.035, 0]} />
       <mesh ref={dust} geometry={dustRingGeo} material={dustMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} visible={false} />
       <group ref={deploy}>
         <group ref={root}>

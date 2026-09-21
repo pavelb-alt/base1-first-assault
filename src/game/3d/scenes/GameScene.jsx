@@ -18,6 +18,7 @@ import { TowerManager } from '@/game/3d/objects/TowerManager';
 import { gameState } from '@/game/3d/world';
 import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
+import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlares';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -38,6 +39,7 @@ export function GameScene() {
   return (
     <>
       <GoldenHourAtmosphere />
+      <NightIlluminationFlares />
 
       <CameraRig />
 
