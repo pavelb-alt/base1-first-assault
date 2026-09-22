@@ -412,7 +412,7 @@ export const LEVELS = {
   forest: {
     id: 3,
     name: 'FOREST',
-    introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/a02dc7dcf_Disjointed_Soldier_Landing.mp4',
+    introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/489b0f73b_Floating_Torso_Soldiers.mp4',
     maxWaves: 30,
     atmosphere: {
       sky: '#2d4a2a', horizon: '#5a7a48', sun: '#d4e8b8',
