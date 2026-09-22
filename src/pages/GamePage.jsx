@@ -91,14 +91,10 @@ export default function GamePage() {
     gameState.paused = false;
     gameState.preparing = true; // block player input during video
     setCurrentLevel(level);
-    if (level === 2) {
-      gameState.currentLevel = 2;
+    if (level > 1) {
+      gameState.currentLevel = level;
       towerDefenseState.reset();
-      EventBus.emit('level-changed', 2);
-    } else if (level === 3) {
-      gameState.currentLevel = 3;
-      towerDefenseState.reset();
-      EventBus.emit('level-changed', 3);
+      EventBus.emit('level-changed', level);
     }
     setPhase('intro');
   }, []);
