@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { OPENING, LEVELS } from '@/game/config';
+import { OPENING } from '@/game/config';
 
 const BINDINGS = [
   { mode: 'Strategic View', keys: [
@@ -21,8 +21,7 @@ export function MainMenu({ onStart }) {
   const [showControls, setShowControls] = useState(false);
 
   const handleStart = useCallback(() => { onStart(); }, [onStart]);
-  const handleStartNight = useCallback(() => { onStart(2); }, [onStart]);
-  const handleStartForest = useCallback(() => { onStart(3); }, [onStart]);
+
 
   return (
     <div className="absolute inset-0 z-50 overflow-hidden">
@@ -50,19 +49,7 @@ export function MainMenu({ onStart }) {
           START MISSION
         </button>
 
-        <button
-          onClick={handleStartNight}
-          className="px-8 py-2 bg-indigo-700/90 hover:bg-indigo-600 active:bg-indigo-800 text-white text-base font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 mb-4"
-        >
-          ☾ NIGHT LEVEL (TEST)
-        </button>
 
-        <button
-          onClick={handleStartForest}
-          className="px-8 py-2 bg-green-700/90 hover:bg-green-600 active:bg-green-800 text-white text-base font-semibold rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 mb-4"
-        >
-          🌲 FOREST LEVEL (TEST)
-        </button>
 
         <button
           onClick={() => setShowControls(true)}
