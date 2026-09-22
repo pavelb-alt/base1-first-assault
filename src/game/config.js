@@ -120,6 +120,7 @@ export const BALANCE = {
     eyedrone: { health: 100, damage: 6, cooldown: 0.125, range: 17, aiSpread: 0.05 },
     trilobite:{ health: 320, damage: 14, cooldown: 0.25, range: 13, aiSpread: 0.05 },
     tank:     { health: 800, damage: 20, cooldown: 1.6, range: 28, aiSpread: 0.03 },
+    artillery:{ health: 600, damage: 70, cooldown: 5.5, range: 78, aiSpread: 0 },
   },
   // 216 units * 8 rounds/sec * 3 seconds, rounded up. Separate team pools
   // prevent update order from starving one faction's shots.
@@ -376,6 +377,19 @@ export const TANK = {
   initialFacing: Math.PI,
   coverAuraRadius: 5,
   coverDamageReduction: 0.5,
+};
+
+// --- Friendly mobile artillery (indirect long-range fire) --------------------
+export const ARTILLERY = {
+  health: 600, range: 78, cooldown: 5.5, damage: 70, splashRadius: 5,
+  holdZ: 51,             // stays behind the friendly rear trench
+  moveSpeed: 1.2,
+  shellSpeed: 32,        // horizontal m/s; flight time grows with range
+  apexBase: 10, apexPerMeter: 0.22, aimSpread: 2.5,
+  barrelPitch: 0.62, barrelLength: 3.7, pivot: [0, 1.5, 0.25],
+  interval: 38, startDelay: 30, maxAlive: 3,
+  hullColor: '#b8672a', armorColor: '#d98437', shellColor: '#ffcf7a',
+  colliderHalfWidth: 1.3, colliderHalfHeight: 0.7, colliderHalfDepth: 2, colliderY: 0.7,
 };
 
 export const TANK_DELIVERY = {

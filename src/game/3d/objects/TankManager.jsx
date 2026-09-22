@@ -5,7 +5,8 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { EventBus } from '@/game/EventBus';
-import { TANK, TANK_DELIVERY, CARGO_SHIP, BALANCE, FRONT, MAP } from '@/game/config';
+import { TANK, TANK_DELIVERY, CARGO_SHIP, BALANCE, FRONT, MAP, ARTILLERY } from '@/game/config';
+import { ArtilleryEntity } from '@/game/3d/objects/ArtilleryEntity';
 import { tankState } from '@/game/3d/objects/tankState';
 import { cargoShipState } from '@/game/3d/objects/cargoShipState';
 import { gameState } from '@/game/3d/world';
@@ -237,12 +238,14 @@ function TankDeliveryShip({ shipId, zone, onLand, onComplete }) {
 export function TankDeliveryManager() {
   const shipsRef = useRef([]);
   const deliveryTimer = useRef(-TANK_DELIVERY.startDelay);
+  const artilleryTimer = useRef(-ARTILLERY.startDelay);
   const [, publish] = useReducer(n => n + 1, 0);
 
   useEffect(() => {
     const reset = () => {
       shipsRef.current = [];
       deliveryTimer.current = -TANK_DELIVERY.startDelay;
+      artilleryTimer.current = -ARTILLERY.startDelay;
       publish();
     };
     EventBus.on('reset-game', reset);
@@ -252,23 +255,28 @@ export function TankDeliveryManager() {
   useFrame((_, delta) => {
     if (gameState.paused) return;
 
-    deliveryTimer.current += delta;
-    if (deliveryTimer.current < TANK_DELIVERY.interval) return;
-    deliveryTimer.current = 0;
-
-    // Only launch if under the tank population cap
-    const activeTanks = combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).length;
-    if (activeTanks >= TANK_DELIVERY.maxAlive) return;
-
+    const alive = kind => combat.units.filter(u => u.team === 'friendly' && u.type === kind && u.alive).length
+      + shipsRef.current.filter(s => s.kind === kind).length;
     // Find a free landing zone (shared with soldier delivery ships)
-    const zone = CARGO_SHIP.landingZones.find(z => !cargoShipState.occupiedZones.has(z.id));
-    if (!zone) return;
+    const launch = kind => {
+      const zone = CARGO_SHIP.landingZones.find(z => !cargoShipState.occupiedZones.has(z.id));
+      if (!zone) return false;
+      cargoShipState.occupiedZones.add(zone.id);
+      cargoShipState.activeShipCount++;
+      shipsRef.current.push({ id: tankState.nextShipId++, zone, kind });
+      publish();
+      return true;
+    };
 
-    cargoShipState.occupiedZones.add(zone.id);
-    cargoShipState.activeShipCount++;
-    const shipId = tankState.nextShipId++;
-    shipsRef.current.push({ id: shipId, zone });
-    publish();
+    deliveryTimer.current += delta;
+    if (deliveryTimer.current >= TANK_DELIVERY.interval) {
+      deliveryTimer.current = 0;
+      if (alive('tank') < TANK_DELIVERY.maxAlive) launch('tank');
+    }
+    artilleryTimer.current += delta;
+    if (artilleryTimer.current >= ARTILLERY.interval && (alive('artillery') >= ARTILLERY.maxAlive || launch('artillery'))) {
+      artilleryTimer.current = 0;
+    }
   });
 
   const handleComplete = useCallback(shipId => {
@@ -289,7 +297,7 @@ export function TankDeliveryManager() {
             shipId={ship.id}
             zone={ship.zone}
             onLand={() => {
-              tankState.pendingSpawns.push({ id: tankState.nextTankId++, zone: ship.zone });
+              tankState.pendingSpawns.push({ id: tankState.nextTankId++, zone: ship.zone, kind: ship.kind });
               tankState.firstTankDelivered = true;
             }}
             onComplete={handleComplete}
@@ -304,6 +312,7 @@ export function TankDeliveryManager() {
 export function TankEntityManager() {
   const tanksRef = useRef([]);
   const [, publish] = useReducer(n => n + 1, 0);
+  const tankCount = () => tanksRef.current.filter(t => t.kind !== 'artillery').length;
 
   useEffect(() => {
     const reset = () => {
@@ -319,28 +328,29 @@ export function TankEntityManager() {
     if (gameState.paused) return;
     // Consume pending spawns (discrete event, not per-frame)
     let spawned = false;
-    while (tankState.pendingSpawns.length > 0 && tanksRef.current.length < TANK_DELIVERY.maxAlive) {
-      const spawn = tankState.pendingSpawns.shift();
-      tanksRef.current.push(spawn);
+    // Population caps are enforced when deliveries launch.
+    while (tankState.pendingSpawns.length > 0) {
+      tanksRef.current.push(tankState.pendingSpawns.shift());
       spawned = true;
     }
     if (spawned) {
       publish();
-      EventBus.emit('tank-count-changed', tanksRef.current.length);
+      EventBus.emit('tank-count-changed', tankCount());
     }
   });
 
   const handleDespawn = useCallback(id => {
     tanksRef.current = tanksRef.current.filter(t => t.id !== id);
     publish();
-    EventBus.emit('tank-count-changed', tanksRef.current.length);
+    EventBus.emit('tank-count-changed', tankCount());
   }, []);
 
   return (
     <>
-      {tanksRef.current.map(tank => (
-        <TankEntity key={tank.id} id={tank.id} zone={tank.zone} onDespawn={handleDespawn} />
-      ))}
+      {tanksRef.current.map(tank => tank.kind === 'artillery'
+        ? <ArtilleryEntity key={tank.id} id={tank.id} zone={tank.zone} onDespawn={handleDespawn} />
+        : <TankEntity key={tank.id} id={tank.id} zone={tank.zone} onDespawn={handleDespawn} />
+      )}
     </>
   );
 }

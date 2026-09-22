@@ -10,6 +10,7 @@ import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { tankState } from '@/game/3d/objects/tankState';
+import { artilleryState } from '@/game/3d/objects/artilleryState';
 import { winterWeather } from '@/game/3d/objects/WinterSnow';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
@@ -56,6 +57,8 @@ export function GameRuntime() {
       getEnemyCount: () => combat.units.filter(u => u.team === 'enemy' && u.alive).length,
       getTankCount: () => combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).length,
       getTanks: () => combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).map(u => ({ id: u.id, position: u.bodyRef.current ? { ...u.bodyRef.current.translation() } : null, shotsFired: u.shotsFired || 0, targetId: u.cachedTarget?.alive ? u.cachedTarget.id : null })),
+      getArtillery: () => ({ shellsInFlight: artilleryState.shells.length, impacts: artilleryState.impacts,
+        vehicles: combat.units.filter(u => u.team === 'friendly' && u.type === 'artillery' && u.alive).map(u => ({ id: u.id, health: u.health, position: u.bodyRef.current ? { ...u.bodyRef.current.translation() } : null, shotsFired: u.shotsFired })) }),
       getFriendlyCombatCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getWeapons: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(weaponState),
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,
@@ -103,6 +106,7 @@ export function GameRuntime() {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
       tankState.reset();
+      artilleryState.reset();
       levelTransition.current = { active: false, timer: 0 };
       gameState.currentLevel = 1;
       EventBus.emit('level-changed', 1);

@@ -65,7 +65,7 @@ export function Minimap() {
         const p = u.bodyRef.current.translation();
         const m = worldToMini(p.x, p.z);
         ctx.fillStyle = u.team === 'friendly' ? '#4ade80' : '#f87171';
-        const r = u.type === 'trilobite' || u.type === 'tank' ? 3 : 2;
+        const r = u.type === 'trilobite' || u.type === 'tank' || u.type === 'artillery' ? 3 : 2;
         ctx.beginPath();
         ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
         ctx.fill();
