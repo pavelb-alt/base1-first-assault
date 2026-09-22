@@ -12,7 +12,7 @@ const geometries={
   treeFoliage:new THREE.ConeGeometry(.5,1,7),
 };
 const material=new THREE.MeshStandardMaterial({roughness:.94,flatShading:true});
-const apronMaterial=new THREE.MeshStandardMaterial({color:DRESSING.earth,roughness:1});
+const apronMaterial=new THREE.MeshStandardMaterial({color:MAP.GROUND_COLOR,roughness:1});
 // A literal square ring: no hidden plane beneath any playable trench or ramp.
 const edge=DRESSING.perimeterSize/2, hole=MAP.HALF;
 const shape=new THREE.Shape();shape.moveTo(-edge,-edge);shape.lineTo(edge,-edge);shape.lineTo(edge,edge);shape.lineTo(-edge,edge);shape.closePath();
