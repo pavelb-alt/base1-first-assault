@@ -14,8 +14,8 @@ import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 
 export default function GamePage() {
-  // Opening flow: 'menu' → 'intro' → 'handoff' → 'playing'
-  const [phase, setPhase] = useState('menu');
+  // Opening flow: 'opening' → 'menu' → 'intro' → 'handoff' → 'playing'
+  const [phase, setPhase] = useState('opening');
   const [fading, setFading] = useState(false);
   const [missionReady, setMissionReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -184,12 +184,21 @@ export default function GamePage() {
     setPhase('menu');
   }, []);
 
-  const gameMounted = phase !== 'menu';
+  const gameMounted = phase !== 'opening' && phase !== 'menu';
 
   return (
     <main className="game-page">
       <div className="game-frame">
         {gameMounted && <GameContainer />}
+
+        {/* Opening cinematic shown before the main menu */}
+        {phase === 'opening' && (
+          <IntroVideo
+            src={OPENING.preMenuVideoUrl}
+            onEnd={() => setPhase('menu')}
+            onSkip={() => setPhase('menu')}
+          />
+        )}
 
         {/* Main Menu */}
         {phase === 'menu' && <MainMenu onStart={startMission} />}

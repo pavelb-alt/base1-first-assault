@@ -447,10 +447,11 @@ export function getEnemyRules(level) {
   return BALANCE.enemy;
 }
 
-// --- Opening flow (main menu, intro video, handoff) -------------------------
+// --- Opening flow (opening cinematic, main menu, mission intro, handoff) -----
 export const OPENING = {
   menuBackgroundUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/0802417bf_948de030c_image.png',
-  introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/714add64a_Create_a_second_cinematic_t.mp4',
+  preMenuVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/714add64a_Create_a_second_cinematic_t.mp4',
+  introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/ef3d965d7_Create_a_short_cinematic.mp4',
   handoffTimeout: 60000,
   fadeDuration: 800,
   firstShipMinUnload: 3.5,
