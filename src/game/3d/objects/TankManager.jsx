@@ -233,32 +233,33 @@ function TankDeliveryShip({ shipId, zone, onLand, onComplete }) {
   );
 }
 
-// --- Tank delivery manager (outside Physics) --------------------------------
-export function TankDeliveryManager() {
+// --- Heavy support delivery (tanks, artillery; outside Physics) --------------
+export function SupportDelivery({ unitType, delivery, onLand }) {
   const shipsRef = useRef([]);
-  const deliveryTimer = useRef(-TANK_DELIVERY.startDelay);
+  const nextShipId = useRef(0);
+  const deliveryTimer = useRef(-delivery.startDelay);
   const [, publish] = useReducer(n => n + 1, 0);
 
   useEffect(() => {
     const reset = () => {
       shipsRef.current = [];
-      deliveryTimer.current = -TANK_DELIVERY.startDelay;
+      deliveryTimer.current = -delivery.startDelay;
       publish();
     };
     EventBus.on('reset-game', reset);
     return () => EventBus.off('reset-game', reset);
-  }, []);
+  }, [delivery]);
 
   useFrame((_, delta) => {
     if (gameState.paused) return;
 
     deliveryTimer.current += delta;
-    if (deliveryTimer.current < TANK_DELIVERY.interval) return;
+    if (deliveryTimer.current < delivery.interval) return;
     deliveryTimer.current = 0;
 
-    // Only launch if under the tank population cap
-    const activeTanks = combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).length;
-    if (activeTanks >= TANK_DELIVERY.maxAlive) return;
+    // Only launch if under this unit type's population cap (in flight counts too)
+    const active = combat.units.filter(u => u.team === 'friendly' && u.type === unitType && u.alive).length;
+    if (active + shipsRef.current.length >= delivery.maxAlive) return;
 
     // Find a free landing zone (shared with soldier delivery ships)
     const zone = CARGO_SHIP.landingZones.find(z => !cargoShipState.occupiedZones.has(z.id));
@@ -266,7 +267,7 @@ export function TankDeliveryManager() {
 
     cargoShipState.occupiedZones.add(zone.id);
     cargoShipState.activeShipCount++;
-    const shipId = tankState.nextShipId++;
+    const shipId = nextShipId.current++;
     shipsRef.current.push({ id: shipId, zone });
     publish();
   });
@@ -288,16 +289,21 @@ export function TankDeliveryManager() {
           <TankDeliveryShip
             shipId={ship.id}
             zone={ship.zone}
-            onLand={() => {
-              tankState.pendingSpawns.push({ id: tankState.nextTankId++, zone: ship.zone });
-              tankState.firstTankDelivered = true;
-            }}
+            onLand={() => onLand(ship.zone)}
             onComplete={handleComplete}
           />
         </Suspense>
       ))}
     </>
   );
+}
+
+const landTank = zone => {
+  tankState.pendingSpawns.push({ id: tankState.nextTankId++, zone });
+  tankState.firstTankDelivered = true;
+};
+export function TankDeliveryManager() {
+  return <SupportDelivery unitType="tank" delivery={TANK_DELIVERY} onLand={landTank} />;
 }
 
 // --- Tank entity manager (inside Physics) -----------------------------------

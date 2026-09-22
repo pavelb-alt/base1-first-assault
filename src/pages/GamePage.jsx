@@ -33,6 +33,7 @@ export default function GamePage() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [levelTransition, setLevelTransition] = useState(false);
   const [tankCount, setTankCount] = useState(0);
+  const [artilleryCount, setArtilleryCount] = useState(0);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -54,6 +55,8 @@ export default function GamePage() {
       setGameOver(null);
     };
     const onTankCount = (count) => setTankCount(count);
+    const onArtilleryCount = (count) => setArtilleryCount(count);
+    EventBus.on('artillery-count-changed', onArtilleryCount);
 
     EventBus.on('mode-changed', onMode);
     EventBus.on('soldier-loaded', onLoaded);
@@ -77,6 +80,7 @@ export default function GamePage() {
       EventBus.off('level-transition', onLevelTransition);
       EventBus.off('level-changed', onLevelChanged);
       EventBus.off('tank-count-changed', onTankCount);
+      EventBus.off('artillery-count-changed', onArtilleryCount);
     };
   }, []);
 
@@ -161,6 +165,7 @@ export default function GamePage() {
     setCurrentLevel(1);
     setLevelTransition(false);
     setTankCount(0);
+    setArtilleryCount(0);
     setPhase('menu');
   }, []);
 
@@ -269,9 +274,10 @@ export default function GamePage() {
             </div>
 
             {/* Tank counter */}
-            {tankCount > 0 && (
-              <div className="absolute top-16 left-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
-                <span className="text-orange-400 font-bold text-sm">🛡 Tanks: {tankCount}</span>
+            {(tankCount > 0 || artilleryCount > 0) && (
+              <div className="absolute top-16 left-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 flex gap-3">
+                {tankCount > 0 && <span className="text-orange-400 font-bold text-sm">🛡 Tanks: {tankCount}</span>}
+                {artilleryCount > 0 && <span className="text-amber-300 font-bold text-sm">🎯 Artillery: {artilleryCount}</span>}
               </div>
             )}
 

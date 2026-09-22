@@ -120,6 +120,7 @@ export const BALANCE = {
     eyedrone: { health: 100, damage: 6, cooldown: 0.125, range: 17, aiSpread: 0.05 },
     trilobite:{ health: 320, damage: 14, cooldown: 0.25, range: 13, aiSpread: 0.05 },
     tank:     { health: 800, damage: 20, cooldown: 1.6, range: 28, aiSpread: 0.03 },
+    artillery:{ health: 450, damage: 55, cooldown: 4.5, range: 72, aiSpread: 0 },
   },
   // 216 units * 8 rounds/sec * 3 seconds, rounded up. Separate team pools
   // prevent update order from starving one faction's shots.
@@ -382,6 +383,19 @@ export const TANK_DELIVERY = {
   interval: 20,
   startDelay: 15,
   maxAlive: 4,
+};
+
+// --- Friendly mobile artillery (long-range indirect fire from the rear) ------
+export const ARTILLERY = {
+  hullColor: '#c9692a', armorColor: '#e07b2e', trackColor: '#262a2d',
+  barrelColor: '#394247', accentColor: '#ffb347', shellColor: '#ffd08a',
+  colliderHalfWidth: 1.2, colliderHalfHeight: 0.6, colliderHalfDepth: 1.9, colliderY: 0.6,
+  moveSpeed: 1.2, holdZ: 50, initialFacing: Math.PI,
+  barrelPivot: [0, 1.45, 0.55], barrelLength: 4.3,
+  travelElevation: 0.12, fireElevation: 0.8, recoil: 0.55,
+  minRange: 14, splashRadius: 4.5, shellFlightTime: 2.4, shellApex: 24, scatter: 1.8,
+  maxShells: 24,
+  delivery: { interval: 35, startDelay: 30, maxAlive: 2 },
 };
 
 // --- Level system (day → night campaign) ------------------------------------

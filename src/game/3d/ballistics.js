@@ -85,10 +85,28 @@ export function applyImpact(hit, shot) {
     direction: Array.isArray(shot.direction) ? [...shot.direction] : [shot.direction.x, shot.direction.y, shot.direction.z],
   });
   combat.stats.impactBursts++;
-  if (target && target.alive && target.team !== shot.team) {
-    let damage = Math.min(target.health, shot.damage);
+  if (target && target.alive && target.team !== shot.team) damageUnit(target, shot.damage, shot);
+  else if (!target) combat.stats.coverHits++;
+  combat.lastImpact = { team: shot.team, shooterId: shot.shooterId, targetId: target?.id ?? null, targetTeam: target?.team ?? null, cover: !target, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } };
+}
+
+// Area damage with distance falloff (artillery shells). Friendly fire is off.
+export function applySplash(shooter, x, z, radius, damage) {
+  const shot = { team: shooter.team, shooterId: shooter.id, shooter, player: false, damage };
+  let hits = 0;
+  visitNearby(x, z, radius, (u, _p, d2) => {
+    if (u.team === shooter.team || !u.alive) return;
+    damageUnit(u, damage * (1 - 0.6 * Math.sqrt(d2) / radius), shot);
+    hits++;
+  });
+  return hits;
+}
+
+function damageUnit(target, amount, shot) {
+  {
+    let damage = Math.min(target.health, amount);
     // Cover aura: friendly infantry near a tank take reduced damage
-    if (target.team === 'friendly' && target.type !== 'tank' && target.bodyRef?.current) {
+    if (target.team === 'friendly' && target.type !== 'tank' && target.type !== 'artillery' && target.bodyRef?.current) {
       const tp = target.bodyRef.current.translation();
       let hasCover = false;
       visitNearby(tp.x, tp.z, TANK.coverAuraRadius, (u) => {
@@ -97,7 +115,8 @@ export function applyImpact(hit, shot) {
       if (hasCover) damage *= TANK.coverDamageReduction;
     }
     target.health -= damage;
-    if (target.health === 0) {
+    if (target.health <= 0) {
+      target.health = 0;
       target.alive = false;
       target.playDeathAnimation = true;
       recordRemoval(target, 'death');
@@ -111,8 +130,7 @@ export function applyImpact(hit, shot) {
     combat.stats.hits++; combat.stats.damage += damage;
     battle.hits[shot.team]++;
     if (shot.player) battle.playerDamage += damage;
-  } else if (!target) combat.stats.coverHits++;
-  combat.lastImpact = { team: shot.team, shooterId: shot.shooterId, targetId: target?.id ?? null, targetTeam: target?.team ?? null, cover: !target, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } };
+  }
 }
 
 // Only enqueue WORLD positions and a WORLD direction. No target-ID lookup, no homing,

@@ -9,6 +9,8 @@ import { EXPLOSIONS as E, CINEMATIC as C, PERFORMANCE } from '@/game/config';
 import { blastLayer } from '@/game/3d/objects/blastMaterial';
 
 export const explosionVisuals = { bursts: 0, smoke: 0, fire: 0, debris: 0 };
+// Gameplay blasts (artillery shells) queue [x, z, power]; drained each frame.
+export const explosionRequests = [];
 const debrisGeometry = new THREE.TetrahedronGeometry(0.1);
 const debrisMaterial = new THREE.MeshStandardMaterial({ color: '#685343', roughness: 1 });
 const transform = new THREE.Object3D();
@@ -29,7 +31,7 @@ export function BattlefieldExplosions() {
   useEffect(() => {
     const reset = () => {
       for (const kind of ['smoke', 'fire', 'debris']) for (const p of pool[kind]) p.active = false;
-      pool.timer = E.minInterval; pool.glowAge = 1; pool.noise = 80000;
+      pool.timer = E.minInterval; pool.glowAge = 1; pool.noise = 80000; explosionRequests.length = 0;
       Object.assign(explosionVisuals, { bursts: 0, smoke: 0, fire: 0, debris: 0 });
     };
     reset(); EventBus.on('reset-game', reset);
@@ -41,15 +43,8 @@ export function BattlefieldExplosions() {
     p.active = true; p.age = 0; p.life = life; p.size = size; p.dust = isDust;
     p.position.set(x, y, z); p.velocity.set(vx, vy, vz);
   };
-  useFrame((_, delta) => {
-    if (gameState.paused) return;
-    const dt = Math.min(delta, 0.08);
-    pool.timer -= dt;
-    if (pool.timer <= 0) {
-      pool.timer = E.minInterval + noise() * (E.maxInterval - E.minInterval);
-      const x = (noise() * 2 - 1) * E.areaX;
-      const z = E.areaZMin + noise() * (E.areaZMax - E.areaZMin);
-      const y = terrainHeight(x, z) + 0.25, power = 0.8 + noise() * 0.6;
+  const burst = (x, z, power) => {
+      const y = terrainHeight(x, z) + 0.25;
       for (let i = 0; i < Math.ceil(7 * PERFORMANCE.ambientParticleScale); i++) {
         const a = noise() * Math.PI * 2;
         emit('fire', x + Math.cos(a) * .6, y + .25 + noise(), z + Math.sin(a) * .6,
@@ -75,7 +70,16 @@ export function BattlefieldExplosions() {
       glow.current.position.set(x, y + 1.5, z); pool.glowAge = 0;
       explosionVisuals.bursts++;
       EventBus.emit('battlefield-explosion', { position: [x, y, z] });
+  };
+  useFrame((_, delta) => {
+    if (gameState.paused) return;
+    const dt = Math.min(delta, 0.08);
+    pool.timer -= dt;
+    if (pool.timer <= 0) {
+      pool.timer = E.minInterval + noise() * (E.maxInterval - E.minInterval);
+      burst((noise() * 2 - 1) * E.areaX, E.areaZMin + noise() * (E.areaZMax - E.areaZMin), 0.8 + noise() * 0.6);
     }
+    while (explosionRequests.length) { const [x, z, power] = explosionRequests.shift(); burst(x, z, power); }
     pool.glowAge += dt; glow.current.intensity = Math.max(0, 1 - pool.glowAge / .3) * 45;
     for (const kind of ['smoke', 'fire', 'debris']) {
       const mesh = kind === 'smoke' ? smokeMesh.current : kind === 'fire' ? fireMesh.current : debrisMesh.current;
