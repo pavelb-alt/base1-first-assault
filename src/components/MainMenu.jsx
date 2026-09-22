@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { OPENING, LEVELS } from '@/game/config';
+import { OPENING } from '@/game/config';
 
 const BINDINGS = [
   { mode: 'Strategic View', keys: [
@@ -49,18 +49,6 @@ export function MainMenu({ onStart }) {
           START MISSION
         </button>
 
-        <div className="text-slate-300 text-xs font-semibold tracking-[0.25em] uppercase mb-2">Test Level</div>
-        <div className="flex flex-wrap justify-center gap-2 mb-6">
-          {Object.values(LEVELS).map(level => (
-            <button
-              key={level.id}
-              onClick={() => onStart(level.id)}
-              className="px-4 py-2 bg-slate-800/85 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-bold rounded-lg border border-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400/50"
-            >
-              {level.id}. {level.name}
-            </button>
-          ))}
-        </div>
 
 
         <button
