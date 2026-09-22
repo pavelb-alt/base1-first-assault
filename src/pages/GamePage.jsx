@@ -3,7 +3,7 @@ import { GameContainer } from '@/components/game/GameContainer';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { cargoShipState } from '@/game/3d/objects/cargoShipState';
-import { OPENING, LEVELS } from '@/game/config';
+import { OPENING, LEVELS, getLevelConfig } from '@/game/config';
 import { MainMenu } from '@/components/MainMenu';
 import { CampaignMissionBriefing } from '@/components/CampaignMissionBriefing';
 import { IntroVideo } from '@/components/IntroVideo';
@@ -214,7 +214,7 @@ export default function GamePage() {
         {/* Intro Video */}
         {phase === 'intro' && (
           <IntroVideo
-            src={currentLevel === 3 ? LEVELS.forest.introVideoUrl : currentLevel === 2 ? LEVELS.night.introVideoUrl : OPENING.introVideoUrl}
+            src={getLevelConfig(currentLevel).introVideoUrl ?? OPENING.introVideoUrl}
             onEnd={onVideoComplete}
             onSkip={onVideoComplete}
           />

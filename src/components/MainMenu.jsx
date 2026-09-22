@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
-import { OPENING } from '@/game/config';
+import { OPENING, LEVELS } from '@/game/config';
+
+const LEVEL_LIST = Object.values(LEVELS).sort((a, b) => a.id - b.id);
 
 const BINDINGS = [
   { mode: 'Strategic View', keys: [
@@ -20,7 +22,7 @@ const BINDINGS = [
 export function MainMenu({ onStart }) {
   const [showControls, setShowControls] = useState(false);
 
-  const handleStart = useCallback(() => { onStart(); }, [onStart]);
+  const handleStart = useCallback(() => { onStart(1); }, [onStart]);
 
 
   return (
@@ -49,7 +51,23 @@ export function MainMenu({ onStart }) {
           START MISSION
         </button>
 
-
+        {/* Level selection: jump straight into any campaign level */}
+        <div className="mb-4 flex flex-col items-center">
+          <div className="text-slate-300 text-[11px] font-bold uppercase tracking-[0.2em] mb-2">
+            Select Level
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 max-w-md">
+            {LEVEL_LIST.map(level => (
+              <button
+                key={level.id}
+                onClick={() => onStart(level.id)}
+                className="px-4 py-2 bg-slate-800/80 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-semibold rounded-lg border border-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400/50"
+              >
+                <span className="text-orange-400 mr-1.5">{level.id}</span>{level.name}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <button
           onClick={() => setShowControls(true)}
