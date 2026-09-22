@@ -4,7 +4,7 @@ import { addCinematicScenery } from '@/game/3d/dressing/cinematicScenery';
 
 // All meshes use unit bounds (radius 0.5). Conservative spherical bounds keep
 // even tilted beams and dishes OUTSIDE the existing physical map boundary.
-export const SCENERY = { rock:[], box:[], cylinder:[], dish:[] };
+export const SCENERY = { rock:[], box:[], cylinder:[], dish:[], treeTrunk:[], treeFoliage:[] };
 // Layout authored around a 300m map. Compress interior coordinates while
 // retaining the original outside-edge clearance and full-size scenery.
 const layoutHalf=150;
@@ -54,4 +54,32 @@ beam(26,2.5,enemyRear,10,5,7);
 beam(26,4,enemyRear+3.6,8,.75,.3,DRESSING.enemy);
 beam(22,6,enemyRear,1.2,5,1.2,DRESSING.rust,[0,0,.12]);
 beam(29,5,enemyRear-1,1.2,3,1.2);
+// --- Forest ring around the map perimeter -----------------------------------
+const TREE = { trunk:'#4a3b28', bark:'#5a4632', leafA:'#3d5a2e', leafB:'#4a6b34', leafC:'#2d4220', leafD:'#557735' };
+for (let i = 0; i < 180; i++) {
+  const a = (i / 180) * Math.PI * 2 + dressingNoise(9000 + i) * 0.2;
+  const ringR = 155 + dressingNoise(9100 + i) * 45;
+  const px = Math.cos(a) * ringR + (dressingNoise(9200 + i) - 0.5) * 12;
+  const pz = Math.sin(a) * ringR + (dressingNoise(9300 + i) - 0.5) * 12;
+  const h = 5 + dressingNoise(9400 + i) * 9;
+  const trunkH = h * 0.35;
+  const crownR = 2 + dressingNoise(9500 + i) * 2.5;
+  const crownH = crownR * (2 + dressingNoise(9600 + i));
+  const sway = dressingNoise(9700 + i) * 6.28;
+  add('treeTrunk', [px, trunkH * 0.5, pz], [0.45, trunkH, 0.45], i % 2 ? TREE.trunk : TREE.bark, [0, sway, 0]);
+  const cy = trunkH + crownH * 0.4;
+  const leaf = [TREE.leafA, TREE.leafB, TREE.leafC, TREE.leafD][i % 4];
+  add('treeFoliage', [px, cy, pz], [crownR, crownH, crownR], leaf, [0, sway, 0]);
+  // Second smaller crown on taller trees for a fuller canopy
+  if (h > 9) add('treeFoliage', [px, cy + crownH * 0.35, pz], [crownR * 0.7, crownH * 0.6, crownR * 0.7], TREE.leafD, [0, sway + 0.5, 0]);
+}
+// Dense tree clusters at the far corners to frame the horizon
+for (const [cx, cz] of [[-175,-130],[170,140],[-160,140],[165,-125]]) {
+  for (let j = 0; j < 14; j++) {
+    const n = 7000 + j * 13, px = cx + (dressingNoise(n) - 0.5) * 22, pz = cz + (dressingNoise(n+1) - 0.5) * 22;
+    const h = 4 + dressingNoise(n+2) * 7, trunkH = h * 0.35, crownR = 1.8 + dressingNoise(n+3) * 2, crownH = crownR * 2.2;
+    add('treeTrunk', [px, trunkH * 0.5, pz], [0.4, trunkH, 0.4], TREE.trunk, [0, dressingNoise(n+4) * 6, 0]);
+    add('treeFoliage', [px, trunkH + crownH * 0.4, pz], [crownR, crownH, crownR], [TREE.leafA, TREE.leafB, TREE.leafC][j % 3], [0, dressingNoise(n+5) * 6, 0]);
+  }
+}
 addCinematicScenery(SCENERY);

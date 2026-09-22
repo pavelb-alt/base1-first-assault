@@ -8,6 +8,8 @@ const geometries={
   box:new THREE.BoxGeometry(1,1,1),
   cylinder:new THREE.CylinderGeometry(.5,.5,1,8),
   dish:new THREE.SphereGeometry(.5,12,5,0,Math.PI*2,0,Math.PI/2),
+  treeTrunk:new THREE.CylinderGeometry(.5,.5,1,6),
+  treeFoliage:new THREE.ConeGeometry(.5,1,7),
 };
 const material=new THREE.MeshStandardMaterial({roughness:.94,flatShading:true});
 const apronMaterial=new THREE.MeshStandardMaterial({color:DRESSING.earth,roughness:1});
@@ -29,7 +31,7 @@ function SceneryBatch({kind,items}) {
     if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;
     ref.current.computeBoundingSphere();
   },[items]);
-  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={kind !== 'rock'} receiveShadow />;
+  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={kind !== 'rock' && kind !== 'treeFoliage'} receiveShadow />;
 }
 export function BattlefieldDressing() {
   // Deliberately outside RigidBody and outside both bases' shotCover groups.
