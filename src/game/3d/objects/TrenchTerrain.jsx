@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { FRONT, MAP } from '@/game/config';
-import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays } from '@/game/3d/trenchShape';
+import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays, DUCKBOARDS as duckboards } from '@/game/3d/trenchShape';
 import { TrenchWire } from '@/game/3d/objects/TrenchWire';
 import { AntiTankObstacles } from '@/game/3d/objects/AntiTankObstacles';
 import { EventBus } from '@/game/EventBus';
@@ -34,8 +34,10 @@ const box=new THREE.BoxGeometry(1,1,1);
 const coverMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.edge,roughness:0.9});
 const communicationFloorMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.floor,roughness:1});
 const communicationBankMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.wall,roughness:1});
+const duckboardMaterial=new THREE.MeshStandardMaterial({color:'#4a3d2e',roughness:0.95});
+const sandbagMaterial=new THREE.MeshStandardMaterial({color:'#6b5d44',roughness:1});
 export function TrenchTerrain(){
-  const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef();
+  const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef(),duckboardRef=useRef(),sandbagRef=useRef();
   useLayoutEffect(()=>{
     const onLevelChanged=(level)=>setGroundNightFactor(level===2?1:0);
     EventBus.on('level-changed',onLevelChanged);
@@ -67,6 +69,24 @@ export function TrenchTerrain(){
     });
     bayFloors.current.instanceMatrix.needsUpdate=true;
     bayBanks.current.instanceMatrix.needsUpdate=true;
+    duckboards.forEach((d,i)=>{
+      m.position.set(d.x,-d.depth+0.04,d.z);m.rotation.y=d.rotation;
+      m.scale.set(0.7,0.06,d.width*0.9);m.updateMatrix();
+      duckboardRef.current.setMatrixAt(i,m.matrix);
+    });
+    duckboardRef.current.instanceMatrix.needsUpdate=true;
+    // Sandbag tops on the parapet for a layered, reinforced look
+    covers.forEach((c,i)=>{
+      for(const layer of [0,1]) {
+        const idx=i*2+layer;
+        m.position.set(c.x,FRONT.parapetHeight+0.06*(layer+1),c.z+(layer?0.05:-0.04)*Math.sin(c.rotation));
+        m.rotation.y=c.rotation+(layer?0.08:-0.05);
+        m.scale.set(c.width*0.85,0.12,FRONT.edgeThickness*0.7);
+        m.updateMatrix();
+        sandbagRef.current.setMatrixAt(idx,m.matrix);
+      }
+    });
+    sandbagRef.current.instanceMatrix.needsUpdate=true;
   },[]);
   return <>
     <RigidBody type="fixed" colliders="trimesh" friction={0.3}>
@@ -87,6 +107,8 @@ export function TrenchTerrain(){
     <instancedMesh ref={bayFloors} args={[box,communicationFloorMaterial,artilleryBays.length]} receiveShadow frustumCulled={false}/>
     <instancedMesh ref={bayBanks} args={[box,communicationBankMaterial,artilleryBays.length*3]} castShadow receiveShadow frustumCulled={false}/>
     <instancedMesh ref={mesh} args={[box,coverMaterial,covers.length]} castShadow receiveShadow frustumCulled={false}/>
+    <instancedMesh ref={duckboardRef} args={[box,duckboardMaterial,duckboards.length]} receiveShadow frustumCulled={false}/>
+    <instancedMesh ref={sandbagRef} args={[box,sandbagMaterial,covers.length*2]} castShadow receiveShadow frustumCulled={false}/>
     <TrenchWire/>
     <AntiTankObstacles/>
   </>;

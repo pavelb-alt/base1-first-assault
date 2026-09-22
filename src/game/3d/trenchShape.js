@@ -106,6 +106,23 @@ for(const [rear,support,front] of [[0,1,2]]) {
   }
 }
 
+// Wooden duckboards line every trench floor so soldiers aren't standing in mud.
+export const DUCKBOARDS=[];
+const plankSpacing=1.3;
+for(let rowIndex=0;rowIndex<FRONT.rows.length;rowIndex++) {
+  const profile=rowProfile(rowIndex);
+  const floorEnd=Math.min(FRONT.floorRear,profile.halfWidth-0.25);
+  const floorCenter=(FRONT.floorFront+floorEnd)/2;
+  const floorWidth=floorEnd-FRONT.floorFront;
+  for(let x=-frontage+plankSpacing/2;x<=frontage;x+=plankSpacing) {
+    if(crossingDistance(x)<FRONT.crossingHalfWidth+FRONT.crossingSlope||
+       rampDistance(x)<FRONT.rampHalfWidth+FRONT.rampShoulder)continue;
+    const z=trenchCenter(rowIndex,x)+floorCenter;
+    const dz=trenchOffset(x+0.5,rowIndex)-trenchOffset(x-0.5,rowIndex);
+    DUCKBOARDS.push({x,z,width:floorWidth,rotation:-Math.atan2(dz,1),depth:profile.depth});
+  }
+}
+
 // Large rear firing pits echo the artillery boxes shown behind the support line.
 export const ARTILLERY_BAYS=[];
 for(const row of [0]) {
