@@ -412,6 +412,21 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
   const groupRef = useRef();
   const explosionRef = useRef();
   const combatEntryRef = useRef(null);
+
+  // Dynamic visual references
+  const turretRef = useRef();
+  const barrelRef = useRef();
+  const muzzleRef = useRef();
+  const flashRef = useRef();
+  const auraRef = useRef();
+  const wheelRefs = useRef([]);
+
+  // Animation states
+  const turretYaw = useRef(0);
+  const recoil = useRef(0);
+  const flashTimer = useRef(0);
+  const wheelSpin = useRef(0);
+
   const cooldown = useRef(0);
   const deathTimer = useRef(0);
   const hasDied = useRef(false);
@@ -478,36 +493,87 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
 
     const pos = body.translation();
     const frontlineZ = FRONT.rows[2]; // z=14 — defensive hold line
+    const isAdvancing = pos.z > frontlineZ + 2;
 
     // --- Drive to frontline if not there yet --------------------------------
-    if (pos.z > frontlineZ + 2) {
+    if (isAdvancing) {
       body.setLinvel({ x: 0, y: 0, z: -TANK.moveSpeed }, true);
       group.rotation.y = TANK.initialFacing; // face -Z
+      // Spin road wheels realistically while moving
+      wheelSpin.current += delta * TANK.moveSpeed * 3.8;
+      for (let i = 0; i < wheelRefs.current.length; i++) {
+        const w = wheelRefs.current[i];
+        if (w) w.rotation.x = wheelSpin.current;
+      }
     } else {
       // Hold position at the frontline
       body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      group.rotation.y = TANK.initialFacing;
+    }
 
-      // --- Scan for enemies and fire -----------------------------------------
-      const enemy = findNearestEnemy(entry, entry.profile.range, canSeeTarget);
-      if (enemy) {
-        const ep = enemy.bodyRef.current.translation();
-        // Face enemy
-        group.rotation.y = Math.atan2(ep.x - pos.x, ep.z - pos.z);
+    // --- Scan for enemies and traverse turret / fire -------------------------
+    const enemy = findNearestEnemy(entry, entry.profile.range, canSeeTarget);
+    if (enemy) {
+      const ep = enemy.bodyRef.current.translation();
+      // Calculate local turret yaw toward enemy (relative to chassis heading)
+      const worldAngle = Math.atan2(ep.x - pos.x, ep.z - pos.z);
+      let desiredYaw = worldAngle - group.rotation.y;
+      while (desiredYaw > Math.PI) desiredYaw -= Math.PI * 2;
+      while (desiredYaw < -Math.PI) desiredYaw += Math.PI * 2;
 
-        // Fire cannon if cooldown elapsed
-        cooldown.current -= delta;
-        if (cooldown.current <= 0) {
-          const yaw = group.rotation.y;
+      // Smoothly traverse turret toward enemy (2.5 rad/sec)
+      const diff = desiredYaw - turretYaw.current;
+      turretYaw.current += Math.sign(diff) * Math.min(Math.abs(diff), 2.5 * delta);
+
+      // Fire cannon if cooldown elapsed & turret approximately on target
+      cooldown.current -= delta;
+      if (cooldown.current <= 0 && Math.abs(diff) < 0.4) {
+        if (muzzleRef.current) {
+          muzzleRef.current.getWorldPosition(_muzzle);
+        } else {
           _muzzle.set(
-            pos.x + Math.sin(yaw) * 1.5,
+            pos.x + Math.sin(group.rotation.y + turretYaw.current) * 2.2,
             pos.y + 1.0,
-            pos.z + Math.cos(yaw) * 1.5
+            pos.z + Math.cos(group.rotation.y + turretYaw.current) * 2.2
           );
-          _aim.set(ep.x, ep.y + 0.9, ep.z);
-          fireShot(entry, _muzzle, _aim);
-          cooldown.current = entry.profile.cooldown;
         }
+        _aim.set(ep.x, ep.y + 0.8, ep.z);
+        fireShot(entry, _muzzle, _aim);
+        cooldown.current = entry.profile.cooldown;
+        recoil.current = 0.22;
+        flashTimer.current = 0.08;
       }
+    } else {
+      // Smoothly return turret to centerline when idle
+      const diff = -turretYaw.current;
+      turretYaw.current += Math.sign(diff) * Math.min(Math.abs(diff), 1.4 * delta);
+    }
+
+    if (turretRef.current) {
+      turretRef.current.rotation.y = turretYaw.current;
+    }
+
+    // Cannon barrel recoil recovery
+    if (recoil.current > 0) {
+      recoil.current = Math.max(0, recoil.current - delta * 1.5);
+    }
+    if (barrelRef.current) {
+      barrelRef.current.position.z = -1.05 + recoil.current;
+    }
+
+    // Muzzle flash visibility decay
+    if (flashRef.current) {
+      if (flashTimer.current > 0) {
+        flashTimer.current -= delta;
+        flashRef.current.visible = true;
+      } else {
+        flashRef.current.visible = false;
+      }
+    }
+
+    // Cover aura soft breathing pulse
+    if (auraRef.current) {
+      auraMat.opacity = 0.16 + Math.sin(_state.clock.elapsedTime * 2.5) * 0.06;
     }
   });
 
@@ -518,7 +584,16 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
         position={[0, TANK.colliderY, 0]}
       />
       <group ref={groupRef} visible={true}>
-        <TankVisual explosionRef={explosionRef} explosionMatRef={explosionMat} />
+        <TankVisual
+          turretRef={turretRef}
+          barrelRef={barrelRef}
+          muzzleRef={muzzleRef}
+          flashRef={flashRef}
+          auraRef={auraRef}
+          wheelRefs={wheelRefs.current}
+          explosionRef={explosionRef}
+          explosionMatRef={explosionMat}
+        />
       </group>
     </RigidBody>
   );
