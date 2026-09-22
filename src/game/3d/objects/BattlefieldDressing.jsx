@@ -1,6 +1,8 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
-import { MAP, DRESSING } from '@/game/config';
+import { MAP, DRESSING, WINTER } from '@/game/config';
+import { EventBus } from '@/game/EventBus';
+import { gameState } from '@/game/3d/world';
 import { SCENERY } from '@/game/3d/dressing/sceneryLayout';
 
 const geometries={
@@ -25,25 +27,37 @@ const shape=new THREE.Shape();shape.moveTo(-edge,-edge);shape.lineTo(edge,-edge)
 const cutout=new THREE.Path();cutout.moveTo(-hole,-hole);cutout.lineTo(-hole,hole);cutout.lineTo(hole,hole);cutout.lineTo(hole,-hole);cutout.closePath();shape.holes.push(cutout);
 const apron=new THREE.ShapeGeometry(shape);
 const noRaycast=()=>null;
-function SceneryBatch({kind,items}) {
+function SceneryBatch({kind,items,winter}) {
   const ref=useRef();
   useLayoutEffect(()=>{
-    const transform=new THREE.Object3D(),color=new THREE.Color();
+    const transform=new THREE.Object3D(),color=new THREE.Color(),snow=new THREE.Color(WINTER.snowColor);
+    const snowMix=['treeFoliage','pineFoliage','bush','fern'].includes(kind)?0.85:kind==='rock'?0.65:0.18;
     items.forEach((item,i)=>{
       transform.position.fromArray(item.position);transform.scale.fromArray(item.scale);transform.rotation.fromArray(item.rotation);transform.updateMatrix();
-      ref.current.setMatrixAt(i,transform.matrix);ref.current.setColorAt(i,color.set(item.color));
+      color.set(item.color);
+      if(winter)color.lerp(snow,snowMix);
+      ref.current.setMatrixAt(i,transform.matrix);ref.current.setColorAt(i,color);
     });
     ref.current.instanceMatrix.needsUpdate=true;
     if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;
     ref.current.computeBoundingSphere();
-  },[items]);
+  },[items,kind,winter]);
   const noShadow = kind === 'rock' || kind === 'treeFoliage' || kind === 'bush' || kind === 'fern' || kind === 'pineFoliage';
   return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={!noShadow} receiveShadow />;
 }
 export function BattlefieldDressing() {
+  const [winter,setWinter]=useState(gameState.currentLevel===4);
+  useEffect(()=>{
+    const update=level=>setWinter(level===4);
+    EventBus.on('level-changed',update);
+    return()=>EventBus.off('level-changed',update);
+  },[]);
+  useLayoutEffect(()=>{
+    apronMaterial.color.set(winter?WINTER.snowColor:MAP.GROUND_COLOR);
+  },[winter]);
   // Deliberately outside RigidBody and outside both bases' shotCover groups.
   return <group name="Non-playable perimeter dressing" dispose={null}>
     <mesh name="Perimeter earth ring" geometry={apron} material={apronMaterial} rotation={[-Math.PI/2,0,0]} position={[0,-.025,0]} raycast={noRaycast} receiveShadow />
-    {Object.entries(SCENERY).map(([kind,items])=><SceneryBatch key={kind} kind={kind} items={items}/>)}
+    {Object.entries(SCENERY).map(([kind,items])=><SceneryBatch key={kind} kind={kind} items={items} winter={winter}/>)}
   </group>;
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { EventBus } from '@/game/EventBus';
-import { TOWER_DEFENSE, getMaxWaves } from '@/game/config';
+import { TOWER_DEFENSE, getMaxWaves, getLevelConfig } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { gameState } from '@/game/3d/world';
 
@@ -10,7 +10,7 @@ export function TowerDefenseHUD({ visible }) {
   const [scrap, setScrap] = useState(towerDefenseState.scrap);
   const [wave, setWave] = useState(0);
   const [elapsed, setElapsed] = useState(0);
-  const [level, setLevel] = useState(1);
+  const [level, setLevel] = useState(gameState.currentLevel);
   const [showPieMenu, setShowPieMenu] = useState(false);
   const [piePos, setPiePos] = useState({ x: 0, y: 0 });
   const [worldPos, setWorldPos] = useState(null);
@@ -136,7 +136,7 @@ export function TowerDefenseHUD({ visible }) {
         }}
       >
         <div style={{ color: '#ff9b5a', fontWeight: 800, letterSpacing: '0.1em' }}>
-          {level === 2 ? '🌙 NIGHT' : '☀ DAY'} WAVE {wave}/{getMaxWaves(level)}
+          {level === 4 ? '❄' : level === 3 ? '🌲' : level === 2 ? '🌙' : '☀'} {getLevelConfig(level).name} WAVE {wave}/{getMaxWaves(level)}
         </div>
         <div>⏱ {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</div>
       </div>

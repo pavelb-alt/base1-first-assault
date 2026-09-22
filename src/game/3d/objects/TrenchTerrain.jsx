@@ -1,13 +1,13 @@
 import { useLayoutEffect, useRef } from 'react';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
-import { FRONT, MAP } from '@/game/config';
+import { FRONT, MAP, WINTER } from '@/game/config';
 import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays, DUCKBOARDS as duckboards } from '@/game/3d/trenchShape';
 import { TrenchWire } from '@/game/3d/objects/TrenchWire';
 import { AntiTankObstacles } from '@/game/3d/objects/AntiTankObstacles';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
-import { createGroundMaterial, setGroundNightFactor } from '@/game/3d/dressing/groundAppearance';
+import { createGroundMaterial, setGroundNightFactor, setGroundFrostFactor } from '@/game/3d/dressing/groundAppearance';
 
 // One surface for visible earth AND fixed concave collision; no plane over the cutouts.
 const ground = new THREE.BufferGeometry();
@@ -39,7 +39,16 @@ const sandbagMaterial=new THREE.MeshStandardMaterial({color:'#6b5d44',roughness:
 export function TrenchTerrain(){
   const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef(),duckboardRef=useRef(),sandbagRef=useRef();
   useLayoutEffect(()=>{
-    const onLevelChanged=(level)=>setGroundNightFactor(level===2?1:0);
+    const onLevelChanged=(level)=>{
+      const winter=level===4;
+      setGroundNightFactor(level===2?1:0);
+      setGroundFrostFactor(winter?1:0);
+      coverMaterial.color.set(winter?WINTER.iceColor:FRONT.earthColors.edge);
+      communicationFloorMaterial.color.set(winter?WINTER.snowColor:FRONT.earthColors.floor);
+      communicationBankMaterial.color.set(winter?WINTER.iceColor:FRONT.earthColors.wall);
+      sandbagMaterial.color.set(winter?WINTER.snowColor:'#6b5d44');
+    };
+    onLevelChanged(gameState.currentLevel);
     EventBus.on('level-changed',onLevelChanged);
     return()=>EventBus.off('level-changed',onLevelChanged);
   },[]);

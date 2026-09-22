@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MAP, FRONT, BASES, DRESSING } from '@/game/config';
+import { MAP, FRONT, BASES, DRESSING, WINTER } from '@/game/config';
 import { trenchCenter } from '@/game/3d/trenchShape';
 import { walkRoute, firingPosition } from '@/game/3d/terrain';
 
@@ -100,12 +100,17 @@ export function groundTexture() {
 }
 
 const nightTint={value:0};
+const frostTint={value:0};
 export function setGroundNightFactor(v){nightTint.value=v;}
+export function setGroundFrostFactor(v){frostTint.value=v;}
 export function createGroundMaterial() {
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   material.onBeforeCompile=shader=>{
     shader.uniforms.dressingMap={value:groundTexture()};
     shader.uniforms.nightTint=nightTint;
+    shader.uniforms.frostTint=frostTint;
+    shader.uniforms.snowColor={value:new THREE.Color(WINTER.snowColor)};
+    shader.uniforms.iceColor={value:new THREE.Color(WINTER.iceColor)};
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
       attribute float dressingFlat;
       varying vec2 vDressingUv;
@@ -116,12 +121,18 @@ export function createGroundMaterial() {
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
       uniform sampler2D dressingMap;
       uniform float nightTint;
+      uniform float frostTint;
+      uniform vec3 snowColor;
+      uniform vec3 iceColor;
       varying vec2 vDressingUv;
       varying float vDressingFlat;`)
       .replace('#include <color_fragment>',`#include <color_fragment>
       diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(dressingMap,vDressingUv).rgb, vDressingFlat);
-      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);
+      vec3 winterColor = mix(iceColor, snowColor, vDressingFlat);
+      // Preserve subtle scars and trench contours beneath the snow albedo.
+      diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-night-v2';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-winter-v3';
   return material;
 }

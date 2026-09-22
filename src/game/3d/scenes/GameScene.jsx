@@ -20,6 +20,7 @@ import { gameState } from '@/game/3d/world';
 import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
 import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlares';
+import { WinterSnow } from '@/game/3d/objects/WinterSnow';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -41,6 +42,7 @@ export function GameScene() {
     <>
       <GoldenHourAtmosphere />
       <NightIlluminationFlares />
+      <WinterSnow />
 
       <CameraRig />
 

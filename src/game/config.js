@@ -421,11 +421,30 @@ export const LEVELS = {
       ambient: 0.22, hemisphere: 0.65, skyColor: '#3d6a35', groundColor: '#2d3a1e',
     },
   },
+  frost: {
+    id: 4,
+    name: 'FROST',
+    maxWaves: 35,
+    atmosphere: {
+      sky: '#849eaf', horizon: '#c9dce5', sun: '#e7f6ff',
+      sunPosition: [-30, 70, 100], sunIntensity: 1.8,
+      fogNear: 55, fogFar: 220,
+      ambient: 0.4, hemisphere: 0.85, skyColor: '#e5f5ff', groundColor: '#8197aa',
+    },
+  },
+};
+
+// Visual-only winter weather; pooled points do not affect combat or movement.
+export const WINTER = {
+  snowColor: '#e5eff3', iceColor: '#8dabbc',
+  snowCount: 2600, fallSpeed: 3.8, windX: 1.1, windZ: 0.35,
+  fieldWidth: 240, fieldHeight: 100, flakeSize: 0.13,
 };
 
 export function getLevelConfig(level) {
   if (level === 2) return LEVELS.night;
   if (level === 3) return LEVELS.forest;
+  if (level === 4) return LEVELS.frost;
   return LEVELS.day;
 }
 export function getAtmosphere(level) {
@@ -456,6 +475,17 @@ export function getEnemyRules(level) {
       startDelay: 8,
       squad: ['quadshell', 'eyedrone', 'trilobite', 'eyedrone', 'trilobite'],
       trilobiteInterval: 20,
+    };
+  }
+  if (level === 4) {
+    return {
+      ...BALANCE.enemy,
+      interval: 7,
+      maxAlive: 96,
+      spawnScale: 1.5,
+      startDelay: 6,
+      squad: ['trilobite', 'eyedrone', 'trilobite', 'quadshell', 'eyedrone', 'trilobite'],
+      trilobiteInterval: 12,
     };
   }
   if (level === 3) {

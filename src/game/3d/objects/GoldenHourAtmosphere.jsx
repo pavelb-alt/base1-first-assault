@@ -37,6 +37,9 @@ export function GoldenHourAtmosphere() {
           float stars=pow(max(0.0,1.0-abs(d.x)*8.0),8.0)*pow(fract(sin(dot(floor(d.xy*200.0),vec2(12.9898,78.233)))*43758.5453),0.98);
           color+=vec3(stars)*vec3(0.8,0.85,1.0)*0.5;
           color+=vec3(0.6,0.7,0.9)*pow(sun,8.)*0.08;
+          ` : level === 4 ? `
+          color+=vec3(.7,.85,1.)*pow(sun,16.)*.12;
+          color+=vec3(.85,.94,1.)*smoothstep(.9995,.99985,sun)*.7;
           ` : `
           color+=vec3(1.,.52,.16)*pow(sun,24.)*.24;
           color+=vec3(1.,.8,.48)*smoothstep(.99965,.99985,sun)*2.;

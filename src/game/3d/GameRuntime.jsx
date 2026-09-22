@@ -10,6 +10,7 @@ import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { tankState } from '@/game/3d/objects/tankState';
+import { winterWeather } from '@/game/3d/objects/WinterSnow';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
 import { coverSnapshot, resetCombatCover } from '@/game/3d/navigation/coverTactics';
@@ -37,6 +38,8 @@ export function GameRuntime() {
     window.game = {
       ready: false,
       getMode: () => gameState.mode,
+      getCampaign: () => ({ level: gameState.currentLevel, wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), transitioning: levelTransition.current.active, paused: gameState.paused, result: battle.gameOver }),
+      getWeather: () => ({ ...winterWeather }),
       getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
@@ -84,6 +87,16 @@ export function GameRuntime() {
       battle.waves.enemy = 0;
       EventBus.emit('level-changed', 3);
     };
+    const advanceToFrost = () => {
+      if (gameState.currentLevel !== 3 || !levelTransition.current.active) return;
+      levelTransition.current = { active: false, timer: 0 };
+      gameState.currentLevel = 4;
+      towerDefenseState.transitionLevel();
+      battle.waves.enemy = 0;
+      EventBus.emit('release-soldier');
+      EventBus.emit('level-changed', 4);
+      EventBus.emit('resume-game');
+    };
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
@@ -100,7 +113,8 @@ export function GameRuntime() {
     EventBus.on('reset-game', reset);
     EventBus.on('proceed-to-night', advanceToNight);
     EventBus.on('proceed-to-forest', advanceToForest);
-    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); delete window.game; };
+    EventBus.on('proceed-to-frost', advanceToFrost);
+    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); EventBus.off('proceed-to-frost', advanceToFrost); delete window.game; };
   }, []);
   useFrame(({gl}, delta) => {
     if (!gameState.paused) {
@@ -120,10 +134,15 @@ export function GameRuntime() {
         // Victory after surviving all waves — day level transitions to night
         const maxWaves = getMaxWaves(gameState.currentLevel);
         if (towerDefenseState.wave >= maxWaves && !battle.gameOver) {
-          if (gameState.currentLevel < 3) {
+          if (gameState.currentLevel < 4) {
             levelTransition.current.active = true;
             levelTransition.current.timer = 0;
+            if (gameState.currentLevel === 3) {
+              EventBus.emit('release-soldier');
+              EventBus.emit('pause-game');
+            }
             EventBus.emit('level-transition');
+            return;
           } else {
             battle.gameOver = 'victory';
             EventBus.emit('game-over', 'victory');
