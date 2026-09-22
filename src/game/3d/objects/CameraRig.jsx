@@ -45,6 +45,7 @@ export function CameraRig() {
       transition.current = {
         startPos: camera.position.clone(),
         startLook: strategicTarget.current.clone(),
+        direction: 'possess',
         duration: 1.4,
         elapsed: 0,
       };
@@ -53,14 +54,27 @@ export function CameraRig() {
 
     const onRelease = () => {
       clearInput();
-      transition.current = null;
-      gameState.transitioning = false;
-      gameState.mode = 'strategic';
+      // Capture current third-person lookAt as the transition start point
+      const yaw = thirdPersonYaw.current;
+      const pitch = thirdPersonPitch.current;
+      _tpLook.set(
+        camera.position.x + Math.sin(yaw) * Math.cos(pitch),
+        camera.position.y - Math.sin(pitch),
+        camera.position.z + Math.cos(yaw) * Math.cos(pitch),
+      );
+      // Re-center strategic camera target on the soldier's current position
+      strategicTarget.current.copy(gameState.soldierPosition);
       gameState.selectedSoldierId = null;
       gameState.possessedSoldierId = null;
-      // Re-center strategic camera on the soldier's current position
-      strategicTarget.current.copy(gameState.soldierPosition);
-      EventBus.emit('mode-changed', 'strategic');
+      // Start smooth camera transition back up to strategic view
+      transition.current = {
+        startPos: camera.position.clone(),
+        startLook: _tpLook.clone(),
+        direction: 'release',
+        duration: 1.2,
+        elapsed: 0,
+      };
+      gameState.transitioning = true;
       if (document.pointerLockElement) document.exitPointerLock();
     };
 
@@ -99,7 +113,7 @@ export function CameraRig() {
   useFrame((_state, delta) => {
     if (gameState.paused) return;
 
-    // --- Smooth camera transition (strategic → third-person) -------------------
+    // --- Smooth camera transition (possess or release) ------------------------
     if (transition.current) {
       const tr = transition.current;
       tr.elapsed += delta;
@@ -107,7 +121,7 @@ export function CameraRig() {
       // Ease-out cubic: fast start, gentle arrival
       const ease = 1 - Math.pow(1 - t, 3);
 
-      // Strategic camera position (where we came from)
+      // Strategic camera position
       const angle = CAMERA.strategic.angle;
       const dist = strategicDistance.current;
       _stratPos.set(
@@ -116,7 +130,7 @@ export function CameraRig() {
         strategicTarget.current.z + dist * Math.cos(angle),
       );
 
-      // Third-person camera position (where we're going)
+      // Third-person camera position
       const pos = gameState.soldierPosition;
       const yaw = thirdPersonYaw.current;
       const pitch = thirdPersonPitch.current;
@@ -127,27 +141,45 @@ export function CameraRig() {
         pos.z - tp.distance * Math.cos(yaw) * Math.cos(pitch) + tp.shoulder * Math.sin(yaw),
       );
 
-      // Blend position
-      camera.position.lerpVectors(tr.startPos, _tpPos, ease);
+      if (tr.direction === 'release') {
+        // Release: third-person → strategic
+        camera.position.lerpVectors(tr.startPos, _stratPos, ease);
+        _tpLook.set(
+          tr.startPos.x + Math.sin(yaw) * Math.cos(pitch),
+          tr.startPos.y - Math.sin(pitch),
+          tr.startPos.z + Math.cos(yaw) * Math.cos(pitch),
+        );
+        _stratLook.copy(strategicTarget.current);
+        camera.lookAt(_tpLook.lerp(_stratLook, ease));
+        camera.updateMatrixWorld(true);
 
-      // Blend lookAt target
-      _tpLook.set(
-        _tpPos.x + Math.sin(yaw) * Math.cos(pitch),
-        _tpPos.y - Math.sin(pitch),
-        _tpPos.z + Math.cos(yaw) * Math.cos(pitch),
-      );
-      _stratLook.copy(tr.startLook);
-      camera.lookAt(_stratLook.lerp(_tpLook, ease));
-      camera.updateMatrixWorld(true);
+        if (t >= 1) {
+          transition.current = null;
+          gameState.transitioning = false;
+          gameState.mode = 'strategic';
+          EventBus.emit('mode-changed', 'strategic');
+        }
+      } else {
+        // Possess: strategic → third-person
+        camera.position.lerpVectors(tr.startPos, _tpPos, ease);
 
-      // Transition complete — hand off to third-person mode
-      if (t >= 1) {
-        transition.current = null;
-        gameState.transitioning = false;
-        gameState.mode = 'third_person';
-        gameState.cameraYaw = thirdPersonYaw.current;
-        EventBus.emit('mode-changed', 'third_person');
-        gl.domElement.requestPointerLock?.()?.catch?.(() => {});
+        _tpLook.set(
+          _tpPos.x + Math.sin(yaw) * Math.cos(pitch),
+          _tpPos.y - Math.sin(pitch),
+          _tpPos.z + Math.cos(yaw) * Math.cos(pitch),
+        );
+        _stratLook.copy(tr.startLook);
+        camera.lookAt(_stratLook.lerp(_tpLook, ease));
+        camera.updateMatrixWorld(true);
+
+        if (t >= 1) {
+          transition.current = null;
+          gameState.transitioning = false;
+          gameState.mode = 'third_person';
+          gameState.cameraYaw = thirdPersonYaw.current;
+          EventBus.emit('mode-changed', 'third_person');
+          gl.domElement.requestPointerLock?.()?.catch?.(() => {});
+        }
       }
       return;
     }
