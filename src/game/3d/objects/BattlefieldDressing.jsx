@@ -1,6 +1,7 @@
 import { useLayoutEffect, useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
-import { MAP, DRESSING, WINTER } from '@/game/config';
+import { MAP, DRESSING, WINTER, CITY } from '@/game/config';
+import { CityEnvironment } from '@/game/3d/objects/CityEnvironment';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { SCENERY } from '@/game/3d/dressing/sceneryLayout';
@@ -46,18 +47,19 @@ function SceneryBatch({kind,items,winter}) {
   return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={!noShadow} receiveShadow />;
 }
 export function BattlefieldDressing() {
-  const [winter,setWinter]=useState(gameState.currentLevel===4);
+  const [level,setLevel]=useState(gameState.currentLevel);
+  const winter=level===4, city=level===5;
   useEffect(()=>{
-    const update=level=>setWinter(level===4);
+    const update=level=>setLevel(level);
     EventBus.on('level-changed',update);
     return()=>EventBus.off('level-changed',update);
   },[]);
   useLayoutEffect(()=>{
-    apronMaterial.color.set(winter?WINTER.snowColor:MAP.GROUND_COLOR);
-  },[winter]);
+    apronMaterial.color.set(city?CITY.asphalt:winter?WINTER.snowColor:MAP.GROUND_COLOR);
+  },[winter,city]);
   // Deliberately outside RigidBody and outside both bases' shotCover groups.
   return <group name="Non-playable perimeter dressing" dispose={null}>
     <mesh name="Perimeter earth ring" geometry={apron} material={apronMaterial} rotation={[-Math.PI/2,0,0]} position={[0,-.025,0]} raycast={noRaycast} receiveShadow />
-    {Object.entries(SCENERY).map(([kind,items])=><SceneryBatch key={kind} kind={kind} items={items} winter={winter}/>)}
+    {city ? <CityEnvironment /> : Object.entries(SCENERY).map(([kind,items])=><SceneryBatch key={kind} kind={kind} items={items} winter={winter}/>)}
   </group>;
 }

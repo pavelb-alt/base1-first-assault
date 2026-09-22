@@ -3,11 +3,9 @@ import { MAP, FRONT, BASES, DRESSING, WINTER } from '@/game/config';
 import { trenchCenter } from '@/game/3d/trenchShape';
 import { walkRoute, firingPosition } from '@/game/3d/terrain';
 
-// Indexed visual noise never consumes the battle's seeded random stream.
-export function dressingNoise(index) {
-  const n = Math.sin((index + DRESSING.seed) * 127.1) * 43758.5453;
-  return n - Math.floor(n);
-}
+import { dressingNoise } from '@/game/3d/dressing/dressingNoise';
+import { cityGroundTexture } from '@/game/3d/dressing/cityGround';
+export { dressingNoise } from '@/game/3d/dressing/dressingNoise';
 let texture;
 export function groundTexture() {
   if (texture) return texture;
@@ -101,12 +99,16 @@ export function groundTexture() {
 
 const nightTint={value:0};
 const frostTint={value:0};
+const cityTint={value:0};
 export function setGroundNightFactor(v){nightTint.value=v;}
 export function setGroundFrostFactor(v){frostTint.value=v;}
+export function setGroundCityFactor(v){cityTint.value=v;}
 export function createGroundMaterial() {
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   material.onBeforeCompile=shader=>{
     shader.uniforms.dressingMap={value:groundTexture()};
+    shader.uniforms.cityMap={value:cityGroundTexture()};
+    shader.uniforms.cityTint=cityTint;
     shader.uniforms.nightTint=nightTint;
     shader.uniforms.frostTint=frostTint;
     shader.uniforms.snowColor={value:new THREE.Color(WINTER.snowColor)};
@@ -120,6 +122,8 @@ export function createGroundMaterial() {
       vDressingFlat = dressingFlat;`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
       uniform sampler2D dressingMap;
+      uniform sampler2D cityMap;
+      uniform float cityTint;
       uniform float nightTint;
       uniform float frostTint;
       uniform vec3 snowColor;
@@ -127,12 +131,15 @@ export function createGroundMaterial() {
       varying vec2 vDressingUv;
       varying float vDressingFlat;`)
       .replace('#include <color_fragment>',`#include <color_fragment>
-      diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(dressingMap,vDressingUv).rgb, vDressingFlat);
+      vec3 surface = texture2D(dressingMap,vDressingUv).rgb;
+      if (cityTint > 0.5) surface = texture2D(cityMap,vDressingUv).rgb;
+      diffuseColor.rgb = mix(diffuseColor.rgb, surface, vDressingFlat);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.27, 0.3, 0.29), cityTint * (1.0 - vDressingFlat) * 0.7);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);
       vec3 winterColor = mix(iceColor, snowColor, vDressingFlat);
       // Preserve subtle scars and trench contours beneath the snow albedo.
       diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-winter-v3';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-city-v4';
   return material;
 }
