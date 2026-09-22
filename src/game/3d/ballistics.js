@@ -119,11 +119,10 @@ export function applyImpact(hit, shot) {
 // and no gun/character transform in ProjectileManager.
 export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, player = false) {
   if (!shooter?.alive || !combat.physics) return false;
-  // Player shots use the camera's forward direction directly — the projectile
-  // still spawns at the muzzle but travels parallel to the crosshair ray,
-  // eliminating the downward parallax from muzzle-to-aimPoint offset.
-  if (player) direction.copy(cameraDirection);
-  else direction.subVectors(aimPoint, origin);
+  // Player and AI shots both travel from the muzzle toward the aim point.
+  // For the player, cameraAim() already resolved the crosshair ray to a world
+  // hit point, so this converges exactly with what the player is aiming at.
+  direction.subVectors(aimPoint, origin);
   if (direction.lengthSq() < AIM.minDistance ** 2) return false;
   direction.normalize();
   // AI aim is imperfect; possession uses the player's actual crosshair. The
