@@ -12,56 +12,16 @@ import { gameState } from '@/game/3d/world';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
+import { TankVisual } from '@/game/3d/objects/TankVisual';
 
 useGLTF.preload(CARGO_SHIP.modelUrl);
 
-// --- Shared geometries & materials (module scope for performance) -----------
-const hullGeo = new THREE.BoxGeometry(2.5, 0.8, 3.5);
-const trackGeo = new THREE.BoxGeometry(0.4, 0.5, 3.8);
-const turretGeo = new THREE.BoxGeometry(1.8, 0.6, 2.0);
-const barrelGeo = new THREE.CylinderGeometry(0.12, 0.12, 2.5, 8);
-const glacisGeo = new THREE.BoxGeometry(2.5, 0.8, 0.4);
-const hatchGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.15, 8);
-const lightGeo = new THREE.BoxGeometry(0.15, 0.1, 0.05);
-const explosionGeo = new THREE.SphereGeometry(1, 8, 8);
 
-const hullMat = new THREE.MeshStandardMaterial({ color: TANK.hullColor, roughness: 0.8 });
-const trackMat = new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.9 });
-const turretMat = new THREE.MeshStandardMaterial({ color: TANK.turretColor, roughness: 0.8 });
-const barrelMat = new THREE.MeshStandardMaterial({ color: TANK.barrelColor, roughness: 0.6, metalness: 0.4 });
-const hatchMat = new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.7 });
-const accentMat = new THREE.MeshStandardMaterial({ color: TANK.accentColor, emissive: TANK.accentColor, emissiveIntensity: 0.6 });
 
 // --- Scratch vectors (no per-frame allocation) ------------------------------
 const _muzzle = new THREE.Vector3();
 const _aim = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-
-// --- Tank visual built from primitives --------------------------------------
-function TankVisual({ explosionRef, explosionMatRef }) {
-  return (
-    <group>
-      {/* Hull */}
-      <mesh geometry={hullGeo} material={hullMat} position={[0, 0.4, 0]} castShadow />
-      {/* Tracks */}
-      <mesh geometry={trackGeo} material={trackMat} position={[-1.3, 0.25, 0]} castShadow />
-      <mesh geometry={trackGeo} material={trackMat} position={[1.3, 0.25, 0]} castShadow />
-      {/* Front glacis (sloped armor) */}
-      <mesh geometry={glacisGeo} material={hullMat} position={[0, 0.4, -1.55]} rotation={[-Math.PI / 6, 0, 0]} castShadow />
-      {/* Turret */}
-      <mesh geometry={turretGeo} material={turretMat} position={[0, 0.9, 0]} castShadow />
-      {/* Barrel (points -Z, toward enemy) */}
-      <mesh geometry={barrelGeo} material={barrelMat} position={[0, 0.95, -1.5]} rotation={[Math.PI / 2, 0, 0]} castShadow />
-      {/* Hatch */}
-      <mesh geometry={hatchGeo} material={hatchMat} position={[0, 1.25, 0.3]} castShadow />
-      {/* Accent lights */}
-      <mesh geometry={lightGeo} material={accentMat} position={[0.7, 0.5, -1.7]} />
-      <mesh geometry={lightGeo} material={accentMat} position={[-0.7, 0.5, -1.7]} />
-      {/* Death explosion (hidden until tank destroyed) */}
-      <mesh ref={explosionRef} geometry={explosionGeo} material={explosionMatRef} visible={false} />
-    </group>
-  );
-}
 
 // --- Tank entity (inside Physics) -------------------------------------------
 const TankEntity = function TankEntity({ id, zone, onDespawn }) {
