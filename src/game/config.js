@@ -432,6 +432,25 @@ export const LEVELS = {
       ambient: 0.4, hemisphere: 0.85, skyColor: '#e5f5ff', groundColor: '#8197aa',
     },
   },
+  city: {
+    id: 5,
+    name: 'CITY',
+    maxWaves: 40,
+    atmosphere: {
+      sky: '#8599a6', horizon: '#c1c4bc', sun: '#fff2d9',
+      sunPosition: [-55, 85, 110], sunIntensity: 2.5,
+      fogNear: 100, fogFar: 340,
+      ambient: 0.3, hemisphere: 0.85, skyColor: '#d5e5ed', groundColor: '#858681',
+    },
+  },
+};
+
+export const CITY = {
+  asphalt: '#727877', concrete: '#a0a29b', curb: '#b6b8ae',
+  buildings: ['#8b9292', '#ada99c', '#77858b', '#999d98'],
+  trim: '#515e62', glass: '#314d59', windowGlow: '#f0c58a',
+  roadMarking: '#d1c7a2', blocksPerSide: 6, blockSpacing: 25,
+  firstBlockOffset: 98, rowSpacing: 32,
 };
 
 // Visual-only winter weather; pooled points do not affect combat or movement.
@@ -445,6 +464,7 @@ export function getLevelConfig(level) {
   if (level === 2) return LEVELS.night;
   if (level === 3) return LEVELS.forest;
   if (level === 4) return LEVELS.frost;
+  if (level === 5) return LEVELS.city;
   return LEVELS.day;
 }
 export function getAtmosphere(level) {
@@ -477,7 +497,7 @@ export function getEnemyRules(level) {
       trilobiteInterval: 20,
     };
   }
-  if (level === 4) {
+  if (level === 4 || level === 5) {
     return {
       ...BALANCE.enemy,
       interval: 7,

@@ -87,16 +87,18 @@ export function GameRuntime() {
       battle.waves.enemy = 0;
       EventBus.emit('level-changed', 3);
     };
-    const advanceToFrost = () => {
-      if (gameState.currentLevel !== 3 || !levelTransition.current.active) return;
+    const advanceFromBriefing = (nextLevel) => {
+      if (gameState.currentLevel !== nextLevel - 1 || !levelTransition.current.active) return;
       levelTransition.current = { active: false, timer: 0 };
-      gameState.currentLevel = 4;
+      gameState.currentLevel = nextLevel;
       towerDefenseState.transitionLevel();
       battle.waves.enemy = 0;
       EventBus.emit('release-soldier');
-      EventBus.emit('level-changed', 4);
+      EventBus.emit('level-changed', nextLevel);
       EventBus.emit('resume-game');
     };
+    const advanceToFrost = () => advanceFromBriefing(4);
+    const advanceToCity = () => advanceFromBriefing(5);
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
@@ -114,7 +116,8 @@ export function GameRuntime() {
     EventBus.on('proceed-to-night', advanceToNight);
     EventBus.on('proceed-to-forest', advanceToForest);
     EventBus.on('proceed-to-frost', advanceToFrost);
-    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); EventBus.off('proceed-to-frost', advanceToFrost); delete window.game; };
+    EventBus.on('proceed-to-city', advanceToCity);
+    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); EventBus.off('proceed-to-frost', advanceToFrost); EventBus.off('proceed-to-city', advanceToCity); delete window.game; };
   }, []);
   useFrame(({gl}, delta) => {
     if (!gameState.paused) {
@@ -134,10 +137,10 @@ export function GameRuntime() {
         // Victory after surviving all waves — day level transitions to night
         const maxWaves = getMaxWaves(gameState.currentLevel);
         if (towerDefenseState.wave >= maxWaves && !battle.gameOver) {
-          if (gameState.currentLevel < 4) {
+          if (gameState.currentLevel < 5) {
             levelTransition.current.active = true;
             levelTransition.current.timer = 0;
-            if (gameState.currentLevel === 3) {
+            if (gameState.currentLevel >= 3) {
               EventBus.emit('release-soldier');
               EventBus.emit('pause-game');
             }

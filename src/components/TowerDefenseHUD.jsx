@@ -136,7 +136,7 @@ export function TowerDefenseHUD({ visible }) {
         }}
       >
         <div style={{ color: '#ff9b5a', fontWeight: 800, letterSpacing: '0.1em' }}>
-          {level === 4 ? '❄' : level === 3 ? '🌲' : level === 2 ? '🌙' : '☀'} {getLevelConfig(level).name} WAVE {wave}/{getMaxWaves(level)}
+          {level === 5 ? '▥' : level === 4 ? '❄' : level === 3 ? '🌲' : level === 2 ? '🌙' : '☀'} {getLevelConfig(level).name} WAVE {wave}/{getMaxWaves(level)}
         </div>
         <div>⏱ {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</div>
       </div>

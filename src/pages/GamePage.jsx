@@ -5,7 +5,7 @@ import { gameState } from '@/game/3d/world';
 import { cargoShipState } from '@/game/3d/objects/cargoShipState';
 import { OPENING, LEVELS } from '@/game/config';
 import { MainMenu } from '@/components/MainMenu';
-import { FrostMissionBriefing } from '@/components/FrostMissionBriefing';
+import { CampaignMissionBriefing } from '@/components/CampaignMissionBriefing';
 import { IntroVideo } from '@/components/IntroVideo';
 import AimOverlay from '@/components/AimOverlay';
 import { HealthBar } from '@/components/HealthBar';
@@ -264,7 +264,7 @@ export default function GamePage() {
                 {mode === 'strategic' ? '◉ STRATEGIC VIEW' : '🎮 THIRD-PERSON'}
               </div>
               <div className="text-slate-400 text-xs mt-0.5">
-                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : currentLevel === 3 ? 'Forest Operation' : 'Frost Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
+                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : currentLevel === 3 ? 'Forest Operation' : currentLevel === 4 ? 'Frost Operation' : 'City Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
               </div>
             </div>
 
@@ -376,7 +376,7 @@ export default function GamePage() {
         )}
 
         {/* Level transition: cinematic for day→night or night→forest */}
-        {levelTransition && currentLevel === 3 && <FrostMissionBriefing />}
+        {levelTransition && currentLevel >= 3 && <CampaignMissionBriefing currentLevel={currentLevel} />}
         {levelTransition && currentLevel < 3 && (
           <IntroVideo
             src={currentLevel === 1 ? LEVELS.night.introVideoUrl : LEVELS.forest.introVideoUrl}
