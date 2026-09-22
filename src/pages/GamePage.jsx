@@ -85,6 +85,7 @@ export default function GamePage() {
     initStarted.current = true;
     gameState.paused = false;
     gameState.preparing = true; // block player input during video
+    setCurrentLevel(level);
     if (level === 2) {
       gameState.currentLevel = 2;
       towerDefenseState.reset();
@@ -196,7 +197,7 @@ export default function GamePage() {
         {/* Intro Video */}
         {phase === 'intro' && (
           <IntroVideo
-            src={OPENING.introVideoUrl}
+            src={currentLevel === 2 ? LEVELS.night.introVideoUrl : OPENING.introVideoUrl}
             onEnd={onVideoComplete}
             onSkip={onVideoComplete}
           />
