@@ -363,11 +363,19 @@ export const TOWER_DEFENSE = {
 
 // --- Friendly tanks (defensive bulwark) --------------------------------------
 export const TANK = {
-  hullColor: '#6b6b50',
-  trackColor: '#3a3a30',
-  turretColor: '#5a5a45',
-  barrelColor: '#2a2a25',
-  accentColor: '#cf8140',
+  hullColor: '#585a44',       // Weathered olive-drab armor
+  plateColor: '#424434',      // Modular ERA reactive armor plates & skirts
+  trackColor: '#1d1e20',      // Carbonized heavy track steel
+  wheelColor: '#2e3028',      // Cast road wheel steel
+  rimColor: '#5e6152',        // Wheel rim caps & suspension arms
+  turretColor: '#52543e',     // Chiseled turret citadel
+  barrelColor: '#232628',     // Heavy gunmetal barrel
+  mantletColor: '#393b2d',    // Reinforced rotor shroud mantlet
+  accentColor: '#ff7722',     // Friendly faction orange neon illumination
+  accentCyan: '#38bdf8',      // Tactical optics & sensor lenses
+  exhaustColor: '#1d1b18',    // Engine grilles & exhaust stacks
+  headlightColor: '#fff0be',  // Dual projector headlights
+  taillightColor: '#ff2828',  // Rear tactical convoy markers
   colliderHalfWidth: 1.25,
   colliderHalfHeight: 0.5,
   colliderHalfDepth: 1.75,

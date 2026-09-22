@@ -15,48 +15,391 @@ import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
 
 useGLTF.preload(CARGO_SHIP.modelUrl);
 
-// --- Shared geometries & materials (module scope for performance) -----------
-const hullGeo = new THREE.BoxGeometry(2.5, 0.8, 3.5);
-const trackGeo = new THREE.BoxGeometry(0.4, 0.5, 3.8);
-const turretGeo = new THREE.BoxGeometry(1.8, 0.6, 2.0);
-const barrelGeo = new THREE.CylinderGeometry(0.12, 0.12, 2.5, 8);
-const glacisGeo = new THREE.BoxGeometry(2.5, 0.8, 0.4);
-const hatchGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.15, 8);
-const lightGeo = new THREE.BoxGeometry(0.15, 0.1, 0.05);
+// --- Shared geometries & materials (module scope for zero GC churn) --------
+// Hull & Glacis
+const hullTubGeo = new THREE.BoxGeometry(2.1, 0.46, 3.4);
+const hullTopGeo = new THREE.BoxGeometry(2.2, 0.34, 2.2);
+const glacisLowerGeo = new THREE.BoxGeometry(2.1, 0.38, 0.7);
+const glacisUpperGeo = new THREE.BoxGeometry(2.05, 0.44, 1.15);
+const eraBlockGeo = new THREE.BoxGeometry(0.32, 0.1, 0.22);
+const towShackleGeo = new THREE.TorusGeometry(0.08, 0.026, 6, 8);
+const driverVisorGeo = new THREE.BoxGeometry(0.32, 0.16, 0.24);
+const driverOpticGeo = new THREE.BoxGeometry(0.24, 0.05, 0.04);
+const headlightBoxGeo = new THREE.BoxGeometry(0.18, 0.14, 0.18);
+const headlightLensGeo = new THREE.BoxGeometry(0.15, 0.1, 0.04);
+const taillightGeo = new THREE.BoxGeometry(0.22, 0.08, 0.03);
+
+// Engine & Rear Hull
+const engineDeckGeo = new THREE.BoxGeometry(1.85, 0.2, 1.25);
+const engineVentGeo = new THREE.BoxGeometry(1.5, 0.06, 0.35);
+const engineFanGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.06, 12);
+const exhaustMufflerGeo = new THREE.BoxGeometry(0.22, 0.28, 0.55);
+const exhaustPipeGeo = new THREE.CylinderGeometry(0.065, 0.08, 0.35, 8);
+const rearPodGeo = new THREE.BoxGeometry(0.42, 0.35, 0.65);
+
+// Running gear & tracks
+const trackBeltGeo = new THREE.BoxGeometry(0.44, 0.46, 3.6);
+const trackSkirtPanelGeo = new THREE.BoxGeometry(0.08, 0.44, 0.62);
+const skirtTopRailGeo = new THREE.BoxGeometry(0.1, 0.08, 3.2);
+const frontFenderGeo = new THREE.BoxGeometry(0.48, 0.14, 0.42);
+const rearMudflapGeo = new THREE.BoxGeometry(0.46, 0.32, 0.06);
+const roadWheelGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.38, 12);
+const wheelHubGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.42, 8);
+const driveSprocketGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.38, 12);
+const idlerWheelGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.38, 12);
+const returnRollerGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.36, 8);
+
+// Turret & Sensor Suite
+const turretRingGeo = new THREE.CylinderGeometry(0.9, 0.98, 0.12, 16);
+const turretCitadelGeo = new THREE.BoxGeometry(1.65, 0.48, 1.9);
+const turretCheekGeo = new THREE.BoxGeometry(0.38, 0.44, 1.35);
+const turretBustleGeo = new THREE.BoxGeometry(1.45, 0.4, 0.95);
+const bustleRackGeo = new THREE.BoxGeometry(1.35, 0.22, 0.35);
+const cupolaGeo = new THREE.CylinderGeometry(0.3, 0.33, 0.16, 12);
+const cupolaHatchGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.07, 10);
+const loaderHatchGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.05, 8);
+const citvStemGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.2, 6);
+const citvPodGeo = new THREE.SphereGeometry(0.14, 8, 8);
+const citvLensGeo = new THREE.BoxGeometry(0.1, 0.08, 0.04);
+const gunnerSightGeo = new THREE.BoxGeometry(0.22, 0.18, 0.28);
+const gunnerOpticGeo = new THREE.BoxGeometry(0.16, 0.1, 0.03);
+const rangefinderGeo = new THREE.BoxGeometry(0.28, 0.08, 0.04);
+const smokePodGeo = new THREE.BoxGeometry(0.18, 0.18, 0.28);
+const smokeTubeGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6);
+const antennaGeo = new THREE.CylinderGeometry(0.012, 0.022, 1.3, 4);
+const antennaTipGeo = new THREE.SphereGeometry(0.04, 6, 6);
+const chevronGeo = new THREE.BoxGeometry(0.25, 0.12, 0.02);
+
+// Cannon & Armament
+const mantletGeo = new THREE.BoxGeometry(0.68, 0.42, 0.55);
+const coaxGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.9, 6);
+const barrelRootGeo = new THREE.CylinderGeometry(0.17, 0.2, 0.7, 10);
+const barrelMainGeo = new THREE.CylinderGeometry(0.12, 0.125, 2.5, 10);
+const boreEvacuatorGeo = new THREE.CylinderGeometry(0.165, 0.165, 0.55, 10);
+const muzzleBrakeGeo = new THREE.BoxGeometry(0.3, 0.24, 0.45);
+const muzzlePortGeo = new THREE.BoxGeometry(0.34, 0.08, 0.12);
+const muzzleFlashGeo = new THREE.SphereGeometry(0.35, 8, 8);
+
+// Tactical Cover Aura & Pylons
+const auraRingGeo = new THREE.RingGeometry(4.88, 5.0, 36);
+const emitterPylonGeo = new THREE.CylinderGeometry(0.06, 0.09, 0.25, 6);
+const emitterNodeGeo = new THREE.SphereGeometry(0.08, 8, 8);
 const explosionGeo = new THREE.SphereGeometry(1, 8, 8);
 
-const hullMat = new THREE.MeshStandardMaterial({ color: TANK.hullColor, roughness: 0.8 });
-const trackMat = new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.9 });
-const turretMat = new THREE.MeshStandardMaterial({ color: TANK.turretColor, roughness: 0.8 });
-const barrelMat = new THREE.MeshStandardMaterial({ color: TANK.barrelColor, roughness: 0.6, metalness: 0.4 });
-const hatchMat = new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.7 });
-const accentMat = new THREE.MeshStandardMaterial({ color: TANK.accentColor, emissive: TANK.accentColor, emissiveIntensity: 0.6 });
+// Materials
+const hullMat = new THREE.MeshStandardMaterial({ color: TANK.hullColor, roughness: 0.75, metalness: 0.25 });
+const plateMat = new THREE.MeshStandardMaterial({ color: TANK.plateColor, roughness: 0.65, metalness: 0.3 });
+const trackMat = new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.9, metalness: 0.4 });
+const wheelMat = new THREE.MeshStandardMaterial({ color: TANK.wheelColor, roughness: 0.6, metalness: 0.5 });
+const rimMat = new THREE.MeshStandardMaterial({ color: TANK.rimColor, roughness: 0.5, metalness: 0.5 });
+const turretMat = new THREE.MeshStandardMaterial({ color: TANK.turretColor, roughness: 0.72, metalness: 0.28 });
+const mantletMat = new THREE.MeshStandardMaterial({ color: TANK.mantletColor, roughness: 0.6, metalness: 0.4 });
+const barrelMat = new THREE.MeshStandardMaterial({ color: TANK.barrelColor, roughness: 0.4, metalness: 0.75 });
+const exhaustMat = new THREE.MeshStandardMaterial({ color: TANK.exhaustColor, roughness: 0.85, metalness: 0.35 });
+const darkMetalMat = new THREE.MeshStandardMaterial({ color: '#1a1c1d', roughness: 0.5, metalness: 0.7 });
+const accentMat = new THREE.MeshStandardMaterial({ color: TANK.accentColor, emissive: TANK.accentColor, emissiveIntensity: 0.9 });
+const opticMat = new THREE.MeshStandardMaterial({ color: TANK.accentCyan, emissive: TANK.accentCyan, emissiveIntensity: 1.2 });
+const headlightMat = new THREE.MeshStandardMaterial({ color: TANK.headlightColor, emissive: TANK.headlightColor, emissiveIntensity: 1.6 });
+const taillightMat = new THREE.MeshStandardMaterial({ color: TANK.taillightColor, emissive: TANK.taillightColor, emissiveIntensity: 1.4 });
+const flashMat = new THREE.MeshBasicMaterial({ color: '#ffea77', transparent: true, opacity: 0.9 });
+const auraMat = new THREE.MeshBasicMaterial({ color: TANK.accentColor, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
 
 // --- Scratch vectors (no per-frame allocation) ------------------------------
 const _muzzle = new THREE.Vector3();
 const _aim = new THREE.Vector3();
-const _dir = new THREE.Vector3();
 
-// --- Tank visual built from primitives --------------------------------------
-function TankVisual({ explosionRef, explosionMatRef }) {
+// --- Detailed Track & Suspension System ------------------------------------
+function TrackAssembly({ side, wheelRefs }) {
+  // side: -1 for left, +1 for right
+  const x = side * 1.3;
+  const outerX = side * 1.54;
+  const rotZ = Math.PI / 2;
+  const wheelZOffsets = [-1.2, -0.6, 0.0, 0.6, 1.2];
+  const rollerZOffsets = [-0.8, 0.0, 0.8];
+  const skirtZOffsets = [-1.2, -0.6, 0.0, 0.6, 1.2];
+
   return (
     <group>
-      {/* Hull */}
-      <mesh geometry={hullGeo} material={hullMat} position={[0, 0.4, 0]} castShadow />
-      {/* Tracks */}
-      <mesh geometry={trackGeo} material={trackMat} position={[-1.3, 0.25, 0]} castShadow />
-      <mesh geometry={trackGeo} material={trackMat} position={[1.3, 0.25, 0]} castShadow />
-      {/* Front glacis (sloped armor) */}
-      <mesh geometry={glacisGeo} material={hullMat} position={[0, 0.4, -1.55]} rotation={[-Math.PI / 6, 0, 0]} castShadow />
-      {/* Turret */}
-      <mesh geometry={turretGeo} material={turretMat} position={[0, 0.9, 0]} castShadow />
-      {/* Barrel (points -Z, toward enemy) */}
-      <mesh geometry={barrelGeo} material={barrelMat} position={[0, 0.95, -1.5]} rotation={[Math.PI / 2, 0, 0]} castShadow />
-      {/* Hatch */}
-      <mesh geometry={hatchGeo} material={hatchMat} position={[0, 1.25, 0.3]} castShadow />
-      {/* Accent lights */}
-      <mesh geometry={lightGeo} material={accentMat} position={[0.7, 0.5, -1.7]} />
-      <mesh geometry={lightGeo} material={accentMat} position={[-0.7, 0.5, -1.7]} />
+      {/* Main Track Belt */}
+      <mesh geometry={trackBeltGeo} material={trackMat} position={[x, 0.32, 0]} castShadow />
+
+      {/* Side Skirt Top Rail */}
+      <mesh geometry={skirtTopRailGeo} material={plateMat} position={[outerX, 0.6, 0]} castShadow />
+
+      {/* Modular ERA Skirt Armor Slabs (5 segments) */}
+      {skirtZOffsets.map((z, idx) => (
+        <mesh key={`skirt-${idx}`} geometry={trackSkirtPanelGeo} material={plateMat} position={[outerX, 0.36, z]} castShadow />
+      ))}
+
+      {/* Front Mudguard with Faction Trim */}
+      <group position={[x, 0.42, -1.72]} rotation={[Math.PI / 8, 0, 0]}>
+        <mesh geometry={frontFenderGeo} material={plateMat} castShadow />
+        <mesh geometry={eraBlockGeo} material={accentMat} position={[0, 0.06, -0.15]} scale={[1.2, 0.2, 0.3]} />
+      </group>
+
+      {/* Rear Mudflap */}
+      <mesh geometry={rearMudflapGeo} material={darkMetalMat} position={[x, 0.34, 1.76]} rotation={[-Math.PI / 10, 0, 0]} castShadow />
+
+      {/* Drive Sprocket (Front) */}
+      <mesh
+        ref={el => { if (el && wheelRefs) wheelRefs.push(el); }}
+        geometry={driveSprocketGeo}
+        material={darkMetalMat}
+        position={[x, 0.35, -1.6]}
+        rotation={[0, 0, rotZ]}
+        castShadow
+      />
+
+      {/* Idler Wheel (Rear) */}
+      <mesh
+        ref={el => { if (el && wheelRefs) wheelRefs.push(el); }}
+        geometry={idlerWheelGeo}
+        material={darkMetalMat}
+        position={[x, 0.35, 1.6]}
+        rotation={[0, 0, rotZ]}
+        castShadow
+      />
+
+      {/* 5 Road Wheels & Rim Caps */}
+      {wheelZOffsets.map((z, idx) => (
+        <group key={`wheel-${idx}`} position={[x, 0.26, z]}>
+          <mesh
+            ref={el => { if (el && wheelRefs) wheelRefs.push(el); }}
+            geometry={roadWheelGeo}
+            material={wheelMat}
+            rotation={[0, 0, rotZ]}
+            castShadow
+          />
+          <mesh geometry={wheelHubGeo} material={rimMat} rotation={[0, 0, rotZ]} />
+        </group>
+      ))}
+
+      {/* Return Rollers (Upper Track Support) */}
+      {rollerZOffsets.map((z, idx) => (
+        <mesh key={`roller-${idx}`} geometry={returnRollerGeo} material={rimMat} position={[x, 0.5, z]} rotation={[0, 0, rotZ]} />
+      ))}
+    </group>
+  );
+}
+
+// --- Tank Visual Component --------------------------------------------------
+function TankVisual({
+  turretRef,
+  barrelRef,
+  muzzleRef,
+  flashRef,
+  auraRef,
+  wheelRefs,
+  explosionRef,
+  explosionMatRef,
+}) {
+  return (
+    <group>
+      {/* ====================================================================
+          1. CHASSIS / LOWER & UPPER HULL
+          ==================================================================== */}
+      {/* Lower Hull Tub */}
+      <mesh geometry={hullTubGeo} material={hullMat} position={[0, 0.36, 0]} castShadow />
+      {/* Upper Hull Superstructure */}
+      <mesh geometry={hullTopGeo} material={hullMat} position={[0, 0.62, 0.05]} castShadow />
+
+      {/* Lower Front Glacis Plate (Angled Back) */}
+      <mesh geometry={glacisLowerGeo} material={hullMat} position={[0, 0.28, -1.62]} rotation={[-Math.PI / 5, 0, 0]} castShadow />
+
+      {/* Upper Front Sloped Glacis Plate */}
+      <mesh geometry={glacisUpperGeo} material={plateMat} position={[0, 0.58, -1.22]} rotation={[-Math.PI / 4, 0, 0]} castShadow />
+
+      {/* Reactive Armor (ERA) Chevron Array on Glacis */}
+      <group position={[0, 0.62, -1.2]} rotation={[-Math.PI / 4, 0, 0]}>
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[-0.7, 0.1, -0.1]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[-0.35, 0.1, -0.1]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[0.35, 0.1, -0.1]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[0.7, 0.1, -0.1]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[-0.52, 0.1, 0.18]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[0, 0.1, 0.18]} castShadow />
+        <mesh geometry={eraBlockGeo} material={plateMat} position={[0.52, 0.1, 0.18]} castShadow />
+      </group>
+
+      {/* Front Tow Shackles */}
+      <mesh geometry={towShackleGeo} material={darkMetalMat} position={[-0.82, 0.2, -1.78]} rotation={[0, Math.PI / 2, 0]} />
+      <mesh geometry={towShackleGeo} material={darkMetalMat} position={[0.82, 0.2, -1.78]} rotation={[0, Math.PI / 2, 0]} />
+
+      {/* Driver Vision Block & Sensor Visor */}
+      <group position={[0, 0.74, -1.02]}>
+        <mesh geometry={driverVisorGeo} material={plateMat} castShadow />
+        <mesh geometry={driverOpticGeo} material={opticMat} position={[0, 0.01, -0.13]} />
+      </group>
+
+      {/* Projector Headlights (Front Fenders) */}
+      <group position={[-0.92, 0.56, -1.58]}>
+        <mesh geometry={headlightBoxGeo} material={darkMetalMat} castShadow />
+        <mesh geometry={headlightLensGeo} material={headlightMat} position={[0, 0, -0.1]} />
+      </group>
+      <group position={[0.92, 0.56, -1.58]}>
+        <mesh geometry={headlightBoxGeo} material={darkMetalMat} castShadow />
+        <mesh geometry={headlightLensGeo} material={headlightMat} position={[0, 0, -0.1]} />
+      </group>
+
+      {/* Engine Deck (Rear) with Cooling Louvers & Dual Turbine Fans */}
+      <group position={[0, 0.68, 0.95]}>
+        <mesh geometry={engineDeckGeo} material={hullMat} castShadow />
+        <mesh geometry={engineVentGeo} material={exhaustMat} position={[0, 0.11, -0.3]} />
+        <mesh geometry={engineVentGeo} material={exhaustMat} position={[0, 0.11, 0.35]} />
+        <mesh geometry={engineFanGeo} material={darkMetalMat} position={[-0.42, 0.11, 0.05]} />
+        <mesh geometry={engineFanGeo} material={darkMetalMat} position={[0.42, 0.11, 0.05]} />
+      </group>
+
+      {/* Armored Exhaust Mufflers & Angled Tailpipes */}
+      <group position={[-0.86, 0.6, 1.42]}>
+        <mesh geometry={exhaustMufflerGeo} material={exhaustMat} castShadow />
+        <mesh geometry={exhaustPipeGeo} material={darkMetalMat} position={[0, 0.18, 0.15]} rotation={[Math.PI / 6, 0, 0]} />
+      </group>
+      <group position={[0.86, 0.6, 1.42]}>
+        <mesh geometry={exhaustMufflerGeo} material={exhaustMat} castShadow />
+        <mesh geometry={exhaustPipeGeo} material={darkMetalMat} position={[0, 0.18, 0.15]} rotation={[Math.PI / 6, 0, 0]} />
+      </group>
+
+      {/* Rear Power / Fuel Pods */}
+      <mesh geometry={rearPodGeo} material={plateMat} position={[-0.46, 0.5, 1.72]} castShadow />
+      <mesh geometry={rearPodGeo} material={plateMat} position={[0.46, 0.5, 1.72]} castShadow />
+
+      {/* Rear Tactical Taillights */}
+      <mesh geometry={taillightGeo} material={taillightMat} position={[-0.98, 0.48, 1.72]} />
+      <mesh geometry={taillightGeo} material={taillightMat} position={[0.98, 0.48, 1.72]} />
+
+      {/* Left and Right Tracks */}
+      <TrackAssembly side={-1} wheelRefs={wheelRefs} />
+      <TrackAssembly side={1} wheelRefs={wheelRefs} />
+
+      {/* Defensive Cover Aura Field Emitter Pylons on Hull Corners */}
+      <group position={[-0.96, 0.72, -1.4]}>
+        <mesh geometry={emitterPylonGeo} material={darkMetalMat} />
+        <mesh geometry={emitterNodeGeo} material={accentMat} position={[0, 0.14, 0]} />
+      </group>
+      <group position={[0.96, 0.72, -1.4]}>
+        <mesh geometry={emitterPylonGeo} material={darkMetalMat} />
+        <mesh geometry={emitterNodeGeo} material={accentMat} position={[0, 0.14, 0]} />
+      </group>
+      <group position={[-0.96, 0.72, 1.35]}>
+        <mesh geometry={emitterPylonGeo} material={darkMetalMat} />
+        <mesh geometry={emitterNodeGeo} material={accentMat} position={[0, 0.14, 0]} />
+      </group>
+      <group position={[0.96, 0.72, 1.35]}>
+        <mesh geometry={emitterPylonGeo} material={darkMetalMat} />
+        <mesh geometry={emitterNodeGeo} material={accentMat} position={[0, 0.14, 0]} />
+      </group>
+
+      {/* ====================================================================
+          2. INDEPENDENTLY ROTATING TURRET
+          ==================================================================== */}
+      <group ref={turretRef} position={[0, 0.78, -0.05]}>
+        {/* Turret Collar Ring */}
+        <mesh geometry={turretRingGeo} material={darkMetalMat} position={[0, 0.06, 0]} />
+
+        {/* Main Turret Citadel */}
+        <mesh geometry={turretCitadelGeo} material={turretMat} position={[0, 0.34, 0]} castShadow />
+
+        {/* Sloped Composite Cheek Armor Wedges */}
+        <group position={[-0.82, 0.32, -0.28]} rotation={[0, -0.2, 0]}>
+          <mesh geometry={turretCheekGeo} material={plateMat} castShadow />
+          <mesh geometry={chevronGeo} material={accentMat} position={[-0.2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} />
+        </group>
+        <group position={[0.82, 0.32, -0.28]} rotation={[0, 0.2, 0]}>
+          <mesh geometry={turretCheekGeo} material={plateMat} castShadow />
+          <mesh geometry={chevronGeo} material={accentMat} position={[0.2, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
+        </group>
+
+        {/* Rear Turret Bustle (Ammunition & Counterweight) */}
+        <mesh geometry={turretBustleGeo} material={turretMat} position={[0, 0.3, 0.92]} castShadow />
+        <mesh geometry={bustleRackGeo} material={darkMetalMat} position={[0, 0.22, 1.25]} />
+
+        {/* Commander's Cupola & Hatch (Right) */}
+        <group position={[0.48, 0.58, 0.25]}>
+          <mesh geometry={cupolaGeo} material={plateMat} castShadow />
+          <mesh geometry={cupolaHatchGeo} material={darkMetalMat} position={[0, 0.1, 0]} castShadow />
+        </group>
+
+        {/* Loader / Gunner Hatch (Left) */}
+        <mesh geometry={loaderHatchGeo} material={darkMetalMat} position={[-0.48, 0.6, 0.2]} castShadow />
+
+        {/* CITV - Commander's Independent Thermal Viewer (Right Front Mast) */}
+        <group position={[0.54, 0.58, -0.32]}>
+          <mesh geometry={citvStemGeo} material={darkMetalMat} position={[0, 0.1, 0]} />
+          <mesh geometry={citvPodGeo} material={plateMat} position={[0, 0.22, 0]} castShadow />
+          <mesh geometry={citvLensGeo} material={opticMat} position={[0, 0.22, -0.13]} />
+        </group>
+
+        {/* Gunner's Primary Optical Sight Box (Left Front) */}
+        <group position={[-0.48, 0.62, -0.42]}>
+          <mesh geometry={gunnerSightGeo} material={plateMat} castShadow />
+          <mesh geometry={gunnerOpticGeo} material={opticMat} position={[0, 0, -0.15]} />
+        </group>
+
+        {/* Laser Rangefinder Slit above Mantlet */}
+        <mesh geometry={rangefinderGeo} material={opticMat} position={[0, 0.56, -0.96]} />
+
+        {/* Smoke Grenade Discharger Pods (Flanks) */}
+        <group position={[-0.92, 0.46, -0.2]}>
+          <mesh geometry={smokePodGeo} material={darkMetalMat} />
+          <mesh geometry={smokeTubeGeo} material={darkMetalMat} position={[-0.06, 0.08, -0.08]} rotation={[-Math.PI / 4, -Math.PI / 6, 0]} />
+          <mesh geometry={smokeTubeGeo} material={darkMetalMat} position={[-0.06, 0.08, 0.08]} rotation={[-Math.PI / 4, -Math.PI / 6, 0]} />
+        </group>
+        <group position={[0.92, 0.46, -0.2]}>
+          <mesh geometry={smokePodGeo} material={darkMetalMat} />
+          <mesh geometry={smokeTubeGeo} material={darkMetalMat} position={[0.06, 0.08, -0.08]} rotation={[-Math.PI / 4, Math.PI / 6, 0]} />
+          <mesh geometry={smokeTubeGeo} material={darkMetalMat} position={[0.06, 0.08, 0.08]} rotation={[-Math.PI / 4, Math.PI / 6, 0]} />
+        </group>
+
+        {/* Dual Communications & Data-Link Whip Antennae */}
+        <group position={[-0.62, 0.58, 1.15]}>
+          <mesh geometry={antennaGeo} material={darkMetalMat} position={[0, 0.65, 0]} />
+          <mesh geometry={antennaTipGeo} material={accentMat} position={[0, 1.3, 0]} />
+        </group>
+        <group position={[0.62, 0.58, 1.15]}>
+          <mesh geometry={antennaGeo} material={darkMetalMat} position={[0, 0.65, 0]} />
+          <mesh geometry={antennaTipGeo} material={accentMat} position={[0, 1.3, 0]} />
+        </group>
+
+        {/* ====================================================================
+            3. CANNON & RECOILING BARREL ASSEMBLY
+            ==================================================================== */}
+        {/* Armored Gun Mantlet / Rotor Shroud */}
+        <mesh geometry={mantletGeo} material={mantletMat} position={[0, 0.3, -0.96]} castShadow />
+
+        {/* Coaxial Secondary Autocannon */}
+        <mesh geometry={coaxGeo} material={darkMetalMat} position={[-0.3, 0.3, -1.35]} rotation={[Math.PI / 2, 0, 0]} />
+
+        {/* Recoiling Main Cannon Barrel Group */}
+        <group ref={barrelRef} position={[0, 0.3, -1.05]}>
+          {/* Thermal Sleeve Collar */}
+          <mesh geometry={barrelRootGeo} material={darkMetalMat} position={[0, 0, -0.32]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+          {/* Main Heavy Rifled Barrel Tube */}
+          <mesh geometry={barrelMainGeo} material={barrelMat} position={[0, 0, -1.45]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+          {/* Bore Evacuator Chamber */}
+          <mesh geometry={boreEvacuatorGeo} material={plateMat} position={[0, 0, -1.25]} rotation={[Math.PI / 2, 0, 0]} castShadow />
+          {/* Dual-Port Heavy Muzzle Brake */}
+          <mesh geometry={muzzleBrakeGeo} material={darkMetalMat} position={[0, 0, -2.7]} castShadow />
+          <mesh geometry={muzzlePortGeo} material={darkMetalMat} position={[0, 0, -2.7]} />
+
+          {/* Muzzle World Anchor (True shot spawn position) */}
+          <group ref={muzzleRef} position={[0, 0, -2.95]} />
+
+          {/* Muzzle Flash Burst */}
+          <mesh ref={flashRef} geometry={muzzleFlashGeo} material={flashMat} position={[0, 0, -2.95]} visible={false} />
+        </group>
+      </group>
+
+      {/* ====================================================================
+          4. TACTICAL COVER AURA (5M DEFENSIVE SHIELD PERIMETER)
+          ==================================================================== */}
+      <mesh
+        ref={auraRef}
+        geometry={auraRingGeo}
+        material={auraMat}
+        position={[0, -0.46, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      />
+
       {/* Death explosion (hidden until tank destroyed) */}
       <mesh ref={explosionRef} geometry={explosionGeo} material={explosionMatRef} visible={false} />
     </group>
