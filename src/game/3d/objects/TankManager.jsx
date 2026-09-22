@@ -39,14 +39,13 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
   useEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
-    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     body.setTranslation({ x: zone.x, y: 0.5, z: zone.z }, true);
 
     const profile = BALANCE.units.tank;
     const entry = {
       id, team: 'friendly', type: 'tank', sectorIndex, squadId: `tank-${id}`,
       profile, bodyRef, aimHeight: 1.0, heading: TANK.initialFacing,
-      cooldown: 0, aiTarget: null,
+      cooldown: 0, aiTarget: null, shotsFired: 0,
       health: profile.health, maxHealth: profile.health,
       alive: true, bornAt: battle.elapsed, targetScan: 0,
     };
@@ -94,42 +93,40 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
     }
 
     const pos = body.translation();
-    const frontlineZ = FRONT.rows[2]; // z=14 — defensive hold line
+    const frontlineZ = FRONT.rows[2] + 2; // defensive hold line
+    cooldown.current -= delta;
 
-    // --- Drive to frontline if not there yet --------------------------------
-    if (pos.z > frontlineZ + 2) {
-      body.setLinvel({ x: 0, y: 0, z: -TANK.moveSpeed }, true);
-      group.rotation.y = TANK.initialFacing; // face -Z
-    } else {
-      // Hold position at the frontline
-      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    // Engage threats as soon as they enter cannon range; otherwise advance.
+    const enemy = findNearestEnemy(entry, entry.profile.range, canSeeTarget);
+    if (enemy) {
+      const ep = enemy.bodyRef.current.translation();
+      group.rotation.y = Math.atan2(ep.x - pos.x, ep.z - pos.z);
 
-      // --- Scan for enemies and fire -----------------------------------------
-      const enemy = findNearestEnemy(entry, entry.profile.range, canSeeTarget);
-      if (enemy) {
-        const ep = enemy.bodyRef.current.translation();
-        // Face enemy
-        group.rotation.y = Math.atan2(ep.x - pos.x, ep.z - pos.z);
-
-        // Fire cannon if cooldown elapsed
-        cooldown.current -= delta;
-        if (cooldown.current <= 0) {
-          const yaw = group.rotation.y;
-          _muzzle.set(
-            pos.x + Math.sin(yaw) * 1.5,
-            pos.y + 1.0,
-            pos.z + Math.cos(yaw) * 1.5
-          );
-          _aim.set(ep.x, ep.y + 0.9, ep.z);
-          fireShot(entry, _muzzle, _aim);
-          cooldown.current = entry.profile.cooldown;
-        }
+      if (cooldown.current <= 0) {
+        const yaw = group.rotation.y;
+        _muzzle.set(
+          pos.x + Math.sin(yaw) * 2.9,
+          pos.y + 1.06,
+          pos.z + Math.cos(yaw) * 2.9
+        );
+        _aim.set(ep.x, ep.y + enemy.aimHeight, ep.z);
+        fireShot(entry, _muzzle, _aim);
+        entry.shotsFired += 1;
+        cooldown.current = entry.profile.cooldown;
       }
+    } else if (pos.z > frontlineZ) {
+      // Kinematic tracked advance cannot deadlock against infantry or trench lips.
+      body.setNextKinematicTranslation({
+        x: pos.x,
+        y: pos.y,
+        z: Math.max(frontlineZ, pos.z - TANK.moveSpeed * delta),
+      });
+      group.rotation.y = TANK.initialFacing;
     }
   });
 
   return (
-    <RigidBody ref={bodyRef} colliders={false} lockRotations canSleep={false} name="friendly-tank" ccd>
+    <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} lockRotations canSleep={false} name="friendly-tank" ccd>
       <CuboidCollider
         args={[TANK.colliderHalfWidth, TANK.colliderHalfHeight, TANK.colliderHalfDepth]}
         position={[0, TANK.colliderY, 0]}

@@ -52,6 +52,7 @@ export function GameRuntime() {
       getSoldierCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getEnemyCount: () => combat.units.filter(u => u.team === 'enemy' && u.alive).length,
       getTankCount: () => combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).length,
+      getTanks: () => combat.units.filter(u => u.team === 'friendly' && u.type === 'tank' && u.alive).map(u => ({ id: u.id, position: u.bodyRef.current ? { ...u.bodyRef.current.translation() } : null, shotsFired: u.shotsFired || 0, targetId: u.cachedTarget?.alive ? u.cachedTarget.id : null })),
       getFriendlyCombatCount: () => combat.units.filter(u => u.team === 'friendly' && u.alive).length,
       getWeapons: () => combat.units.filter(u => u.team === 'friendly' && u.alive).map(weaponState),
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,

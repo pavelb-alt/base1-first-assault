@@ -7,14 +7,14 @@ import { TANK } from '@/game/config';
 // hundreds of scene nodes. No additional physics, lights, textures or frame work.
 const lighter = (color, amount) => new THREE.Color(color).lerp(new THREE.Color('#b5b29a'), amount);
 const materials = {
-  hull: new THREE.MeshStandardMaterial({ color: TANK.hullColor, roughness: 0.82 }),
-  armor: new THREE.MeshStandardMaterial({ color: lighter(TANK.turretColor, 0.22), roughness: 0.74, metalness: 0.12 }),
-  rubber: new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.96 }),
-  steel: new THREE.MeshStandardMaterial({ color: lighter(TANK.barrelColor, 0.27), roughness: 0.64, metalness: 0.3 }),
-  dark: new THREE.MeshStandardMaterial({ color: TANK.barrelColor, roughness: 0.8 }),
-  accent: new THREE.MeshStandardMaterial({ color: TANK.accentColor, roughness: 0.72 }),
-  marking: new THREE.MeshStandardMaterial({ color: '#d3cfb7', roughness: 0.85 }),
-  lens: new THREE.MeshStandardMaterial({ color: '#b8dad4', emissive: '#92c7be', emissiveIntensity: 0.65, roughness: 0.3 }),
+  hull: new THREE.MeshStandardMaterial({ color: TANK.hullColor, roughness: 0.48, metalness: 0.32 }),
+  armor: new THREE.MeshStandardMaterial({ color: lighter(TANK.turretColor, 0.18), roughness: 0.42, metalness: 0.38 }),
+  rubber: new THREE.MeshStandardMaterial({ color: TANK.trackColor, roughness: 0.9 }),
+  steel: new THREE.MeshStandardMaterial({ color: lighter(TANK.barrelColor, 0.27), roughness: 0.35, metalness: 0.72 }),
+  dark: new THREE.MeshStandardMaterial({ color: TANK.barrelColor, roughness: 0.52, metalness: 0.46 }),
+  accent: new THREE.MeshStandardMaterial({ color: TANK.accentColor, emissive: '#ff6a00', emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.38 }),
+  marking: new THREE.MeshStandardMaterial({ color: '#ffd28a', emissive: '#ff7a1a', emissiveIntensity: 0.35, roughness: 0.55 }),
+  lens: new THREE.MeshStandardMaterial({ color: '#86f7ff', emissive: '#20dff2', emissiveIntensity: 1.8, roughness: 0.18, metalness: 0.2 }),
 };
 
 function buildTank() {
