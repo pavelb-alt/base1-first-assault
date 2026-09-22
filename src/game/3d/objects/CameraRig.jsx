@@ -7,6 +7,9 @@ import { gameState } from '@/game/3d/world';
 import { input, clearInput, bindInput } from '@/game/3d/input';
 import { combat } from '@/game/3d/combat';
 const cameraAnchor=new THREE.Vector3(),cameraRay=new THREE.Vector3();
+// Scratch vectors for transition blending (avoid per-frame allocations)
+const _stratPos=new THREE.Vector3(),_tpPos=new THREE.Vector3();
+const _stratLook=new THREE.Vector3(),_tpLook=new THREE.Vector3();
 
 export function CameraRig() {
   const { camera, gl } = useThree();
@@ -15,6 +18,7 @@ export function CameraRig() {
   const strategicDistance = useRef(CAMERA.strategic.initialDistance);
   const thirdPersonYaw = useRef(0);
   const thirdPersonPitch = useRef(CAMERA.thirdPerson.initialPitch);
+  const transition = useRef(null); // { startPos: Vector3, startLook: Vector3, duration, elapsed }
 
   // --- Possess / release handlers -------------------------------------------
   useEffect(() => {
@@ -29,22 +33,28 @@ export function CameraRig() {
       gameState.possessedSoldierId = unit.id;
       const p = unit.bodyRef.current.translation();
       gameState.soldierPosition.set(p.x, p.y, p.z);
-      gameState.mode = 'third_person';
+      // Don't switch mode yet — start smooth camera transition
       const pos = gameState.soldierPosition;
       const enemy = BASES.enemy.position;
       const dx = enemy[0] - pos.x;
       const dz = enemy[2] - pos.z;
-      // Camera looks toward enemy base
       thirdPersonYaw.current = Math.atan2(dx, dz);
-      // Soldier faces enemy base (model forward is +Z) — include ID so only the possessed soldier applies it
+      thirdPersonPitch.current = CAMERA.thirdPerson.initialPitch;
       EventBus.emit('set-soldier-rotation', { id: unit.id, rotation: Math.atan2(dx, dz) });
-      EventBus.emit('mode-changed', 'third_person');
-      // Stay in the trusted click/keydown gesture; retry is available on canvas click.
-      gl.domElement.requestPointerLock?.()?.catch?.(() => {});
+      // Capture current camera state as the transition start point
+      transition.current = {
+        startPos: camera.position.clone(),
+        startLook: strategicTarget.current.clone(),
+        duration: 1.4,
+        elapsed: 0,
+      };
+      gameState.transitioning = true;
     };
 
     const onRelease = () => {
       clearInput();
+      transition.current = null;
+      gameState.transitioning = false;
       gameState.mode = 'strategic';
       gameState.selectedSoldierId = null;
       gameState.possessedSoldierId = null;
@@ -54,7 +64,7 @@ export function CameraRig() {
       if (document.pointerLockElement) document.exitPointerLock();
     };
 
-    const onResetCamera=()=>{strategicTarget.current.fromArray(CAMERA.strategic.initialTarget);strategicDistance.current=CAMERA.strategic.initialDistance;};
+    const onResetCamera=()=>{transition.current=null;gameState.transitioning=false;strategicTarget.current.fromArray(CAMERA.strategic.initialTarget);strategicDistance.current=CAMERA.strategic.initialDistance;};
     const onFrameLanding=()=>{strategicTarget.current.set(0,0,56);strategicDistance.current=45;};
     EventBus.on('reset-camera',onResetCamera);
     EventBus.on('frame-landing-area',onFrameLanding);
@@ -88,6 +98,60 @@ export function CameraRig() {
   // --- Per-frame camera update ----------------------------------------------
   useFrame((_state, delta) => {
     if (gameState.paused) return;
+
+    // --- Smooth camera transition (strategic → third-person) -------------------
+    if (transition.current) {
+      const tr = transition.current;
+      tr.elapsed += delta;
+      const t = Math.min(1, tr.elapsed / tr.duration);
+      // Ease-out cubic: fast start, gentle arrival
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      // Strategic camera position (where we came from)
+      const angle = CAMERA.strategic.angle;
+      const dist = strategicDistance.current;
+      _stratPos.set(
+        strategicTarget.current.x,
+        dist * Math.sin(angle),
+        strategicTarget.current.z + dist * Math.cos(angle),
+      );
+
+      // Third-person camera position (where we're going)
+      const pos = gameState.soldierPosition;
+      const yaw = thirdPersonYaw.current;
+      const pitch = thirdPersonPitch.current;
+      const tp = CAMERA.thirdPerson;
+      _tpPos.set(
+        pos.x - tp.distance * Math.sin(yaw) * Math.cos(pitch) - tp.shoulder * Math.cos(yaw),
+        pos.y + tp.height + tp.distance * Math.sin(pitch),
+        pos.z - tp.distance * Math.cos(yaw) * Math.cos(pitch) + tp.shoulder * Math.sin(yaw),
+      );
+
+      // Blend position
+      camera.position.lerpVectors(tr.startPos, _tpPos, ease);
+
+      // Blend lookAt target
+      _tpLook.set(
+        _tpPos.x + Math.sin(yaw) * Math.cos(pitch),
+        _tpPos.y - Math.sin(pitch),
+        _tpPos.z + Math.cos(yaw) * Math.cos(pitch),
+      );
+      _stratLook.copy(tr.startLook);
+      camera.lookAt(_stratLook.lerp(_tpLook, ease));
+      camera.updateMatrixWorld(true);
+
+      // Transition complete — hand off to third-person mode
+      if (t >= 1) {
+        transition.current = null;
+        gameState.transitioning = false;
+        gameState.mode = 'third_person';
+        gameState.cameraYaw = thirdPersonYaw.current;
+        EventBus.emit('mode-changed', 'third_person');
+        gl.domElement.requestPointerLock?.()?.catch?.(() => {});
+      }
+      return;
+    }
+
     if (gameState.mode === 'strategic') {
       if (!gameState.preparing) {
         // WASD pan
