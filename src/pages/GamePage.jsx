@@ -50,7 +50,7 @@ export default function GamePage() {
       setCurrentLevel(level);
       setLevelTransition(false);
       setWaveNumber(0);
-      if (level === 1) setGameOver(null);
+      setGameOver(null);
     };
     const onTankCount = (count) => setTankCount(count);
 
@@ -90,6 +90,10 @@ export default function GamePage() {
       gameState.currentLevel = 2;
       towerDefenseState.reset();
       EventBus.emit('level-changed', 2);
+    } else if (level === 3) {
+      gameState.currentLevel = 3;
+      towerDefenseState.reset();
+      EventBus.emit('level-changed', 3);
     }
     setPhase('intro');
   }, []);
@@ -145,6 +149,7 @@ export default function GamePage() {
     towerDefenseState.reset();
     gameState.preparing = false;
     gameState.paused = false;
+    gameState.currentLevel = 1;
     setMissionReady(false);
     setLoadError(null);
     setMode('strategic');
@@ -206,7 +211,7 @@ export default function GamePage() {
         {/* Intro Video */}
         {phase === 'intro' && (
           <IntroVideo
-            src={currentLevel === 2 ? LEVELS.night.introVideoUrl : OPENING.introVideoUrl}
+            src={currentLevel === 3 ? LEVELS.forest.introVideoUrl : currentLevel === 2 ? LEVELS.night.introVideoUrl : OPENING.introVideoUrl}
             onEnd={onVideoComplete}
             onSkip={onVideoComplete}
           />
@@ -258,7 +263,7 @@ export default function GamePage() {
                 {mode === 'strategic' ? '◉ STRATEGIC VIEW' : '🎮 THIRD-PERSON'}
               </div>
               <div className="text-slate-400 text-xs mt-0.5">
-                {currentLevel === 1 ? 'Day Operation' : 'Night Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
+                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : 'Forest Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
               </div>
             </div>
 
@@ -369,12 +374,12 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Level transition: night intro video (day → night cinematic) */}
+        {/* Level transition: cinematic for day→night or night→forest */}
         {levelTransition && (
           <IntroVideo
-            src={LEVELS.night.introVideoUrl}
-            onEnd={() => EventBus.emit('proceed-to-night')}
-            onSkip={() => EventBus.emit('proceed-to-night')}
+            src={currentLevel === 1 ? LEVELS.night.introVideoUrl : LEVELS.forest.introVideoUrl}
+            onEnd={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
+            onSkip={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
           />
         )}
 

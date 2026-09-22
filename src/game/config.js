@@ -409,10 +409,24 @@ export const LEVELS = {
       ambient: 0.12, hemisphere: 0.35, skyColor: '#2a3550', groundColor: '#1a1e2a',
     },
   },
+  forest: {
+    id: 3,
+    name: 'FOREST',
+    introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/c9beaa189_Forest_Level_Intro.mp4',
+    maxWaves: 30,
+    atmosphere: {
+      sky: '#2d4a2a', horizon: '#5a7a48', sun: '#d4e8b8',
+      sunPosition: [-20, 60, 80], sunIntensity: 2.4,
+      fogNear: 40, fogFar: 160,
+      ambient: 0.22, hemisphere: 0.65, skyColor: '#3d6a35', groundColor: '#2d3a1e',
+    },
+  },
 };
 
 export function getLevelConfig(level) {
-  return level === 2 ? LEVELS.night : LEVELS.day;
+  if (level === 2) return LEVELS.night;
+  if (level === 3) return LEVELS.forest;
+  return LEVELS.day;
 }
 export function getAtmosphere(level) {
   return getLevelConfig(level).atmosphere;
@@ -442,6 +456,17 @@ export function getEnemyRules(level) {
       startDelay: 8,
       squad: ['quadshell', 'eyedrone', 'trilobite', 'eyedrone', 'trilobite'],
       trilobiteInterval: 20,
+    };
+  }
+  if (level === 3) {
+    return {
+      ...BALANCE.enemy,
+      interval: 8,
+      maxAlive: 96,
+      spawnScale: 1.5,
+      startDelay: 6,
+      squad: ['trilobite', 'eyedrone', 'quadshell', 'trilobite', 'eyedrone', 'trilobite'],
+      trilobiteInterval: 15,
     };
   }
   return BALANCE.enemy;

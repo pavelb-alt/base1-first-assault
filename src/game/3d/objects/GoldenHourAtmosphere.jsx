@@ -15,6 +15,7 @@ export function GoldenHourAtmosphere() {
 
   const C = getAtmosphere(level);
   const isNight = level === 2;
+  const isForest = level === 3;
 
   const uniforms = useMemo(() => ({
     sky: { value: new THREE.Color(C.sky) },
@@ -46,6 +47,7 @@ export function GoldenHourAtmosphere() {
         }`} />
     </mesh>
     {isNight && <Stars radius={400} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />}
+    {isForest && <fog attach="fog" args={[C.horizon, C.fogNear, C.fogFar]} />}
     <ambientLight intensity={C.ambient} />
     <hemisphereLight intensity={C.hemisphere} color={C.skyColor} groundColor={C.groundColor} />
     <directionalLight name={isNight ? "Moonlight" : "High daylight sun"} castShadow={PERFORMANCE.shadows} position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
