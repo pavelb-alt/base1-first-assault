@@ -69,6 +69,13 @@ export function GameRuntime() {
       reset: () => EventBus.emit('reset-game'),
       pause: () => EventBus.emit('pause-game'), resume: () => EventBus.emit('resume-game'),
     };
+    const advanceToNight = () => {
+      levelTransition.current = { active: false, timer: 0 };
+      gameState.currentLevel = 2;
+      towerDefenseState.transitionLevel();
+      battle.waves.enemy = 0;
+      EventBus.emit('level-changed', 2);
+    };
     const reset = () => {
       clearInput(); resetBattle(); resetFrontline(); resetCrossings(); resetCombatCover(); resetSpatial();
       towerDefenseState.reset();
@@ -83,22 +90,13 @@ export function GameRuntime() {
       EventBus.emit('reset-camera');
     };
     EventBus.on('reset-game', reset);
-    return () => { EventBus.off('reset-game', reset); delete window.game; };
+    EventBus.on('proceed-to-night', advanceToNight);
+    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); delete window.game; };
   }, []);
   useFrame(({gl}, delta) => {
     if (!gameState.paused) {
       // Level transition: pause game logic during the cinematic, then advance.
-      if (levelTransition.current.active) {
-        levelTransition.current.timer += delta;
-        if (levelTransition.current.timer >= 3) {
-          levelTransition.current.active = false;
-          gameState.currentLevel = 2;
-          towerDefenseState.transitionLevel();
-          battle.waves.enemy = 0;
-          EventBus.emit('level-changed', 2);
-        }
-        return;
-      }
+      if (levelTransition.current.active) return;
       battle.elapsed += delta;
       updateSpatial(combat.units,battle.elapsed);
       const p=performance.current;p.frames++;p.seconds+=delta;p.maxFrameMs=Math.max(p.maxFrameMs,delta*1000);

@@ -3,7 +3,7 @@ import { GameContainer } from '@/components/game/GameContainer';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { cargoShipState } from '@/game/3d/objects/cargoShipState';
-import { OPENING } from '@/game/config';
+import { OPENING, LEVELS } from '@/game/config';
 import { MainMenu } from '@/components/MainMenu';
 import { IntroVideo } from '@/components/IntroVideo';
 import AimOverlay from '@/components/AimOverlay';
@@ -359,15 +359,13 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Level transition overlay (day → night cinematic) */}
+        {/* Level transition: night intro video (day → night cinematic) */}
         {levelTransition && (
-          <div className="absolute inset-0 grid place-items-center bg-black/95 pointer-events-auto z-40">
-            <div className="text-center">
-              <div className="text-blue-300 text-5xl font-extrabold mb-2 tracking-wider animate-pulse">LEVEL 2</div>
-              <div className="text-slate-300 text-xl font-semibold tracking-widest">— NIGHT —</div>
-              <div className="text-slate-500 text-sm mt-4 italic">The fog rolls in…</div>
-            </div>
-          </div>
+          <IntroVideo
+            src={LEVELS.night.introVideoUrl}
+            onEnd={() => EventBus.emit('proceed-to-night')}
+            onSkip={() => EventBus.emit('proceed-to-night')}
+          />
         )}
 
         {/* Fade through black (handoff → gameplay transition) */}
