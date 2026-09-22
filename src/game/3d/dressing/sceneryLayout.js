@@ -56,11 +56,14 @@ beam(22,6,enemyRear,1.2,5,1.2,DRESSING.rust,[0,0,.12]);
 beam(29,5,enemyRear-1,1.2,3,1.2);
 // --- Forest ring around the map perimeter -----------------------------------
 const TREE = { trunk:'#4a3b28', bark:'#5a4632', leafA:'#3d5a2e', leafB:'#4a6b34', leafC:'#2d4220', leafD:'#557735' };
-for (let i = 0; i < 180; i++) {
-  const a = (i / 180) * Math.PI * 2 + dressingNoise(9000 + i) * 0.2;
-  const ringR = 155 + dressingNoise(9100 + i) * 45;
-  const px = Math.cos(a) * ringR + (dressingNoise(9200 + i) - 0.5) * 12;
-  const pz = Math.sin(a) * ringR + (dressingNoise(9300 + i) - 0.5) * 12;
+for (let i = 0; i < 240; i++) {
+  // Populate a square forest belt so every edge of the playable map is framed.
+  const side = i % 4;
+  const along = -145 + dressingNoise(9000 + i) * 290;
+  const outside = 165 + dressingNoise(9100 + i) * 55;
+  const jitter = (dressingNoise(9200 + i) - 0.5) * 12;
+  const px = side < 2 ? (side === 0 ? -outside : outside) : along + jitter;
+  const pz = side >= 2 ? (side === 2 ? -outside : outside) : along + jitter;
   const h = 5 + dressingNoise(9400 + i) * 9;
   const trunkH = h * 0.35;
   const crownR = 2 + dressingNoise(9500 + i) * 2.5;
