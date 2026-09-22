@@ -4,7 +4,7 @@ import { addCinematicScenery } from '@/game/3d/dressing/cinematicScenery';
 
 // All meshes use unit bounds (radius 0.5). Conservative spherical bounds keep
 // even tilted beams and dishes OUTSIDE the existing physical map boundary.
-export const SCENERY = { rock:[], box:[], cylinder:[], dish:[], treeTrunk:[], treeFoliage:[] };
+export const SCENERY = { rock:[], box:[], cylinder:[], dish:[], treeTrunk:[], treeFoliage:[], pineTrunk:[], pineFoliage:[], bush:[], fallenLog:[], stump:[], fern:[] };
 // Layout authored around a 300m map. Compress interior coordinates while
 // retaining the original outside-edge clearance and full-size scenery.
 const layoutHalf=150;
@@ -83,6 +83,72 @@ for (const [cx, cz] of [[-175,-130],[170,140],[-160,140],[165,-125]]) {
     const h = 4 + dressingNoise(n+2) * 7, trunkH = h * 0.35, crownR = 1.8 + dressingNoise(n+3) * 2, crownH = crownR * 2.2;
     add('treeTrunk', [px, trunkH * 0.5, pz], [0.4, trunkH, 0.4], TREE.trunk, [0, dressingNoise(n+4) * 6, 0]);
     add('treeFoliage', [px, trunkH + crownH * 0.4, pz], [crownR, crownH, crownR], [TREE.leafA, TREE.leafB, TREE.leafC][j % 3], [0, dressingNoise(n+5) * 6, 0]);
+  }
+}
+// --- Varied undergrowth: bushes, ferns, stumps, fallen logs ----------------
+const UNDERGROWTH = {
+  bushA:'#3a5226', bushB:'#44622e', bushC:'#2e4218', bushD:'#527238',
+  fern:'#3d5a28', fernB:'#4a6b30',
+  stump:'#5a4632', log:'#4a3b28', logBark:'#3a2e20',
+};
+for (let i = 0; i < 180; i++) {
+  const side = i % 4;
+  const along = -145 + dressingNoise(12000 + i) * 290;
+  const outside = 158 + dressingNoise(12100 + i) * 70;
+  const jitter = (dressingNoise(12200 + i) - 0.5) * 14;
+  const px = side < 2 ? (side === 0 ? -outside : outside) : along + jitter;
+  const pz = side >= 2 ? (side === 2 ? -outside : outside) : along + jitter;
+  const n = 12000 + i * 7;
+  const r = 0.8 + dressingNoise(n + 1) * 1.6;
+  const bushColor = [UNDERGROWTH.bushA, UNDERGROWTH.bushB, UNDERGROWTH.bushC, UNDERGROWTH.bushD][i % 4];
+  add('bush', [px, r * 0.4, pz], [r, r * 0.8, r], bushColor, [0, dressingNoise(n + 2) * 6.28, 0]);
+  // Ferns scattered between bushes — low flat clusters
+  if (i % 3 === 0) {
+    const fx = px + (dressingNoise(n + 3) - 0.5) * 5;
+    const fz = pz + (dressingNoise(n + 4) - 0.5) * 5;
+    const fr = 0.6 + dressingNoise(n + 5) * 0.8;
+    add('fern', [fx, 0.15, fz], [fr, 0.3, fr], i % 2 ? UNDERGROWTH.fern : UNDERGROWTH.fernB, [0, dressingNoise(n + 6) * 6.28, 0]);
+  }
+}
+// Fallen logs and stumps along the tree line
+for (let i = 0; i < 60; i++) {
+  const side = i % 4;
+  const along = -130 + dressingNoise(14000 + i) * 260;
+  const outside = 156 + dressingNoise(14100 + i) * 50;
+  const px = side < 2 ? (side === 0 ? -outside : outside) : along + (dressingNoise(14200 + i) - 0.5) * 10;
+  const pz = side >= 2 ? (side === 2 ? -outside : outside) : along + (dressingNoise(14300 + i) - 0.5) * 10;
+  const n = 14000 + i * 5;
+  const logLen = 2 + dressingNoise(n + 1) * 3;
+  const logR = 0.3 + dressingNoise(n + 2) * 0.25;
+  add('fallenLog', [px, logR, pz], [logR, logR, logLen], i % 2 ? UNDERGROWTH.log : UNDERGROWTH.logBark, [0, dressingNoise(n + 3) * 6.28, Math.PI / 2 * (dressingNoise(n + 4) > 0.5 ? 1 : -1) * 0.15]);
+  // Stump next to some logs
+  if (i % 4 === 0) {
+    const sr = 0.4 + dressingNoise(n + 5) * 0.3;
+    add('stump', [px + 1.5, sr * 0.5, pz + 0.8], [sr, sr * 0.8, sr], UNDERGROWTH.stump, [0, dressingNoise(n + 6) * 3, 0]);
+  }
+}
+// --- Pine trees: tall narrow conifers mixed into the forest belt ------------
+const PINE = { trunk:'#3a2e1f', leafA:'#1e3a18', leafB:'#2a4a20', leafC:'#1a3014' };
+for (let i = 0; i < 120; i++) {
+  const side = i % 4;
+  const along = -140 + dressingNoise(16000 + i) * 280;
+  const outside = 162 + dressingNoise(16100 + i) * 60;
+  const jitter = (dressingNoise(16200 + i) - 0.5) * 10;
+  const px = side < 2 ? (side === 0 ? -outside : outside) : along + jitter;
+  const pz = side >= 2 ? (side === 2 ? -outside : outside) : along + jitter;
+  const n = 16000 + i * 6;
+  const h = 7 + dressingNoise(n + 1) * 8;
+  const trunkH = h * 0.3;
+  const layers = 2 + Math.floor(dressingNoise(n + 2) * 3);
+  const sway = dressingNoise(n + 3) * 6.28;
+  add('pineTrunk', [px, trunkH * 0.5, pz], [0.35, trunkH, 0.35], PINE.trunk, [0, sway, 0]);
+  for (let l = 0; l < layers; l++) {
+    const t = l / Math.max(1, layers - 1);
+    const layerR = 1.2 + (1 - t) * 1.5;
+    const layerH = 2 + (1 - t) * 1.5;
+    const cy = trunkH + t * h * 0.6;
+    const leaf = [PINE.leafA, PINE.leafB, PINE.leafC][l % 3];
+    add('pineFoliage', [px, cy, pz], [layerR, layerH, layerR], leaf, [0, sway + l * 0.3, 0]);
   }
 }
 addCinematicScenery(SCENERY);

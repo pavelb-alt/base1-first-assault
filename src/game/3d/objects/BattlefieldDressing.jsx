@@ -10,6 +10,12 @@ const geometries={
   dish:new THREE.SphereGeometry(.5,12,5,0,Math.PI*2,0,Math.PI/2),
   treeTrunk:new THREE.CylinderGeometry(.5,.5,1,6),
   treeFoliage:new THREE.ConeGeometry(.5,1,7),
+  pineTrunk:new THREE.CylinderGeometry(.5,.5,1,5),
+  pineFoliage:new THREE.ConeGeometry(.5,1,6),
+  bush:new THREE.IcosahedronGeometry(.5,1),
+  fallenLog:new THREE.CylinderGeometry(.5,.5,1,6),
+  stump:new THREE.CylinderGeometry(.5,.4,1,5),
+  fern:new THREE.ConeGeometry(.5,1,5),
 };
 const material=new THREE.MeshStandardMaterial({roughness:.94,flatShading:true});
 const apronMaterial=new THREE.MeshStandardMaterial({color:MAP.GROUND_COLOR,roughness:1});
@@ -31,7 +37,8 @@ function SceneryBatch({kind,items}) {
     if(ref.current.instanceColor)ref.current.instanceColor.needsUpdate=true;
     ref.current.computeBoundingSphere();
   },[items]);
-  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={kind !== 'rock' && kind !== 'treeFoliage'} receiveShadow />;
+  const noShadow = kind === 'rock' || kind === 'treeFoliage' || kind === 'bush' || kind === 'fern' || kind === 'pineFoliage';
+  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={!noShadow} receiveShadow />;
 }
 export function BattlefieldDressing() {
   // Deliberately outside RigidBody and outside both bases' shotCover groups.
