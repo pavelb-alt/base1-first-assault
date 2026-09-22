@@ -379,8 +379,8 @@ export const TANK = {
 };
 
 export const TANK_DELIVERY = {
-  interval: 45,
-  startDelay: 20,
+  interval: 20,
+  startDelay: 15,
   maxAlive: 4,
 };
 
