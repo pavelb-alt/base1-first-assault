@@ -18,6 +18,7 @@ import { TowerManager } from '@/game/3d/objects/TowerManager';
 import { TankDeliveryManager, TankEntityManager } from '@/game/3d/objects/TankManager';
 import { ArtilleryDeliveryManager, ArtilleryEntityManager, ArtilleryShells } from '@/game/3d/objects/ArtilleryManager';
 import { gameState } from '@/game/3d/world';
+import { SelectionSystem } from '@/game/3d/objects/SelectionSystem';
 import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
 import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlares';
@@ -59,6 +60,7 @@ export function GameScene() {
           <TankEntityManager />
           <ArtilleryEntityManager />
           <ArtilleryShells />
+          <SelectionSystem />
           <GameRuntime />
         </Physics>
         <CargoShipManager />

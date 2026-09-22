@@ -14,6 +14,7 @@ import { artilleryState, launchShell } from '@/game/3d/objects/artilleryState';
 import { explosionRequests } from '@/game/3d/objects/BattlefieldExplosions';
 import { SupportDelivery } from '@/game/3d/objects/TankManager';
 import { ArtilleryVisual } from '@/game/3d/objects/ArtilleryVisual';
+import { selectUnit, clearOrders, driveToOrder } from '@/game/3d/commands';
 
 const _muzzle = new THREE.Vector3();
 const _target = new THREE.Vector3();
@@ -71,13 +72,24 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
     cooldown.current -= delta;
     recoil.current = Math.max(0, recoil.current - delta * 1.4);
 
+    // Player orders override the automatic behaviour (see commands.js).
+    if (entry.order?.type === 'attack' && !(entry.order.target.alive && entry.order.target.bodyRef.current)) clearOrders(entry);
+    const order = entry.order;
+    let aim = null, driving = false;
+    if (order?.type === 'move' && !order.arrived) driving = driveToOrder(entry, group, delta, ARTILLERY.moveSpeed);
+    else if (order?.type === 'attack') aim = order.target.bodyRef.current.translation();
+    else if (order?.type === 'bombard') aim = order;
+    else {
+      const enemy = findNearestEnemy(entry, entry.profile.range);
+      if (enemy) aim = enemy.bodyRef.current.translation();
+    }
+
     // Indirect fire: no line of sight needed, only range and a minimum safe distance.
-    const enemy = findNearestEnemy(entry, entry.profile.range);
     let firing = false;
-    if (enemy) {
-      const ep = enemy.bodyRef.current.translation();
+    if (aim) {
+      const ep = aim;
       const dist = Math.hypot(ep.x - pos.x, ep.z - pos.z);
-      if (dist >= ARTILLERY.minRange) {
+      if (dist >= ARTILLERY.minRange && dist <= entry.profile.range) {
         firing = true;
         group.rotation.y = Math.atan2(ep.x - pos.x, ep.z - pos.z);
         if (cooldown.current <= 0 && elevation.current > ARTILLERY.fireElevation - 0.05) {
@@ -97,7 +109,7 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
         }
       }
     }
-    if (!firing && pos.z > ARTILLERY.holdZ) {
+    if (!firing && !driving && !entry.order && pos.z > ARTILLERY.holdZ) {
       const z = Math.max(ARTILLERY.holdZ, pos.z - ARTILLERY.moveSpeed * delta);
       body.setNextKinematicTranslation({ x: pos.x, y: terrainHeight(pos.x, z), z });
       group.rotation.y = ARTILLERY.initialFacing;
@@ -112,7 +124,12 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
   return (
     <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} lockRotations canSleep={false} name="friendly-artillery">
       <CuboidCollider args={[ARTILLERY.colliderHalfWidth, ARTILLERY.colliderHalfHeight, ARTILLERY.colliderHalfDepth]} position={[0, ARTILLERY.colliderY, 0]} />
-      <group ref={groupRef}>
+      <group
+        ref={groupRef}
+        onClick={e => { e.stopPropagation(); selectUnit(entryRef.current); }}
+        onPointerOver={e => { e.stopPropagation(); if (gameState.mode === 'strategic') document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'default'; }}
+      >
         <ArtilleryVisual barrelRef={barrelRef} recoilRef={recoilRef} explosionRef={explosionRef} explosionMat={explosionMat} />
       </group>
     </RigidBody>

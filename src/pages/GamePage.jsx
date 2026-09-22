@@ -13,6 +13,7 @@ import { Minimap } from '@/components/Minimap';
 import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
 import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { UnitCommandPanel } from '@/components/UnitCommandPanel';
 
 export default function GamePage() {
   // Opening flow: 'opening' → 'menu' → 'intro' → 'handoff' → 'playing'
@@ -91,14 +92,10 @@ export default function GamePage() {
     gameState.paused = false;
     gameState.preparing = true; // block player input during video
     setCurrentLevel(level);
-    if (level === 2) {
-      gameState.currentLevel = 2;
+    if (level > 1) {
+      gameState.currentLevel = level;
       towerDefenseState.reset();
-      EventBus.emit('level-changed', 2);
-    } else if (level === 3) {
-      gameState.currentLevel = 3;
-      towerDefenseState.reset();
-      EventBus.emit('level-changed', 3);
+      EventBus.emit('level-changed', level);
     }
     setPhase('intro');
   }, []);
@@ -262,6 +259,7 @@ export default function GamePage() {
             <Minimap />
             <TowerDefenseHUD visible={mode === 'strategic'} />
             <InControlTowerMenu visible={mode === 'third_person'} />
+            <UnitCommandPanel visible={mode === 'strategic'} />
 
             {/* Mode indicator */}
             <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
@@ -288,6 +286,8 @@ export default function GamePage() {
                   <>
                     <div><span className="text-white font-semibold">WASD</span> Pan Camera</div>
                     <div><span className="text-white font-semibold">Wheel</span> Zoom</div>
+                    <div><span className="text-white font-semibold">Left Click Unit</span> Select</div>
+                    <div><span className="text-white font-semibold">Left Click Ground</span> Order</div>
                     <div><span className="text-white font-semibold">Right Click</span> Place Tower</div>
                     <div><span className="text-white font-semibold">Tab</span> Join the Fight</div>
                   </>

@@ -10,6 +10,7 @@ import { SOLDIER, BALANCE } from '@/game/config';
 import { isGrounded, applyMovement } from '@/game/3d/navigation/motion';
 import { updateFriendly, releasePosition, suspendFrontline, resumeFrontline } from '@/game/3d/navigation/frontline';
 import { canSeeTarget } from '@/game/3d/ballistics';
+import { selectUnit, updateSoldierOrder } from '@/game/3d/commands';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
@@ -166,6 +167,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     }
 
     // Raycast the real local surface: ground, firing step or ramp.
+    if (isPossessed && entry.order) entry.order = null; // possession overrides player orders
     const grounded = isPossessed && vel.y < 0.5 && isGrounded(entry);
     if (grounded) jumpsRemaining.current = SOLDIER.maxJumps;
     if (isPossessed && !wasPossessed.current) suspendFrontline(entry);
@@ -222,11 +224,13 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     } else {
       // Stable reservations and physically accessible routes replace lane AI.
       const enemy = findNearestEnemy(entry,entry.profile.range,canSeeTarget);
-      if (updateFriendly(entry,delta,enemy)) {
+      if (entry.order) updateSoldierOrder(entry,delta,enemy,canSeeTarget);
+      else if (updateFriendly(entry,delta,enemy)) {
         recordRemoval(entry,'breach');entry.alive=false;releasePosition(entry);onDespawn(id);return;
       }
-      if(enemy) {
-        const p=enemy.bodyRef.current.translation();
+      const facing = entry.order ? entry.aiTarget : enemy;
+      if(facing?.bodyRef.current) {
+        const p=facing.bodyRef.current.translation();
         targetRotation.current=Math.atan2(p.x-pos.x,p.z-pos.z);
       } else targetRotation.current=entry.heading;
       const v=body.linvel();
@@ -262,10 +266,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
         rotation={[0, SOLDIER.initialFacing, 0]}
         onClick={(e) => {
           e.stopPropagation();
-          if (gameState.mode === 'strategic') {
-            gameState.selectedSoldierId = id;
-            EventBus.emit('soldier-selected');
-          }
+          selectUnit(combatEntryRef.current);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();

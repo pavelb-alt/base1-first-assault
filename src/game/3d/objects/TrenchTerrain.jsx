@@ -7,6 +7,7 @@ import { TrenchWire } from '@/game/3d/objects/TrenchWire';
 import { AntiTankObstacles } from '@/game/3d/objects/AntiTankObstacles';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
+import { selection, issueCommand } from '@/game/3d/commands';
 import { createGroundMaterial, setGroundNightFactor, setGroundFrostFactor, setGroundCityFactor } from '@/game/3d/dressing/groundAppearance';
 
 // One surface for visible earth AND fixed concave collision; no plane over the cutouts.
@@ -100,8 +101,8 @@ export function TrenchTerrain(){
   },[]);
   return <>
     <RigidBody type="fixed" colliders="trimesh" friction={0.3}>
-      <mesh geometry={ground} material={groundMaterial} receiveShadow onClick={()=>{
-        if(gameState.mode==='strategic'){gameState.selectedSoldierId=null;EventBus.emit('soldier-deselected');}
+      <mesh geometry={ground} material={groundMaterial} receiveShadow onClick={e=>{
+        if(gameState.mode==='strategic'&&selection.unit){e.stopPropagation();issueCommand(e.point.x,e.point.z);}
       }}/>
     </RigidBody>
     <RigidBody type="fixed" colliders={false}>

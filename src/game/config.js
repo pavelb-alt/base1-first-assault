@@ -398,6 +398,15 @@ export const ARTILLERY = {
   delivery: { interval: 35, startDelay: 30, maxAlive: 2 },
 };
 
+// --- Direct unit commands (strategic view) -----------------------------------
+export const COMMANDS = {
+  pickRadius: 5,          // target-mode click snaps to an enemy within this distance
+  retargetInterval: 1,    // seconds between re-routing toward a moving attack target
+  hudInterval: 0.25,      // seconds between selection HUD refreshes
+  selectColor: '#5eead4', moveColor: '#5eead4', attackColor: '#f87171',
+  ringScale: { soldier: 0.75, artillery: 2.6 },
+};
+
 // --- Level system (day → night campaign) ------------------------------------
 export const LEVELS = {
   day: {
