@@ -7,7 +7,6 @@ import { dressingNoise } from '@/game/3d/dressing/groundAppearance';
 import { terrainHeight } from '@/game/3d/terrain';
 import { EXPLOSIONS as E, CINEMATIC as C, PERFORMANCE } from '@/game/config';
 import { blastLayer } from '@/game/3d/objects/blastMaterial';
-import { artilleryState } from '@/game/3d/objects/artilleryState';
 
 export const explosionVisuals = { bursts: 0, smoke: 0, fire: 0, debris: 0 };
 const debrisGeometry = new THREE.TetrahedronGeometry(0.1);
@@ -46,16 +45,11 @@ export function BattlefieldExplosions() {
     if (gameState.paused) return;
     const dt = Math.min(delta, 0.08);
     pool.timer -= dt;
-    let blast = artilleryState.blasts.shift();
-    if (!blast && pool.timer <= 0) {
+    if (pool.timer <= 0) {
       pool.timer = E.minInterval + noise() * (E.maxInterval - E.minInterval);
       const x = (noise() * 2 - 1) * E.areaX;
       const z = E.areaZMin + noise() * (E.areaZMax - E.areaZMin);
-      blast = [x, terrainHeight(x, z), z];
-    }
-    if (blast) {
-      const x = blast[0], z = blast[2];
-      const y = blast[1] + 0.25, power = 0.8 + noise() * 0.6;
+      const y = terrainHeight(x, z) + 0.25, power = 0.8 + noise() * 0.6;
       for (let i = 0; i < Math.ceil(7 * PERFORMANCE.ambientParticleScale); i++) {
         const a = noise() * Math.PI * 2;
         emit('fire', x + Math.cos(a) * .6, y + .25 + noise(), z + Math.sin(a) * .6,

@@ -129,37 +129,17 @@ export function createGroundMaterial() {
       uniform vec3 snowColor;
       uniform vec3 iceColor;
       varying vec2 vDressingUv;
-      varying float vDressingFlat;
-      float gHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float gNoise(vec2 p){
-        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), f.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), f.x), f.y);
-      }`)
+      varying float vDressingFlat;`)
       .replace('#include <color_fragment>',`#include <color_fragment>
       vec3 surface = texture2D(dressingMap,vDressingUv).rgb;
       if (cityTint > 0.5) surface = texture2D(cityMap,vDressingUv).rgb;
-      // Procedural micro-relief in world metres; dark scars read as shallow depressions.
-      vec2 gWorld = vDressingUv * ${MAP.SIZE.toFixed(1)};
-      float gFine = gNoise(gWorld * 4.2), gMid = gNoise(gWorld * 1.3), gBroad = gNoise(gWorld * 0.32);
-      float gRough = mix(1.0, 0.35, cityTint) * mix(1.0, 0.45, frostTint);
-      float gHeight = vDressingFlat * (gBroad * 0.22 * mix(1.0, 0.2, cityTint) + (gMid * 0.07 + gFine * 0.025) * gRough - dot(surface, vec3(0.333)) * 0.14);
-      surface *= 0.9 + (gFine * 0.12 + gMid * 0.08) * gRough;
       diffuseColor.rgb = mix(diffuseColor.rgb, surface, vDressingFlat);
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.27, 0.3, 0.29), cityTint * (1.0 - vDressingFlat) * 0.7);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);
       vec3 winterColor = mix(iceColor, snowColor, vDressingFlat);
       // Preserve subtle scars and trench contours beneath the snow albedo.
-      diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`)
-      .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-      {
-        vec3 gDpx = dFdx(-vViewPosition), gDpy = dFdy(-vViewPosition);
-        float gHx = dFdx(gHeight) * 1.6, gHy = dFdy(gHeight) * 1.6;
-        vec3 gR1 = cross(gDpy, normal), gR2 = cross(normal, gDpx);
-        float gDet = dot(gDpx, gR1);
-        vec3 gGrad = sign(gDet) * (gHx * gR1 + gHy * gR2);
-        if (abs(gDet) > 1e-8) normal = normalize(abs(gDet) * normal - gGrad);
-      }`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-relief-v5';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-city-v4';
   return material;
 }

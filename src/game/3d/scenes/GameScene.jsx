@@ -16,7 +16,6 @@ import { CargoShipManager } from '@/game/3d/objects/CargoShipManager';
 import { SkyBattle } from '@/game/3d/objects/SkyBattle';
 import { TowerManager } from '@/game/3d/objects/TowerManager';
 import { TankDeliveryManager, TankEntityManager } from '@/game/3d/objects/TankManager';
-import { ArtilleryShells } from '@/game/3d/objects/ArtilleryShells';
 import { gameState } from '@/game/3d/world';
 import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
@@ -57,7 +56,6 @@ export function GameScene() {
           <BattlefieldExplosions />
           <HealthBars />
           <TankEntityManager />
-          <ArtilleryShells />
           <GameRuntime />
         </Physics>
         <CargoShipManager />
