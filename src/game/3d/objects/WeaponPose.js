@@ -3,11 +3,11 @@ import { HAND_SOCKET } from '@/game/3d/weapons';
 
 // This model's curled fingers run across local X, not local Y. The handle
 // must run through that fist axis, while the barrel follows local -Y.
-export function createWeaponPose(character, hand) {
+export function createWeaponPose(character, hand, basis) {
   const upper = character.getObjectByName('UpperArm_R');
   const forearm = character.getObjectByName('Forearm_R');
   const socketRotation = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-    new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, -1, 0),
+    ...basis.map(axis => new THREE.Vector3(...axis)),
   ));
   const upperRest = upper.quaternion.clone();
   const forearmRest = forearm.quaternion.clone();
