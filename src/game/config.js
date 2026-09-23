@@ -171,12 +171,15 @@ export const ENEMY_TYPES = {
     animAttack: 'Attack',
   },
   eyedrone: {
-    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/81e26c82f_108af050f_Enemy_EyeDrone.glb',
+    modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/62cea419d_Enemy_500_dragonfly_v1.glb',
     scale: 1,
     hoverHeight: 3,        // flying unit
-    colliderHalfHeight: 0.3,
-    colliderRadius: 0.3,
-    colliderY: 0.6,
+    tailGun: 'TailGun',
+    colliderHalfHeight: 0.2,
+    colliderRadius: 0.45,
+    colliderY: 0.6,        // retain existing aiming height
+    hitboxY: 0.3,
+    hitboxZ: 0.4,         // longitudinal capsule covers thorax and head, not tail/wings
     facingOffset: 0,
     animIdle: 'Idle',
     animMove: 'Idle',      // no Walk/Run clip — hovers

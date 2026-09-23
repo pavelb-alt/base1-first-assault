@@ -63,6 +63,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
   const backCannon = useMemo(() => config.backCannon ? clonedScene.getObjectByName(config.backCannon.node) ?? null : null, [clonedScene, config]);
   const frontCannons = useMemo(() => config.frontCannons?.map(name => clonedScene.getObjectByName(name)) ?? null, [clonedScene, config]);
+  const tailGun = useMemo(() => config.tailGun ? clonedScene.getObjectByName(config.tailGun) : null, [clonedScene, config]);
   const { actions } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'enemy', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
@@ -149,6 +150,11 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
             cannon.getWorldPosition(frontOrigin);
             if (fireShot(entry,frontOrigin,shotAim,shotOrigin)) entry.shotsFired++;
           }
+        } else if (tailGun) {
+          group.rotation.y=entry.heading+config.facingOffset;
+          group.updateWorldMatrix(true,true);
+          tailGun.getWorldPosition(frontOrigin);
+          if (fireShot(entry,frontOrigin,shotAim,shotOrigin)) entry.shotsFired++;
         } else fireShot(entry,shotOrigin,shotAim);
         if(backCannon) {
           // Rear turret muzzle in world space; converges on the same target as the front shots.
@@ -181,7 +187,8 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
       <CapsuleCollider
         friction={0}
         args={[config.colliderHalfHeight, config.colliderRadius]}
-        position={[0, config.colliderY, 0]}
+        position={[0, config.hitboxY ?? config.colliderY, config.hitboxZ ?? 0]}
+        rotation={config.tailGun ? [Math.PI / 2, 0, 0] : undefined}
       />
       <group ref={groupRef} visible={active}>
         <primitive object={clonedScene} scale={config.scale} />
