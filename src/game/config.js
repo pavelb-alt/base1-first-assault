@@ -542,6 +542,16 @@ export const NIGHT_FLARES = {
 };
 
 export function getEnemyRules(level) {
+  if (level === 1) {
+    // Level 1 must still be lost if the player never intervenes.
+    return {
+      ...BALANCE.enemy,
+      interval: 9,
+      maxAlive: 96,
+      spawnScale: 1.5,
+      startDelay: 10,
+    };
+  }
   if (level === 2) {
     return {
       ...BALANCE.enemy,

@@ -36,21 +36,25 @@ function beginJump(entry) {
   const nav=entry.nav,p=entry.bodyRef.current.translation(),z=nav.row+FRONT.jumpEnd;
   if(!isGrounded(entry))return false;
   if(!clearLanding(entry,nav.x,z)) {
-    for(const offset of [3,-3,6,-6]) {
-      const x=nav.x+offset,sector=SECTORS[entry.sectorIndex];
-      const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
-      if(x>sector.minX+3&&x<sector.maxX-3&&clearLanding(entry,x,row+FRONT.jumpEnd)) {
-        nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';return false;
+    // A crowded trench line used to deadlock: every candidate landing stayed
+    // occupied, so nobody crossed. Wait briefly, then cross regardless.
+    if(nav.blockedSince==null)nav.blockedSince=battle.elapsed;
+    if(battle.elapsed-nav.blockedSince<1.5) {
+      for(const offset of [3,-3,6,-6]) {
+        const x=nav.x+offset,sector=SECTORS[entry.sectorIndex];
+        const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
+        if(x>sector.minX+3&&x<sector.maxX-3&&clearLanding(entry,x,row+FRONT.jumpEnd)) {
+          nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';return false;
+        }
       }
+      const sector=SECTORS[entry.sectorIndex];
+      const x=Math.max(sector.minX+3,Math.min(sector.maxX-3,nav.x+(random()-0.5)*20));
+      const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
+      nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';
+      stop(entry);return false;
     }
-    // Every nearby landing is occupied: pick a fresh crossing point instead of
-    // idling in place, which used to deadlock enemies at the trench line.
-    const sector=SECTORS[entry.sectorIndex];
-    const x=Math.max(sector.minX+3,Math.min(sector.maxX-3,nav.x+(random()-0.5)*20));
-    const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
-    nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';
-    stop(entry);return false;
   }
+  nav.blockedSince=null;
   nav.landingKey=`${entry.id}:${nav.front}`;
   landings.set(nav.landingKey,{x:nav.x,z});
   nav.landing={x:nav.x,z};nav.jumpElapsed=0;nav.phase='jump';nav.crossStarted=battle.elapsed;
