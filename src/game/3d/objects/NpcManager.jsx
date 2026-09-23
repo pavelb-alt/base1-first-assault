@@ -16,6 +16,7 @@ import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAni
 const shotOrigin = new THREE.Vector3();
 const shotAim = new THREE.Vector3();
 const backOrigin = new THREE.Vector3();
+const frontOrigin = new THREE.Vector3();
 
 // Preload all enemy models at module scope (loaded once, cached by URL)
 Object.values(ENEMY_TYPES).forEach((t) => useGLTF.preload(t.modelUrl));
@@ -61,6 +62,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
   // Skeleton-safe deep clone — preserves bone bindings, allows independent animation
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
   const backCannon = useMemo(() => config.backCannon ? clonedScene.getObjectByName(config.backCannon.node) ?? null : null, [clonedScene, config]);
+  const frontCannons = useMemo(() => config.frontCannons?.map(name => clonedScene.getObjectByName(name)) ?? null, [clonedScene, config]);
   const { actions } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'enemy', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
@@ -96,8 +98,8 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
     if (!active) return;
     const entry = { id, team: 'enemy', type, sectorIndex, squadId, profile,
       bodyRef, aimHeight: config.colliderY, footOffset: config.colliderY-config.colliderHalfHeight-config.colliderRadius,
-      hoverHeight:config.hoverHeight, heading:0, nav:null, health: profile.health, maxHealth: profile.health,
-      alive: true, bornAt: battle.elapsed, targetScan: 0 };
+      hoverHeight:config.hoverHeight, moveSpeed:config.moveSpeed, heading:0, nav:null, health: profile.health, maxHealth: profile.health,
+      alive: true, bornAt: battle.elapsed, targetScan: 0, shotsFired: 0 };
     combat.units.push(entry); combat.byBody.set(body.handle, entry); combatEntryRef.current = entry;
     return () => {
       entry.alive = false;
@@ -138,7 +140,16 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
       if(attackTimer.current<=0) {
         shotOrigin.set(pos.x,pos.y+config.colliderY,pos.z);
         shotAim.set(p.x,p.y+enemy.aimHeight,p.z);
-        fireShot(entry,shotOrigin,shotAim);
+        if (frontCannons) {
+          // 403's pair of front guns: the same ballistic path and cadence as the walker.
+          group.rotation.y=entry.heading+config.facingOffset;
+          group.updateWorldMatrix(true,true);
+          for (const cannon of frontCannons) {
+            if (!cannon) continue;
+            cannon.getWorldPosition(frontOrigin);
+            if (fireShot(entry,frontOrigin,shotAim,shotOrigin)) entry.shotsFired++;
+          }
+        } else fireShot(entry,shotOrigin,shotAim);
         if(backCannon) {
           // Rear turret muzzle in world space; converges on the same target as the front shots.
           backCannon.updateWorldMatrix(true,false);
@@ -179,7 +190,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
   );
 });
 
-// All three enemy models load before the first complete wave is scheduled.
+// All enemy models load before the first complete wave is scheduled.
 export function NpcManager() {
   useGLTF(Object.values(ENEMY_TYPES).map(t => t.modelUrl));
   const { slots: npcs, despawn: handleDespawn } = useWavePool('enemy');

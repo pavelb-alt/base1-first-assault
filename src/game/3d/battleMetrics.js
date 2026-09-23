@@ -18,7 +18,7 @@ export function battleSnapshot(units){
   for(const u of units){
     if(!u.alive||!u.bodyRef.current)continue;
     const s=sectors[u.sectorIndex];if(!s)continue;
-    const team=s[u.team];team.alive++;team.hp+=u.health;s.types[u.type]=(s.types[u.type]||0)+1;
+    const team=s[u.team];team.alive++;team.hp+=u.health;s.types[u.type==='spider403'?'quadshell':u.type]=(s.types[u.type==='spider403'?'quadshell':u.type]||0)+1;
     const progress=(BASES.friendly.position[2]-u.bodyRef.current.translation().z)/(BASES.friendly.position[2]-BASES.enemy.position[2]);
     team.frontline=team.frontline===null?progress:(u.team==='friendly'?Math.max(team.frontline,progress):Math.min(team.frontline,progress));
   }

@@ -14,7 +14,7 @@ function unitTopY(entry) {
   if (entry.type === 'artillery') return 2.6 + BAR_OFFSET;
   if (entry.type === 'trilobite') return ENEMY_TYPES.trilobite.colliderY * 2.4 + BAR_OFFSET;
   if (entry.type === 'eyedrone') return ENEMY_TYPES.eyedrone.hoverHeight + 1.2 + BAR_OFFSET;
-  if (entry.type === 'quadshell') return ENEMY_TYPES.quadshell.colliderY * 2 + BAR_OFFSET;
+  if (entry.type === 'quadshell' || entry.type === 'spider403') return ENEMY_TYPES.quadshell.colliderY * 2 + BAR_OFFSET;
   return SOLDIER.colliderY * 2 + BAR_OFFSET;
 }
 

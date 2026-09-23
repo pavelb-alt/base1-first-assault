@@ -87,8 +87,7 @@ export function useWavePool(team) {
       }
     }
     s.timer=Math.min(rules.interval,s.timer+delta);
-    // Carry fractional squad budgets across waves: 2 then 3 enemies per sector,
-    // preserving the full five-member composition over each pair of waves.
+    // Preserve the existing level-specific fractional spawn budget and wave cadence.
     const budget=team==='enemy'?rules.squad.length*(rules.spawnScale??1):rules.perSector;
     const waveOffset=Math.floor(s.waveId*budget);
     const waveSize=Math.floor((s.waveId+1)*budget)-waveOffset;
@@ -131,11 +130,13 @@ export function useWavePool(team) {
       }
       while(cargoShipState.pendingDeliveries.length>CARGO_SHIP.maxPending)cargoShipState.pendingDeliveries.shift();
     } else {
+      const extras=rules.squad.filter(type=>type!=='spider403');
       for(let squad=0;squad<SECTORS.length;squad++)for(let member=0;member<waveSize;member++){
         let sectorIndex=squad;
         const index=free[squad*waveSize+member];spawned[sectorIndex]++;
         s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`${team}-${s.waveId}-${squad}`, 
-          type:rules.squad[(waveOffset+member)%rules.squad.length],
+          // Each squad gets one 403; high-difficulty surplus members reuse the other types.
+          type:member<rules.squad.length?rules.squad[member]:extras[(member-rules.squad.length)%extras.length],
           spawnOffset:spawnPosition(sectorIndex,team,member,s.waveId,counts)};
       }
     }

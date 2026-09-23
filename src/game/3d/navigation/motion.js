@@ -6,9 +6,9 @@ import { steerAroundOutposts } from '@/game/3d/dressing/outpostLayout';
 // Player input and NPC steering use exactly the same normalized ground speed.
 // The optional cap only prevents NPCs overshooting their destination.
 const movementVelocity = { x: 0, y: 0, z: 0 };
-export function applyMovement(body, dx, dz, verticalVelocity, arrivalSpeed = BALANCE.moveSpeed) {
+export function applyMovement(body, dx, dz, verticalVelocity, arrivalSpeed = BALANCE.moveSpeed, maxSpeed = BALANCE.moveSpeed) {
   const length = Math.hypot(dx, dz);
-  const speed = Math.min(BALANCE.moveSpeed, arrivalSpeed);
+  const speed = Math.min(maxSpeed, arrivalSpeed);
   movementVelocity.x = length > 0 ? dx / length * speed : 0;
   movementVelocity.y = verticalVelocity;
   movementVelocity.z = length > 0 ? dz / length * speed : 0;
@@ -46,7 +46,7 @@ export function moveToward(entry,target,delta,{flying=false,separate=true,avoidO
     dx+=(p.x-q.x)/d*weight;dz+=(p.z-q.z)/d*weight;
   });
   applyMovement(body, dx, dz, flying ? (entry.hoverHeight-p.y)*5 : v.y,
-    distance / Math.max(delta, 0.001));
+    distance / Math.max(delta, 0.001), entry.moveSpeed ?? BALANCE.moveSpeed);
   entry.heading=Math.atan2(dx,dz);
   return false;
 }

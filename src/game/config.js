@@ -118,13 +118,14 @@ export const BALANCE = {
   friendly: { interval: 8, perSector: 4, maxPerSector: 24, maxAlive: 72 },
   enemy: { interval: 14, maxPerSector: 24, maxAlive: 72, spawnScale: 1,
     startDelay: 13, // seconds before the first enemy wave fires
-    squad: ['quadshell', 'quadshell', 'quadshell', 'quadshell', 'eyedrone'],
+    squad: ['quadshell', 'quadshell', 'spider403', 'eyedrone', 'eyedrone', 'trilobite'],
     trilobiteInterval: 30 },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
   units: {
     soldier:  { health: 120, damage: 7, cooldown: 0.125, range: 15, aiSpread: 0.05 },
     quadshell:{ health: 120, damage: 7, cooldown: 0.125, range: 14, aiSpread: 0.05 },
+    spider403:{ health: 84, damage: 7, cooldown: 0.125, range: 14, aiSpread: 0.05 },
     eyedrone: { health: 100, damage: 6, cooldown: 0.125, range: 17, aiSpread: 0.05 },
     trilobite:{ health: 320, damage: 14, cooldown: 0.25, range: 13, aiSpread: 0.05 },
     tank:     { health: 800, damage: 20, cooldown: 1.6, range: 28, aiSpread: 0.03 },
@@ -145,6 +146,21 @@ export const ENEMY_TYPES = {
     hoverHeight: 0,        // ground unit
     // Extra shot per attack from the rear turret: muzzle offset in the node's local space.
     backCannon: { node: 'BackCannon', offset: [0, 0.55, 0.95] },
+    colliderHalfHeight: 0.4,
+    colliderRadius: 0.35,
+    colliderY: 0.9,
+    facingOffset: 0,
+    animIdle: 'Idle',
+    animMove: 'Walk',
+    animRun: 'Run',
+    animAttack: 'Attack',
+  },
+  spider403: {
+    modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/431cb0136_Enemy_403_spider_v1.glb',
+    scale: 1,
+    hoverHeight: 0,
+    moveSpeed: BALANCE.moveSpeed * 1.3,
+    frontCannons: ['Gun.L', 'Gun.R'],
     colliderHalfHeight: 0.4,
     colliderRadius: 0.35,
     colliderY: 0.9,
@@ -327,7 +343,7 @@ export const TOWER_DEFENSE = {
   minSpacing: 3,         // minimum distance between tower centers
   maxTowers: 30,        // hard cap for performance
   // Kill-based currency: no passive income. Each enemy type drops scrap.
-  scrapRewards: { quadshell: 10, eyedrone: 15, trilobite: 40 },
+  scrapRewards: { quadshell: 10, spider403: 10, eyedrone: 15, trilobite: 40 },
   startingScrap: 100,
   // Wave survival: survive this many enemy waves to win.
   maxWaves: 20,
@@ -526,7 +542,7 @@ export function getEnemyRules(level) {
       maxAlive: 84,
       spawnScale: 1.3,
       startDelay: 8,
-      squad: ['quadshell', 'eyedrone', 'trilobite', 'eyedrone', 'trilobite'],
+      squad: BALANCE.enemy.squad,
       trilobiteInterval: 20,
     };
   }
@@ -537,7 +553,7 @@ export function getEnemyRules(level) {
       maxAlive: 96,
       spawnScale: 1.5,
       startDelay: 6,
-      squad: ['trilobite', 'eyedrone', 'trilobite', 'quadshell', 'eyedrone', 'trilobite'],
+      squad: BALANCE.enemy.squad,
       trilobiteInterval: 12,
     };
   }
@@ -548,7 +564,7 @@ export function getEnemyRules(level) {
       maxAlive: 96,
       spawnScale: 1.5,
       startDelay: 6,
-      squad: ['trilobite', 'eyedrone', 'quadshell', 'trilobite', 'eyedrone', 'trilobite'],
+      squad: BALANCE.enemy.squad,
       trilobiteInterval: 15,
     };
   }
