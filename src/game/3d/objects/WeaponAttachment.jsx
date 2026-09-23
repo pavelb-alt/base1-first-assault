@@ -1,48 +1,44 @@
 import { useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { WEAPONS, HAND_SOCKET } from '@/game/3d/weapons';
+import { HAND_SOCKET } from '@/game/3d/weapons';
 import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { cameraAim, fireShot, clearShot } from '@/game/3d/ballistics';
 import { COMBAT } from '@/game/config';
 import { createWeaponPose, poseWeaponArm, orientWeaponWrist } from '@/game/3d/objects/WeaponPose';
 
-Object.values(WEAPONS).forEach(w => useGLTF.preload(w.url));
 const zero = new THREE.Vector3();
 
-// Parent uses the existing animated clone. Attach to Hand_R without rebuilding its rig.
+// Bind the carbine already in the soldier GLB; never attach a second weapon.
 export function useWeaponAttachment(character, weaponId, entryRef, leaseId, active = true, visualFrame) {
-  const config = WEAPONS[weaponId];
-  const { scene } = useGLTF(config.url);
   const rig = useMemo(() => {
     const hand = character.getObjectByName(HAND_SOCKET.node);
-    if (!hand) throw new Error('Orange Guardian is missing Hand_R');
+    const muzzle = character.getObjectByName('Muzzle');
+    const socket = character.getObjectByName('Carbine');
+    if (!hand || muzzle?.parent !== hand || socket?.parent !== hand) {
+      throw new Error('Orange Sentry requires its built-in Carbine and Muzzle under Hand_R');
+    }
     const pose = createWeaponPose(character, hand);
-    const socket = new THREE.Group(); socket.name = 'WeaponSocket';
-    socket.position.fromArray(HAND_SOCKET.position);
-    socket.quaternion.copy(pose.socketRotation);
-    const correction = new THREE.Group(); correction.rotation.fromArray(config.correction);
-    correction.scale.setScalar(config.scale);
-    const model = scene.clone(true); // Includes ALL magazine/scope descendants; cached geometry/materials.
-    model.position.fromArray(config.grip).negate();
-    model.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
-    const muzzle = new THREE.Object3D(); muzzle.name = 'Muzzle'; muzzle.position.fromArray(config.muzzle);
-    model.add(muzzle); correction.add(model); socket.add(correction);
-    return { hand, socket, muzzle, pose, model, aim: new THREE.Vector3(), origin: new THREE.Vector3(),
-      grip: new THREE.Vector3(), chest: new THREE.Vector3(), dir: new THREE.Vector3(), parentQ: new THREE.Quaternion(),
-      desiredQ: new THREE.Quaternion(), offsetQ: new THREE.Quaternion(), matrix: new THREE.Matrix4(),
-      up: new THREE.Vector3(0,1,0), forward: new THREE.Vector3(0,0,1), worldScale: new THREE.Vector3(),
-      localMuzzle: new THREE.Vector3(...config.muzzle).sub(new THREE.Vector3(...config.grip)).applyEuler(correction.rotation).multiplyScalar(config.scale),
+    // Carbine local +X is its barrel axis. Express the existing wrist/parallax
+    // solver in that frame, using the authored muzzle offset instead of a rifle offset.
+    pose.socketRotation.copy(socket.quaternion).multiply(
+      new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2),
+    );
+    pose.inverseSocket.copy(pose.socketRotation).invert();
+    pose.wristOffset.set(0, 0, 0);
+    return { hand, socket, muzzle, pose, embedded: true, barrelAxis: new THREE.Vector3(1, 0, 0),
+      aim: new THREE.Vector3(), origin: new THREE.Vector3(), chest: new THREE.Vector3(),
+      dir: new THREE.Vector3(), desiredQ: new THREE.Quaternion(), offsetQ: new THREE.Quaternion(),
+      matrix: new THREE.Matrix4(), up: new THREE.Vector3(0, 1, 0), forward: new THREE.Vector3(0, 0, 1),
+      worldScale: new THREE.Vector3(), localMuzzle: muzzle.position.clone().applyQuaternion(pose.inverseSocket),
       offset: new THREE.Vector3() };
-  }, [character, config, scene]);
+  }, [character]);
 
   useEffect(() => {
-    rig.hand.add(rig.socket);
     const entry = entryRef.current;
     if (entry) { entry.weapon = rig; entry.weaponId = weaponId; }
-    return () => { rig.hand.remove(rig.socket); rig.pose.restore(); if (entry?.weapon === rig) entry.weapon = null; };
+    return () => { rig.pose.restore(); if (entry?.weapon === rig) entry.weapon = null; };
   }, [rig, weaponId, entryRef, leaseId, active]);
 
   useFrame(({ camera }, delta) => {

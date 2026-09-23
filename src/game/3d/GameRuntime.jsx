@@ -27,8 +27,10 @@ function weaponState(u) {
   w.muzzle.updateWorldMatrix(true, false);
   w.muzzle.getWorldPosition(pos);
   w.socket.getWorldQuaternion(q);
-  dir.set(0,0,1).applyQuaternion(q); // socket +Z is the barrel axis the aim solver aligns
+  dir.copy(w.barrelAxis).applyQuaternion(q); // authored carbine barrel axis
   return { id: u.id, weaponId: u.weaponId, attached: w.socket.parent === w.hand,
+    embedded: w.embedded, muzzleNode: w.muzzle.name,
+    animation: u.currentAnim?.current ?? null, clips: Object.keys(u.actions ?? {}),
     socketCount: w.hand.children.filter(c => c.name === 'WeaponSocket').length,
     muzzle: pos.toArray(), barrelDirection: dir.toArray(), aim: u.aimPoint?.toArray() ?? null };
 }
