@@ -35,7 +35,7 @@ export default function GamePage() {
   const [levelTransition, setLevelTransition] = useState(false);
   const [tankCount, setTankCount] = useState(0);
   const [artilleryCount, setArtilleryCount] = useState(0);
-  const [defeatVideoDone, setDefeatVideoDone] = useState(false);
+  const [resultVideoDone, setResultVideoDone] = useState(false);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -48,11 +48,11 @@ export default function GamePage() {
     };
     const onGameOver = (result) => {
       setGameOver(result);
-      // Level 1 defeat plays its cinematic immediately, before the defeat panel.
-      if (result === 'defeat' && gameState.currentLevel === 1 && LEVELS.day.defeatVideoUrl) {
-        setDefeatVideoDone(false);
+      // First mission outcomes play their cinematics before the result panel.
+      if (gameState.currentLevel === 1 && (result === 'defeat' || result === 'victory')) {
+        setResultVideoDone(false);
         EventBus.emit('pause-game');
-      } else setDefeatVideoDone(true);
+      } else setResultVideoDone(true);
     };
     const onCurrency = (amt) => setScrapAmount(amt);
     const onWave = (w) => setWaveNumber(w);
@@ -62,7 +62,7 @@ export default function GamePage() {
       setLevelTransition(false);
       setWaveNumber(0);
       setGameOver(null);
-      setDefeatVideoDone(false);
+      setResultVideoDone(false);
     };
     const onTankCount = (count) => setTankCount(count);
     const onArtilleryCount = (count) => setArtilleryCount(count);
@@ -166,7 +166,7 @@ export default function GamePage() {
     setMode('strategic');
     setWaitingForReinforcements(false);
     setGameOver(null);
-    setDefeatVideoDone(false);
+    setResultVideoDone(false);
     setScrapAmount(towerDefenseState.scrap);
     setWaveNumber(0);
     setCurrentLevel(1);
@@ -342,7 +342,7 @@ export default function GamePage() {
             </button>
 
             {/* Victory / Defeat overlay */}
-            {gameOver && defeatVideoDone && (
+            {gameOver && resultVideoDone && (
               <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
                 <div className="text-center max-w-md px-6">
                   <div className={`text-5xl font-extrabold mb-2 ${gameOver === 'victory' ? 'text-green-400' : 'text-red-400'}`}>
@@ -391,12 +391,12 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Level 1 defeat cinematic — plays the moment the player loses */}
-        {phase === 'playing' && gameOver === 'defeat' && !defeatVideoDone && (
+        {/* First mission result cinematic — plays before the outcome panel */}
+        {phase === 'playing' && gameOver && currentLevel === 1 && !resultVideoDone && (
           <IntroVideo
-            src={LEVELS.day.defeatVideoUrl}
-            onEnd={() => setDefeatVideoDone(true)}
-            onSkip={() => setDefeatVideoDone(true)}
+            src={gameOver === 'victory' ? LEVELS.day.victoryVideoUrl : LEVELS.day.defeatVideoUrl}
+            onEnd={() => setResultVideoDone(true)}
+            onSkip={() => setResultVideoDone(true)}
           />
         )}
 
@@ -404,7 +404,7 @@ export default function GamePage() {
         {levelTransition && currentLevel >= 3 && <CampaignMissionBriefing currentLevel={currentLevel} />}
         {levelTransition && currentLevel < 3 && (
           <IntroVideo
-            src={currentLevel === 1 ? LEVELS.night.introVideoUrl : LEVELS.forest.introVideoUrl}
+            src={currentLevel === 1 ? LEVELS.day.victoryVideoUrl : LEVELS.forest.introVideoUrl}
             onEnd={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
             onSkip={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
           />
