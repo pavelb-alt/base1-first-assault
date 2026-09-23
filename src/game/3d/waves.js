@@ -68,24 +68,8 @@ export function useWavePool(team) {
       cargoShipState.readyDeliveries.length=0;
       if(activated){cargoShipState.firstSquadDeployed=true;publish();}
     }
-    // Trilobite spawns independently once every trilobiteInterval seconds.
-    // Runs every frame (before the main-wave timer guard) so its timer advances
-    // at the real frame rate, not just on regular wave-fire frames.
-    if(team==='enemy'){
-      s.trilobiteTimer=Math.min(rules.trilobiteInterval,s.trilobiteTimer+delta);
-      if(s.trilobiteTimer>=rules.trilobiteInterval){
-        const triFree=[];
-        s.slots.forEach((u,i)=>{if(!u.active)triFree.push(i);});
-        if(triFree.length){
-          const sectorIndex=Math.floor(random()*SECTORS.length);
-          const index=triFree[0];
-          s.slots[index]={...s.slots[index],sectorIndex,id:++s.nextId,active:true,squadId:`enemy-trilobite-${s.waveId}`,
-            type:'trilobite',weaponId:null,
-            spawnOffset:spawnPosition(sectorIndex,'enemy',0,s.waveId,[])};
-          s.trilobiteTimer=0;publish();
-        }
-      }
-    }
+    // The trilobite giant is retired from the roster; waves carry more walkers,
+    // spiders and flyers instead (see BALANCE.enemy.squad).
     s.timer=Math.min(rules.interval,s.timer+delta);
     // Preserve the existing level-specific fractional spawn budget and wave cadence.
     const budget=team==='enemy'?rules.squad.length*(rules.spawnScale??1):rules.perSector;

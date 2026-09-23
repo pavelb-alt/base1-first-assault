@@ -43,6 +43,12 @@ function beginJump(entry) {
         nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';return false;
       }
     }
+    // Every nearby landing is occupied: pick a fresh crossing point instead of
+    // idling in place, which used to deadlock enemies at the trench line.
+    const sector=SECTORS[entry.sectorIndex];
+    const x=Math.max(sector.minX+3,Math.min(sector.maxX-3,nav.x+(random()-0.5)*20));
+    const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
+    nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';
     stop(entry);return false;
   }
   nav.landingKey=`${entry.id}:${nav.front}`;

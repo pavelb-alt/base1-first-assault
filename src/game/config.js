@@ -121,7 +121,7 @@ export const BALANCE = {
   friendly: { interval: 8, perSector: 4, maxPerSector: 24, maxAlive: 72 },
   enemy: { interval: 14, maxPerSector: 24, maxAlive: 72, spawnScale: 1,
     startDelay: 13, // seconds before the first enemy wave fires
-    squad: ['quadshell', 'quadshell', 'spider403', 'eyedrone', 'eyedrone', 'trilobite'],
+    squad: ['quadshell', 'quadshell', 'spider403', 'eyedrone', 'eyedrone', 'quadshell', 'spider403', 'quadshell'],
     trilobiteInterval: 30 },
   formation: { spacing: 1.6, rowSpacing: 2, departure: 5, cohesionDistance: 7, catchupSpeed: 3.3 },
   moveSpeed: 3,
