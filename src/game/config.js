@@ -132,9 +132,11 @@ export const NPCS = { spawnInterval: BALANCE.enemy.interval, maxPerSector: BALAN
 // --- Enemy model types -----------------------------------------------------
 export const ENEMY_TYPES = {
   quadshell: {
-    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/c36cd53cd_48bb754a2_Enemy_QuadShell.glb',
+    modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/95a387c07_57113ba47_Enemy_404_v6_animated.glb',
     scale: 1,
     hoverHeight: 0,        // ground unit
+    // Extra shot per attack from the rear turret: muzzle offset in the node's local space.
+    backCannon: { node: 'BackCannon', offset: [0, 0.55, 0.95] },
     colliderHalfHeight: 0.4,
     colliderRadius: 0.35,
     colliderY: 0.9,

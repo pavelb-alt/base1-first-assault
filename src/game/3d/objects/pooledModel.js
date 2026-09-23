@@ -38,7 +38,12 @@ export function clonePooledModel(scene, animations) {
         parent.add(merged);
       }
     }
-    template.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+    template.traverse(node => {
+      if (!node.isMesh) return;
+      node.castShadow = true; node.receiveShadow = true;
+      // alphaMode BLEND (e.g. wing membranes): keep transparency, avoid sorting artifacts.
+      if (node.material?.transparent) node.material.depthWrite = false;
+    });
     templates.set(scene, template);
   }
   return cloneSkeleton(template);

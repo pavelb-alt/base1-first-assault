@@ -15,6 +15,7 @@ import { gameState } from '@/game/3d/world';
 import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAnimation';
 const shotOrigin = new THREE.Vector3();
 const shotAim = new THREE.Vector3();
+const backOrigin = new THREE.Vector3();
 
 // Preload all enemy models at module scope (loaded once, cached by URL)
 Object.values(ENEMY_TYPES).forEach((t) => useGLTF.preload(t.modelUrl));
@@ -59,6 +60,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
   const { scene, animations } = useGLTF(config.modelUrl);
   // Skeleton-safe deep clone — preserves bone bindings, allows independent animation
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
+  const backCannon = useMemo(() => config.backCannon ? clonedScene.getObjectByName(config.backCannon.node) ?? null : null, [clonedScene, config]);
   const { actions } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'enemy', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
@@ -137,6 +139,12 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
         shotOrigin.set(pos.x,pos.y+config.colliderY,pos.z);
         shotAim.set(p.x,p.y+enemy.aimHeight,p.z);
         fireShot(entry,shotOrigin,shotAim);
+        if(backCannon) {
+          // Rear turret muzzle in world space; converges on the same target as the front shots.
+          backCannon.updateWorldMatrix(true,false);
+          backCannon.localToWorld(backOrigin.fromArray(config.backCannon.offset));
+          fireShot(entry,backOrigin,shotAim,shotOrigin);
+        }
         attackTimer.current=Math.max(0,attackTimer.current+profile.cooldown);
       }
       playAnimation(config.animAttack);
