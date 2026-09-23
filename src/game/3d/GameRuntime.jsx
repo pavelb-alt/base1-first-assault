@@ -25,8 +25,8 @@ function weaponState(u) {
   if (!w) return { id: u.id, weaponId: u.weaponId, attached: false };
   w.muzzle.updateWorldMatrix(true, false);
   w.muzzle.getWorldPosition(pos);
-  w.muzzle.getWorldQuaternion(q);
-  dir.set(0,0,-1).applyQuaternion(q);
+  w.socket.getWorldQuaternion(q);
+  dir.set(0,0,1).applyQuaternion(q); // socket +Z is the barrel axis the aim solver aligns
   return { id: u.id, weaponId: u.weaponId, attached: w.socket.parent === w.hand,
     socketCount: w.hand.children.filter(c => c.name === 'WeaponSocket').length,
     muzzle: pos.toArray(), barrelDirection: dir.toArray(), aim: u.aimPoint?.toArray() ?? null };
