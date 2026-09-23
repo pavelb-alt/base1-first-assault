@@ -16,9 +16,12 @@ export function detailClearance(x,z,r) {
 function site(seed,r) {
   for(let i=0;i<800;i++) {
     const k=seed+i*7;
-    const x=(noise(k)-.5)*136;
-    // Two-thirds of sites in No Man's Land; the rest fill the open enemy approach.
-    const z=i%3===0?-58+noise(k+1)*116:(noise(k+1)-.5)*10;
+    const x=(noise(k)-.5)*136,z=(noise(k+1)-.5)*116;
+    // Whole-field spread weighted toward the perimeter: acceptance climbs from the
+    // interior floor to full at the edges, so the center stays comparatively open.
+    const edge=Math.max(Math.abs(x)/68,Math.abs(z)/58);
+    const weight=DETAIL.interiorWeight+(1-DETAIL.interiorWeight)*Math.pow(edge,DETAIL.perimeterFalloff);
+    if(noise(k+2)>weight)continue;
     if(!detailClearance(x,z,r)||occupied.some(p=>Math.hypot(x-p.x,z-p.z)<r+p.r+.65))continue;
     const s={x,z,r};occupied.push(s);return s;
   }
