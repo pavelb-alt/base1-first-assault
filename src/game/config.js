@@ -445,6 +445,7 @@ export const LEVELS = {
     id: 1,
     name: 'DAY',
     maxWaves: 20,
+    defeatVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/6072092f1_VID-02-edited.webm',
     atmosphere: {
       sky: '#9eb9ca', horizon: '#ead2ae', sun: '#fff0ce',
       sunPosition: [-50, 80, 140], sunIntensity: 3.6,

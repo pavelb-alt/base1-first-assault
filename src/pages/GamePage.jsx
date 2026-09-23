@@ -35,6 +35,7 @@ export default function GamePage() {
   const [levelTransition, setLevelTransition] = useState(false);
   const [tankCount, setTankCount] = useState(0);
   const [artilleryCount, setArtilleryCount] = useState(0);
+  const [defeatVideoDone, setDefeatVideoDone] = useState(false);
 
   // EventBus subscriptions for gameplay events
   useEffect(() => {
@@ -45,7 +46,14 @@ export default function GamePage() {
       setWaitingForReinforcements(true);
       setTimeout(() => setWaitingForReinforcements(false), 3000);
     };
-    const onGameOver = (result) => setGameOver(result);
+    const onGameOver = (result) => {
+      setGameOver(result);
+      // Level 1 defeat plays its cinematic immediately, before the defeat panel.
+      if (result === 'defeat' && gameState.currentLevel === 1 && LEVELS.day.defeatVideoUrl) {
+        setDefeatVideoDone(false);
+        EventBus.emit('pause-game');
+      } else setDefeatVideoDone(true);
+    };
     const onCurrency = (amt) => setScrapAmount(amt);
     const onWave = (w) => setWaveNumber(w);
     const onLevelTransition = () => setLevelTransition(true);
@@ -54,6 +62,7 @@ export default function GamePage() {
       setLevelTransition(false);
       setWaveNumber(0);
       setGameOver(null);
+      setDefeatVideoDone(false);
     };
     const onTankCount = (count) => setTankCount(count);
     const onArtilleryCount = (count) => setArtilleryCount(count);
@@ -157,6 +166,7 @@ export default function GamePage() {
     setMode('strategic');
     setWaitingForReinforcements(false);
     setGameOver(null);
+    setDefeatVideoDone(false);
     setScrapAmount(towerDefenseState.scrap);
     setWaveNumber(0);
     setCurrentLevel(1);
@@ -332,7 +342,7 @@ export default function GamePage() {
             </button>
 
             {/* Victory / Defeat overlay */}
-            {gameOver && (
+            {gameOver && defeatVideoDone && (
               <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
                 <div className="text-center max-w-md px-6">
                   <div className={`text-5xl font-extrabold mb-2 ${gameOver === 'victory' ? 'text-green-400' : 'text-red-400'}`}>
@@ -379,6 +389,15 @@ export default function GamePage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Level 1 defeat cinematic — plays the moment the player loses */}
+        {phase === 'playing' && gameOver === 'defeat' && !defeatVideoDone && (
+          <IntroVideo
+            src={LEVELS.day.defeatVideoUrl}
+            onEnd={() => setDefeatVideoDone(true)}
+            onSkip={() => setDefeatVideoDone(true)}
+          />
         )}
 
         {/* Level transition: cinematic for day→night or night→forest */}
