@@ -37,7 +37,10 @@ export const DRESSING = {
 // Visual-only battlefield detail: fixed budgets, no navigation or combat changes.
 export const BATTLEFIELD_DETAIL = {
   reliefAmplitude: 0.22, reliefTriangleSize: 3.5,
-  craters: 12, wrecks: 8, rockPieces: 60, bagClusters: 8, shells: 24,
+  craters: 18, wrecks: 8, rockPieces: 96, bagClusters: 12, shells: 32,
+  // Props cover the whole field; interiorWeight is the center acceptance floor and
+  // perimeterFalloff (>1) concentrates the remaining density toward the edges.
+  interiorWeight: 0.3, perimeterFalloff: 2.2,
   ruins: 10, smokeSites: 6, puffsPerSite: 18, smokeLife: 12,
   smoke: '#4a4238', ember: '#ff9933', emberIntensity: 0.7,
 };
