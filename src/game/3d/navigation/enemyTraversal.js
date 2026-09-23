@@ -32,10 +32,10 @@ function clearLanding(entry,x,z) {
   for(const [key,landing] of landings)if(key!==entry.nav.landingKey&&Math.hypot(landing.x-x,landing.z-z)<2.1)clear=false;
   return clear;
 }
-function beginJump(entry) {
+function beginJump(entry,force) {
   const nav=entry.nav,p=entry.bodyRef.current.translation(),z=nav.row+FRONT.jumpEnd;
   if(!isGrounded(entry))return false;
-  if(!clearLanding(entry,nav.x,z)) {
+  if(!force&&!clearLanding(entry,nav.x,z)) {
     // A crowded trench line used to deadlock: every candidate landing stayed
     // occupied, so nobody crossed. Wait briefly, then cross regardless.
     if(nav.blockedSince==null)nav.blockedSince=battle.elapsed;
@@ -97,6 +97,12 @@ export function updateEnemy(entry,delta,enemy) {
       if(nav.phase==='approach'){nav.phase='cross';nav.crossStarted=battle.elapsed;nav.target={x:nav.x,z:nav.row+12};}
       else {recordTraversal('trilobite_causeway',battle.elapsed-nav.crossStarted);nav.front++;allocateLink(entry);}
     }
-  } else if(moveToward(entry,nav.target,delta))beginJump(entry);
+  } else {
+    const arrived=moveToward(entry,nav.target,delta);
+    // Crowding at the wire line can keep a walker from ever "arriving", so once
+    // it has lingered near the crossing it jumps over the obstacle regardless.
+    const stalled=battle.elapsed-nav.started>5&&Math.abs(p.z-nav.target.z)<14;
+    if(arrived||stalled)beginJump(entry,stalled);
+  }
   return false;
 }
