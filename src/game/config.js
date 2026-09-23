@@ -590,7 +590,7 @@ export function getEnemyRules(level) {
 
 // --- Opening flow (opening cinematic, main menu, mission intro, handoff) -----
 export const OPENING = {
-  menuBackgroundUrl: 'https://media.base44.com/images/public/6aad7caf1cfd574f0bf92f13/3c2658235_ChatGPTImageSep23202610_54_15AM.png',
+  menuBackgroundUrl: 'https://media.base44.com/images/public/6aad7caf1cfd574f0bf92f13/e5d7e3014_IMG-04.png',
   preMenuVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/ecba9950d_VID-08.mp4',
   introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/8997d20e0_VID-041.mp4',
   handoffTimeout: 60000,
