@@ -4,7 +4,7 @@
 export const WEAPONS = {
   rifle: {
     url: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/2f473a8fd_ae6d985d8_orange-soldier-rifle.glb',
-    scale: .5, grip: [0,0,0], muzzle: [0,.30,1.55], correction: [0,0,0],
+    scale: 1.5, grip: [0,0,0], muzzle: [0,.30,1.55], correction: [0,0,0],
   },
 };
 export const WEAPON_IDS = Object.keys(WEAPONS);
