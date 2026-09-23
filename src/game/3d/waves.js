@@ -19,7 +19,9 @@ function spawnPosition(sectorIndex,team,member,waveId,counts) {
     counts[section]++;
     return {x:FRONT.sectionCenters[section]+((counts[section]-1)%6-2.5)*3,z:FRONT.spawnZ+(member%2)*2};
   }
-  return {x:sector.minX+12+member*(sector.maxX-sector.minX-24)/5+((waveId%3)-1)*4,z:-FRONT.spawnZ-(member%2)*2};
+  // Six columns per row: large squads wrap into extra rows instead of spilling past the map wall.
+  const col=member%6,row=Math.floor(member/6);
+  return {x:sector.minX+12+col*(sector.maxX-sector.minX-24)/5+((waveId%3)-1)*4,z:-FRONT.spawnZ-(col%2)*1.2+row*2.5};
 }
 // Reusable population pools. Sectors allocate width, never constrain navigation.
 export function useWavePool(team) {
