@@ -44,17 +44,9 @@ export const CITY_OBSTACLE_KINDS = {
   },
 };
 
-// Obstacles sit between trench rows, centered in each section so the trench
-// crossings and the tank/artillery lanes (x = ±15, ±45) stay open.
-const bands = [
-  { z: 22, kinds: ['barricade', 'wreck', 'rubble'] },
-  { z: 37, kinds: ['barricade', 'ruinWall'] },
-  { z: 4, kinds: ['ruinWall', 'wreck', 'rubble'] },
-  { z: -4, kinds: ['rubble', 'ruinWall', 'wreck'] },
-  { z: -22, kinds: ['wreck', 'barricade', 'rubble'] },
-  { z: -37, kinds: ['ruinWall', 'barricade'] },
-];
-export const CITY_OBSTACLES = bands.flatMap((band, b) => FRONT.sectionCenters.map((cx, s) => {
+// Keep city cover behind the bulwark and away from its three approach routes.
+const bands = [{z:FRONT.rows[FRONT.mainRow]+18,kinds:['barricade','wreck','rubble']}];
+export const CITY_OBSTACLES = bands.flatMap((band, b) => [-60,-22.5,22.5,60].map((cx, s) => {
   const seed = 170000 + b * 40 + s * 4;
   // No man's land alternates rows so there is always a clear route across it.
   if (Math.abs(band.z) < 8 && (s + b) % 2) return null;

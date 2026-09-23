@@ -25,8 +25,7 @@ function count(row,section) {
   return n;
 }
 export function preferredSpawnSection(sector,counts) {
-  const choices=[sector*2,sector*2+1];
-  return choices.sort((a,b)=>(counts[a]||0)-(counts[b]||0)||count(progress[a],a)-count(progress[b],b)||a-b)[0];
+  return Math.max(0,Math.min(FRONT.sectionCenters.length-1,sector));
 }
 export function reservePosition(entry,minimumRow=0) {
   releasePosition(entry);
@@ -37,7 +36,7 @@ export function reservePosition(entry,minimumRow=0) {
     if(row>=FRONT.rows.length)continue;
     const occupied=count(row,section);
     if(occupied>=FRONT.slotsPerSection)continue;
-    const score=occupied+(Math.floor(section/2)===entry.sectorIndex?0:FRONT.slotsPerSection);
+    const score=occupied+(section===entry.sectorIndex?0:FRONT.slotsPerSection);
     const travel=Math.abs(FRONT.sectionCenters[section]-entry.bodyRef.current.translation().x);
     if(!best||score<best.score||(score===best.score&&travel<best.travel))best={row,section,occupied,score,travel};
   }
@@ -60,7 +59,7 @@ export function updateFriendly(entry,delta,enemy) {
   if(!entry.nav && !reservePosition(entry)) {
     // Tower defense: no trench slot available — hold a defensive position on the friendly half
     const tx = entry.bodyRef.current.translation().x;
-    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:tx,z:30}),index:0};
+    entry.nav={phase:'base',route:walkRoute(entry.bodyRef.current.translation(),{x:tx,z:FRONT.rows[FRONT.mainRow]+FRONT.rampReach+2}),index:0};
   }
   const nav=entry.nav;
   const advancingFromCover = battle.elapsed < (entry.coverAdvanceUntil || 0);
@@ -78,34 +77,9 @@ export function updateFriendly(entry,delta,enemy) {
     }
     return false;
   }
+  // The bulwark is the final defensive line: never advance into the open field.
   stop(entry);
-  if(battle.elapsed<nav.nextCheck)return false;
-  nav.nextCheck=battle.elapsed+0.5;
-  const a=entry.assignment;
-  // After holding long enough, push forward regardless of nearby enemies.
-  const heldTooLong = nav.started != null && battle.elapsed - nav.started > FRONT.maxHoldTime;
-  if(!heldTooLong){
-    let resistance=false;
-    visitNearby(a.x,a.z,FRONT.resistanceRadius,u=>{if(u.team==='enemy')resistance=true;});
-    if(resistance){nav.clearSince=null;return false;}
-  }
-  if(nav.clearSince===null)nav.clearSince=battle.elapsed;
-  if(!heldTooLong && battle.elapsed-nav.clearSince<FRONT.clearDelay)return false;
-  const next=a.row+1;
-  // Tower defense: friendly NPCs hold at the midline (row 3, z=-14) and do NOT
-  // advance into enemy territory. Row indices 0-2 are enemy-side; 3-5 are friendly.
-  const DEFENSIVE_HOLD_ROW = FRONT.mainRow; // row 2 (z=14) — the front line facing No Man's Land
-  if(next > DEFENSIVE_HOLD_ROW) {
-    // Hold position at the defensive line — don't push forward
-    nav.clearSince=null;
-    return false;
-  }
-  progress[a.section]=Math.max(progress[a.section],next);
-  if(next<FRONT.rows.length)reservePosition(entry,next);
-  else {
-    // Should not reach here with the defensive hold, but keep as fallback
-    stop(entry);
-  }
+  entry.aiTarget=null;
   return false;
 }
 export function frontlineSnapshot() {

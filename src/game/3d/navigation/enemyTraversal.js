@@ -1,108 +1,55 @@
-import { FRONT, BASES, SECTORS, MAP } from '@/game/config';
+import { FRONT, BASES } from '@/game/config';
 import { battle } from '@/game/3d/battleMetrics';
 import { random } from '@/game/3d/random';
-import { terrainHeight, trenchCenter } from '@/game/3d/terrain';
 import { visitNearby } from '@/game/3d/spatial';
-import { isGrounded, moveToward, stop } from '@/game/3d/navigation/motion';
+import { moveToward, stop } from '@/game/3d/navigation/motion';
 import { recordTraversal } from '@/game/3d/navigation/frontline';
 import { releaseCombatCover, updateEnemyBreach } from '@/game/3d/navigation/coverTactics';
 
-const landings=new Map();
-export function resetCrossings(){landings.clear();}
-export function releaseCrossing(entry){if(entry.nav?.landingKey)landings.delete(entry.nav.landingKey);releaseCombatCover(entry);}
+// Gate reservations are not exclusive: eight-metre causeways admit several lanes.
+const routes=new Map();
+export function resetCrossings(){routes.clear();}
+export function releaseCrossing(entry){routes.delete(entry.id);releaseCombatCover(entry);}
 function allocateLink(entry) {
-  const nav=entry.nav,sector=SECTORS[entry.sectorIndex];
-  const row=FRONT.rows[FRONT.rows.length-1-nav.front];
-  if(row===undefined){nav.phase='base';nav.target={x:BASES.friendly.position[0]+(entry.id%5-2)*1.7,z:BASES.friendly.position[2]-5};return;}
-  const p=entry.bodyRef.current.translation();
-  const x=Math.max(sector.minX+10,Math.min(sector.maxX-10,p.x+(random()-0.5)*30));
-  nav.row=row;nav.started=battle.elapsed;nav.phase='approach';
-  if(entry.type==='trilobite') {
-    // A broad sector has several flat earth causeways, not a single rail.
-    const choices=FRONT.crossings.filter(c=>c>=sector.minX&&c<=sector.maxX);
-    let best=choices[0],score=Infinity;
-    for(const c of choices){let crowd=0;visitNearby(c,row,16,u=>{if(u.team==='enemy')crowd++;});const s=Math.abs(c-x)+crowd*8;if(s<score){score=s;best=c;}}
-    nav.x=best;nav.row=trenchCenter(FRONT.rows.length-1-nav.front,best);nav.target={x:best,z:nav.row-12};
-  } else {nav.x=x;nav.row=trenchCenter(FRONT.rows.length-1-nav.front,x);nav.target={x,z:nav.row+FRONT.jumpStart};}
-}
-function clearLanding(entry,x,z) {
-  if(Math.abs(x)>MAP.HALF-2 || Math.abs(z)>MAP.HALF-2 || Math.abs(terrainHeight(x,z))>0.05)return false;
-  let clear=true;
-  visitNearby(x,z,2.1,(u,p)=>{if(u!==entry&&p.y<2)clear=false;});
-  for(const [key,landing] of landings)if(key!==entry.nav.landingKey&&Math.hypot(landing.x-x,landing.z-z)<2.1)clear=false;
-  return clear;
-}
-function beginJump(entry,force) {
-  const nav=entry.nav,p=entry.bodyRef.current.translation(),z=nav.row+FRONT.jumpEnd;
-  if(!isGrounded(entry))return false;
-  if(!force&&!clearLanding(entry,nav.x,z)) {
-    // A crowded trench line used to deadlock: every candidate landing stayed
-    // occupied, so nobody crossed. Wait briefly, then cross regardless.
-    if(nav.blockedSince==null)nav.blockedSince=battle.elapsed;
-    if(battle.elapsed-nav.blockedSince<1.5) {
-      for(const offset of [3,-3,6,-6]) {
-        const x=nav.x+offset,sector=SECTORS[entry.sectorIndex];
-        const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
-        if(x>sector.minX+3&&x<sector.maxX-3&&clearLanding(entry,x,row+FRONT.jumpEnd)) {
-          nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';return false;
-        }
-      }
-      const sector=SECTORS[entry.sectorIndex];
-      const x=Math.max(sector.minX+3,Math.min(sector.maxX-3,nav.x+(random()-0.5)*20));
-      const row=trenchCenter(FRONT.rows.length-1-nav.front,x);
-      nav.x=x;nav.row=row;nav.target={x,z:row+FRONT.jumpStart};nav.phase='approach';
-      stop(entry);return false;
-    }
+  const nav=entry.nav, p=entry.bodyRef.current.translation();
+  if(nav.front>0) {
+    nav.phase='base';
+    nav.target={x:BASES.friendly.position[0]+(entry.id%5-2)*1.2,z:BASES.friendly.position[2]-3};
+    return;
   }
-  nav.blockedSince=null;
-  nav.landingKey=`${entry.id}:${nav.front}`;
-  landings.set(nav.landingKey,{x:nav.x,z});
-  nav.landing={x:nav.x,z};nav.jumpElapsed=0;nav.phase='jump';nav.crossStarted=battle.elapsed;
-  const t=FRONT.jumpDuration,landingY=terrainHeight(nav.x,z)-(entry.footOffset||0);
-  nav.vx=(nav.x-p.x)/t;nav.vz=(z-p.z)/t;
-  entry.bodyRef.current.setLinvel({x:nav.vx,y:(landingY-p.y+0.5*FRONT.gravity*t*t)/t,z:nav.vz},true);
-  return true;
+  const row=FRONT.rows[FRONT.mainRow];
+  let gate=FRONT.crossings[0],score=Infinity;
+  for(const x of FRONT.crossings) {
+    let crowd=0;
+    visitNearby(x,row,16,u=>{if(u.team==='enemy')crowd++;});
+    const cost=Math.abs(x-p.x)+crowd*2;
+    if(cost<score){score=cost;gate=x;}
+  }
+  // Seeded lateral spread stays comfortably inside the flat centre of the route.
+  nav.x=gate+(random()-0.5)*(FRONT.crossingHalfWidth-1)*1.4;
+  nav.gate=gate;nav.row=row;nav.phase='approach';
+  nav.target={x:nav.x,z:row-FRONT.crossingApproach};
+  routes.set(entry.id,gate);
 }
 export function updateEnemy(entry,delta,enemy) {
   if(!entry.nav){entry.nav={front:0};allocateLink(entry);}
-  const nav=entry.nav,body=entry.bodyRef.current,p=body.translation();
-  if(nav.phase==='jump') {
-    nav.jumpElapsed+=delta;
-    const arrived=p.z>=nav.landing.z-0.4;
-    const v=body.linvel();
-    body.setLinvel({x:arrived?0:nav.vx,y:v.y,z:arrived?0:nav.vz},true);
-    entry.heading=Math.atan2(nav.vx,nav.vz);
-    if(nav.jumpElapsed>0.25&&isGrounded(entry)&&v.y<=0.5) {
-      releaseCrossing(entry);nav.landingKey=null;
-      if(arrived){recordTraversal('quadshell_jump',battle.elapsed-nav.crossStarted);nav.front++;allocateLink(entry);}
-      else {nav.phase='approach';nav.target={x:nav.x,z:nav.row+FRONT.jumpStart};}
-    }
-    return false;
-  }
-  // Ground enemies ignore empty ruins, but breach through a doorway when a
-  // friendly soldier or possessed hero is sheltering inside.
-  if(entry.type!=='eyedrone'&&updateEnemyBreach(entry,enemy,delta))return false;
-  // Ground enemies stop to engage visible defenders; drones keep altitude.
-  if(enemy){stop(entry,entry.type==='eyedrone');entry.aiTarget=enemy;return false;}
+  const nav=entry.nav, flying=entry.type==='eyedrone';
+  if(nav.phase==='base'&&!flying&&updateEnemyBreach(entry,enemy,delta))return false;
+  if(enemy){stop(entry,flying);entry.aiTarget=enemy;return false;}
   entry.aiTarget=null;
-  if(nav.phase==='base')return moveToward(entry,nav.target,delta,{flying:entry.type==='eyedrone'});
-  if(entry.type==='eyedrone') {
-    if(nav.phase==='approach') {
-      if(moveToward(entry,nav.target,delta,{flying:true})){nav.phase='cross';nav.crossStarted=battle.elapsed;nav.target={x:nav.x,z:nav.row+11};}
-    } else if(moveToward(entry,nav.target,delta,{flying:true})) {
-      recordTraversal('eyedrone_flyover',battle.elapsed-nav.crossStarted);nav.front++;allocateLink(entry);
-    }
-  } else if(entry.type==='trilobite') {
-    if(moveToward(entry,nav.target,delta)) {
-      if(nav.phase==='approach'){nav.phase='cross';nav.crossStarted=battle.elapsed;nav.target={x:nav.x,z:nav.row+12};}
-      else {recordTraversal('trilobite_causeway',battle.elapsed-nav.crossStarted);nav.front++;allocateLink(entry);}
-    }
+  const p=entry.bodyRef.current.translation();
+  // Avoid crowd repulsion preventing completion of an otherwise clear waypoint.
+  const arrived=moveToward(entry,nav.target,delta,{flying,
+    separate:Math.hypot(nav.target.x-p.x,nav.target.z-p.z)>2.5,
+    avoidOutposts:nav.phase==='base'});
+  if(nav.phase==='base')return arrived;
+  if(!arrived)return false;
+  if(nav.phase==='approach') {
+    nav.phase='cross';nav.crossStarted=battle.elapsed;
+    nav.target={x:nav.x,z:nav.row+FRONT.crossingExit};
   } else {
-    const arrived=moveToward(entry,nav.target,delta);
-    // Crowding at the wire line can keep a walker from ever "arriving", so once
-    // it has lingered near the crossing it jumps over the obstacle regardless.
-    const stalled=battle.elapsed-nav.started>5&&Math.abs(p.z-nav.target.z)<14;
-    if(arrived||stalled)beginJump(entry,stalled);
+    recordTraversal(flying?'eyedrone_flyover':'bulwark_causeway',battle.elapsed-nav.crossStarted);
+    releaseCrossing(entry);nav.front=1;allocateLink(entry);
   }
   return false;
 }

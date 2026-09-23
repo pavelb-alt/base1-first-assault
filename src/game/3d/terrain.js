@@ -1,9 +1,9 @@
-import { FRONT, MAP } from '@/game/config';
+import { FRONT } from '@/game/config';
 import { trenchCenter, ZIG_X } from '@/game/3d/trenchShape';
 export { terrainHeight, trenchCenter } from '@/game/3d/trenchShape';
 
 export function nearestSection(x) {
-  return Math.max(0,Math.min(FRONT.sectionCenters.length-1,Math.floor((x+MAP.HALF*0.9)/FRONT.sectionWidth)));
+  return FRONT.sectionCenters.reduce((best,c,i)=>Math.abs(c-x)<Math.abs(FRONT.sectionCenters[best]-x)?i:best,0);
 }
 export function trenchAt(z,margin=FRONT.rampReach,x=0) {
   return FRONT.rows.findIndex((_,row)=>Math.abs(trenchCenter(row,x)-z)<margin);
@@ -34,7 +34,7 @@ export function walkRoute(start,target) {
       if(startRow===endRow) {
         spineRoute(route,startRow,start.x,target.x);route.push({x:target.x,z:target.z});return route;
       }
-      const gate=FRONT.sectionCenters[nearestSection(start.x)];
+      const gate=FRONT.rampCenters.reduce((best,x)=>Math.abs(x-start.x)<Math.abs(best-start.x)?x:best);
       spineRoute(route,startRow,start.x,gate);
       currentZ=trenchCenter(startRow,gate)+direction*outside;
       route.push({x:gate,z:currentZ});
@@ -51,7 +51,7 @@ export function walkRoute(start,target) {
     route.push({x,z:z-direction*outside},{x,z:z+direction*outside});
   }
   if(endRow>=0) {
-    const x=FRONT.sectionCenters[nearestSection(target.x)],z=trenchCenter(endRow,x);
+    const x=FRONT.rampCenters.reduce((best,c)=>Math.abs(c-target.x)<Math.abs(best-target.x)?c:best),z=trenchCenter(endRow,x);
     const side=currentZ>FRONT.rows[endRow]?1:-1;
     route.push({x,z:z+side*outside},{x,z:z+FRONT.spineZ});
     spineRoute(route,endRow,x,target.x);

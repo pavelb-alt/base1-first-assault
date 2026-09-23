@@ -44,8 +44,14 @@ export function Minimap() {
       for (const z of FRONT.rows) {
         const p = worldToMini(0, z);
         ctx.beginPath();
-        ctx.moveTo(PADDING, p.y);
-        ctx.lineTo(SIZE - PADDING, p.y);
+        let left=-MAP.HALF;
+        for(const crossing of FRONT.crossings) {
+          ctx.moveTo(worldToMini(left,z).x,p.y);
+          ctx.lineTo(worldToMini(crossing-FRONT.crossingHalfWidth,z).x,p.y);
+          left=crossing+FRONT.crossingHalfWidth;
+        }
+        ctx.moveTo(worldToMini(left,z).x,p.y);
+        ctx.lineTo(SIZE-PADDING,p.y);
         ctx.stroke();
       }
 

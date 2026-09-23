@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { FRONT, MAP } from '@/game/config';
+import { crossingDistance } from '@/game/3d/trenchShape';
 
 // Czech hedgehog: three crossed steel beams forming an X seen from any angle.
 const beamGeometry = new THREE.BoxGeometry(2.6, 0.12, 0.12);
@@ -41,18 +42,21 @@ export function AntiTankObstacles() {
 
   // Place a line of hedgehogs ahead of the first barbed wire belt (closer to No Man's Land).
   const count = 24;
-  const z = FRONT.rows[2] - 14; // ahead of the wire belts (z=7 and z=3.5)
+  const z = FRONT.rows[FRONT.mainRow] - FRONT.obstacleOffset; // ahead of the wire, still on the friendly half
   const spread = MAP.HALF * 0.82;
 
   useLayoutEffect(() => {
     const marker = new THREE.Object3D();
+    let index=0;
     for (let i = 0; i < count; i++) {
-      const x = -spread + i * (spread * 2 / (count - 1));
-      marker.position.set(x + (i % 2 ? 0.8 : -0.6), 0.6, z + (i % 3 - 1) * 0.5);
+      const x = -spread + i * (spread * 2 / (count - 1)) + (i % 2 ? 0.8 : -0.6);
+      if(crossingDistance(x)<FRONT.crossingHalfWidth+2)continue;
+      marker.position.set(x, 0.6, z + (i % 3 - 1) * 0.5);
       marker.rotation.y = (i * 0.7) % (Math.PI / 2);
       marker.updateMatrix();
-      meshRef.current.setMatrixAt(i, marker.matrix);
+      meshRef.current.setMatrixAt(index++, marker.matrix);
     }
+    meshRef.current.count=index;
     meshRef.current.instanceMatrix.needsUpdate = true;
   }, [z, spread, count]);
 

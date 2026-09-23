@@ -2,7 +2,7 @@ import { FRONT, MAP } from '@/game/config';
 
 const clamp = v => Math.max(0, Math.min(1, v));
 const sorted = values => [...new Set(values.map(v => Number(v.toFixed(4))))].sort((a,b) => a-b);
-const frontage = MAP.HALF * 0.9;
+const frontage = MAP.HALF;
 export const rowProfile = row => ({
   halfWidth: FRONT.halfWidth,
   depth: FRONT.depth,
@@ -18,18 +18,18 @@ export function trenchOffset(x, row=FRONT.mainRow ?? 0) {
 }
 export const trenchCenter = (row, x) => FRONT.rows[row] + trenchOffset(x,row);
 export const crossingDistance = x => Math.min(...FRONT.crossings.map(c => Math.abs(c-x)));
-export const rampDistance = x => Math.min(...FRONT.sectionCenters.map(c => Math.abs(c-x)));
+export const rampDistance = x => Math.min(...FRONT.rampCenters.map(c => Math.abs(c-x)));
 const zigCount=Math.ceil(2*frontage/FRONT.zigLength);
 export const ZIG_X = sorted(Array.from({length:zigCount+1},(_,i)=>[-frontage+i*FRONT.zigLength,-frontage+(i+0.64)*FRONT.zigLength]).flat().filter(x=>x<=frontage));
 export const TERRAIN_X = sorted([-MAP.HALF, MAP.HALF, ...ZIG_X,
   ...FRONT.crossings.flatMap(x => [-FRONT.crossingHalfWidth-FRONT.crossingSlope,-FRONT.crossingHalfWidth,0,FRONT.crossingHalfWidth,FRONT.crossingHalfWidth+FRONT.crossingSlope].map(d => x+d)),
-  ...FRONT.sectionCenters.flatMap(x => [-FRONT.rampHalfWidth-FRONT.rampShoulder,-FRONT.rampHalfWidth,0,FRONT.rampHalfWidth,FRONT.rampHalfWidth+FRONT.rampShoulder].map(d => x+d))]);
+  ...FRONT.rampCenters.flatMap(x => [-FRONT.rampHalfWidth-FRONT.rampShoulder,-FRONT.rampHalfWidth,0,FRONT.rampHalfWidth,FRONT.rampHalfWidth+FRONT.rampShoulder].map(d => x+d))]);
 const maxHalfWidth=Math.max(FRONT.halfWidth,...FRONT.rows.map((_,row)=>rowProfile(row).halfWidth));
 const profileZ = [-FRONT.rampReach,-maxHalfWidth-0.2,-maxHalfWidth,FRONT.stepRear,FRONT.floorFront,FRONT.floorRear,maxHalfWidth,FRONT.rampReach];
 export const TERRAIN_BANDS = [{z:-MAP.HALF}, ...FRONT.rows.flatMap((z,row) => profileZ.map(d => ({z:z+d,row,d}))).sort((a,b)=>a.z-b.z), {z:MAP.HALF}];
 
 function profileHeight(x,d,row) {
-  if (Math.abs(x) >= frontage) return 0;
+  if (Math.abs(x) > frontage) return 0;
   const profile=rowProfile(row),halfWidth=profile.halfWidth,depth=profile.depth;
   const rearFloor=Math.min(FRONT.floorRear,halfWidth-0.25);
   let h;
@@ -79,32 +79,9 @@ for(let i=0;i<TERRAIN_X.length-1;i++) {
   }
 }
 
-// Diagram-style dog-legged communication trenches. The two front systems stay
-// separated by No Man's Land; links branch from support lines into paired bays.
+// A single line has no inter-row communication trenches. Entry ramps are
+// sculpted into the authoritative surface on either side of each causeway.
 export const COMMUNICATION_SEGMENTS=[];
-function addPolyline(points) {
-  for(let i=0;i<points.length-1;i++) {
-    const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z;
-    COMMUNICATION_SEGMENTS.push({x:(a.x+b.x)/2,z:(a.z+b.z)/2,width:Math.hypot(dx,dz),rotation:-Math.atan2(dz,dx)});
-  }
-}
-for(const [rear,support,front] of [[0,1,2]]) {
-  const towardFront=Math.sign(FRONT.rows[front]-FRONT.rows[support]);
-  for(const anchor of [-45,0,45]) {
-    const rearZ=trenchCenter(rear,anchor),supportZ=trenchCenter(support,anchor);
-    addPolyline([
-      {x:anchor,z:rearZ},
-      {x:anchor+(anchor===0?5:-Math.sign(anchor)*4),z:(rearZ+supportZ)/2},
-      {x:anchor,z:supportZ},
-    ]);
-    const junction={x:anchor,z:supportZ+towardFront*5.5};
-    addPolyline([{x:anchor,z:supportZ},junction]);
-    for(const branch of [-1,1]) {
-      const mouthX=anchor+branch*7.5;
-      addPolyline([junction,{x:mouthX-branch*2.5,z:junction.z+towardFront*4.5},{x:mouthX,z:trenchCenter(front,mouthX)}]);
-    }
-  }
-}
 
 // Wooden duckboards line every trench floor so soldiers aren't standing in mud.
 export const DUCKBOARDS=[];
@@ -127,5 +104,5 @@ for(let rowIndex=0;rowIndex<FRONT.rows.length;rowIndex++) {
 export const ARTILLERY_BAYS=[];
 for(const row of [0]) {
   const outward=Math.sign(FRONT.rows[row]);
-  for(const x of [-34,0,34]) ARTILLERY_BAYS.push({x,z:FRONT.rows[row]+outward*5.2,width:11,depth:6.5});
+  for(const x of [-60,-22.5,22.5,60]) ARTILLERY_BAYS.push({x,z:FRONT.rows[row]+outward*13,width:9,depth:6.5});
 }

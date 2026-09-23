@@ -99,10 +99,10 @@ export function useWavePool(team) {
       for(let member=0;member<waveSize*SECTORS.length;member++){
         let sectorIndex=Math.floor(member/waveSize),least=Infinity;
         for(let sector=0;sector<SECTORS.length;sector++){
-          const population=counts[sector*2]+counts[sector*2+1];
+          const population=counts[sector] || 0;
           if(population<least){least=population;sectorIndex=sector;}
         }
-        const index=free[member];spawned[sectorIndex]++;
+        const index=free[member];spawned[sectorIndex]++;counts[sectorIndex]++;
         s.slots[index]={...s.slots[index],reserved:true,sectorIndex,id:++s.nextId,squadId:`friendly-${s.waveId}`,
           type:'soldier',weaponId:WEAPON_IDS[Math.floor(random()*WEAPON_IDS.length)],spawnOffset:{x:0,z:0}};
         allSlots.push({index});

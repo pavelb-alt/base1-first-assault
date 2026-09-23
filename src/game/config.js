@@ -70,27 +70,27 @@ export const SECTORS = [
 ];
 export const FRONT = {
   friendlyForward: -1, enemyForward: 1,
-  // Two mirrored WWI systems: rear/artillery, support, then front line.
-  // The 28m center gap is No Man's Land rather than another trench.
-  rows: [44, 30, 14],
-  sectionCenters: [-56.25, -33.75, -11.25, 11.25, 33.75, 56.25],
-  crossings: [-67.5, -45, -22.5, 0, 22.5, 45, 67.5],
-  sectionWidth: 22.5, slotsPerSection: 9,
+  // Forward Bulwark: one full-width friendly trench and three wide causeways.
+  rows: [35],
+  sectionCenters: [-45, 0, 45],
+  crossings: [-45, 0, 45],
+  rampCenters: [-52.5, -37.5, -7.5, 7.5, 37.5, 52.5],
+  sectionWidth: 45, slotsPerSection: 24,
   // Existing Orange Guardian measures ~0.726m at scale 0.3 (hand: 0.324m, head: 0.488m).
   // 0.46m floor-to-lip cover protects the torso; the 2.2m aisle fits two 0.8m capsules.
   depth: 1.8, firingFloor: -0.45, halfWidth: 2.4,
   floorFront: -0.1, floorRear: 2.1, stepRear: -1.1, firingZ: -1.75, spineZ: 1,
-  mainRow: 2,
+  mainRow: 0,
   rowProfiles: [
-    { role: 'artillery', halfWidth: 1.85, depth: 1.4, zigAmplitude: 0.45 },
-    { role: 'support', halfWidth: 2.15, depth: 1.6, zigAmplitude: 0.75 },
-    { role: 'front', halfWidth: 3.15, depth: 2.0, zigAmplitude: 1.35 },
+    { role: 'bulwark', halfWidth: 3.15, depth: 2.0, zigAmplitude: 1.35 },
   ],
   communicationWidth: 1.35,
   zigLength: 7.5, zigAmplitude: 0.55,
   rampReach: 6.8, rampHalfWidth: 1.6, rampShoulder: 0.6,
-  crossingHalfWidth: 1.8, crossingSlope: 1.5,
-  stationInner: 2.75, stationSpacing: 1.2,
+  crossingHalfWidth: 4, crossingSlope: 1.5,
+  stationInner: 10, stationSpacing: 1,
+  crossingApproach: 12, crossingExit: 12,
+  wireOffsets: [7, 10.5], obstacleOffset: 14,
   parapetHeight: 0.35, edgeThickness: 0.3, spawnZ: 63.75,
   earthColors: { wall: '#806148', floor: '#514437', step: '#a58a64', ramp: '#99754f', edge: '#665443' },
   clearDelay: 1.5, resistanceRadius: 10, maxHoldTime: 8,

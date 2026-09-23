@@ -6,13 +6,14 @@ import { dressingNoise } from '@/game/3d/dressing/dressingNoise';
 const smooth = v => { const t = Math.max(0, Math.min(1, v)); return t*t*(3-2*t); };
 const phase = dressingNoise(72001) * Math.PI * 2;
 export function reliefHeight(x, z) {
+  // The enemy half is flat open terrain; relief only dresses the friendly side.
+  if(z<=0)return 0;
   // Preserve trench walls, ramps, causeways, map seams and all rear spawn areas.
   let mask = smooth((MAP.HALF - Math.max(Math.abs(x), Math.abs(z))) / 5);
   mask *= smooth((crossingDistance(x) - FRONT.crossingHalfWidth - FRONT.crossingSlope) / 3);
   mask *= smooth((56 - Math.abs(z)) / 9);
   for (let row = 0; row < FRONT.rows.length; row++) {
     mask *= smooth((Math.abs(z - trenchCenter(row,x)) - FRONT.rampReach - 1) / 4);
-    mask *= smooth((Math.abs(z + trenchCenter(row,x)) - FRONT.rampReach - 1) / 4);
   }
   const wave = Math.sin(x*.17 + phase)*Math.cos(z*.21 - phase)*.68 + Math.sin(x*.31 + z*.24 + phase)*.32;
   return wave * mask * BATTLEFIELD_DETAIL.reliefAmplitude;

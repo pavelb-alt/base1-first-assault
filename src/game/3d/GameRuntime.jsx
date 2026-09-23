@@ -51,7 +51,7 @@ export function GameRuntime() {
       getBattle: () => battleSnapshot(combat.units),
       getFrontline: () => frontlineSnapshot(),
       getOutposts: () => coverSnapshot(),
-      getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],capPerTeam:BALANCE.friendly.maxAlive}),
+      getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],crossings:[...FRONT.crossings],crossingWidth:FRONT.crossingHalfWidth*2,sections:[...FRONT.sectionCenters],capPerTeam:BALANCE.friendly.maxAlive}),
       getPerformance: () => ({...performance.current,averageFps:performance.current.seconds?performance.current.frames/performance.current.seconds:0}),
       getSoldierPosition: () => ({...gameState.soldierPosition}),
       isSelected: () => gameState.selectedSoldierId !== null,

@@ -70,6 +70,8 @@ export function resetCombatCover() {
 // Friendly soldiers enter through a doorway, hold for a short fixed window,
 // then leave through the forward door and resume their advance.
 export function updateFriendlyCover(entry, enemy, delta) {
+  // Assigned defenders keep their bulwark station instead of leaving the line for ruins.
+  if (entry.assignment) { if(entry.combatCover) releaseCombatCover(entry); return false; }
   if (!entry.combatCover && enemy) claim(entry, enemy);
   const cover = entry.combatCover;
   if (!cover) return false;

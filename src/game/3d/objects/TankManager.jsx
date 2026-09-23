@@ -93,7 +93,7 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
     }
 
     const pos = body.translation();
-    const frontlineZ = FRONT.rows[2] + 2; // defensive hold line
+    const frontlineZ = FRONT.rows[FRONT.mainRow] + FRONT.rampReach + 2; // hold on solid ground behind the bulwark
     cooldown.current -= delta;
 
     // Engage threats as soon as they enter cannon range; otherwise advance.
