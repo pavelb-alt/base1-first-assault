@@ -89,7 +89,7 @@ export const FRONT = {
 
 // --- Soldier config ---------------------------------------------------------
 export const SOLDIER = {
-  modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/affec41bd_8994d7574_orange-guardian-animated-jumps.glb',
+  modelUrl: 'https://media.base44.com/files/public/6aad7caf1cfd574f0bf92f13/c2282408a_ff4c1b4a8_orange-soldier-round-animated.glb',
   spawnPosition: [0, 0, FRONT.spawnZ],
   scale: 0.3, // Existing Orange Guardian rest height: 2.42 native units, ~0.726 in world space
   get moveSpeed() { return BALANCE.moveSpeed; }, // possessed and AI soldiers share one speed
