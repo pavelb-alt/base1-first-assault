@@ -15,7 +15,7 @@ import { gameState } from '@/game/3d/world';
 import { input } from '@/game/3d/input';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { useWeaponAttachment } from '@/game/3d/objects/WeaponAttachment';
-import { WEAPONS } from '@/game/3d/weapons';
+
 import { useWavePool } from '@/game/3d/waves';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAnimation';
@@ -125,7 +125,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     if (!active) return;
     const profile = BALANCE.units.soldier;
     const entry = { id, team: 'friendly', type: 'soldier', sectorIndex, squadId, profile,
-      bodyRef, weaponId, aimHeight: SOLDIER.colliderY, footOffset: SOLDIER.colliderY-SOLDIER.colliderHalfHeight-SOLDIER.colliderRadius,
+      bodyRef, weaponId, animationRef: currentAnim, aimHeight: SOLDIER.colliderY, footOffset: SOLDIER.colliderY-SOLDIER.colliderHalfHeight-SOLDIER.colliderRadius,
       heading: SOLDIER.initialFacing, nav:null, cooldown: 0, aiTarget: null,
       health: profile.health, maxHealth: profile.health, alive: true, bornAt: battle.elapsed, targetScan: 0 };
     combat.units.push(entry); combat.byBody.set(body.handle, entry); combatEntryRef.current = entry;
@@ -282,7 +282,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
 
 // --- Manager: wave-based spawning for friendly soldiers --------------------
 export function FriendlySoldierManager() {
-  useGLTF([SOLDIER.modelUrl, ...Object.values(WEAPONS).map(w => w.url)]);
+  useGLTF(SOLDIER.modelUrl);
   const { slots: soldiers, despawn } = useWavePool('friendly');
   friendlyRegistry.soldiers = soldiers.filter(s => s.active);
   const handleDespawn = useCallback(id => {

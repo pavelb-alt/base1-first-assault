@@ -26,9 +26,10 @@ function weaponState(u) {
   if (!w) return { id: u.id, weaponId: u.weaponId, attached: false };
   w.muzzle.updateWorldMatrix(true, false);
   w.muzzle.getWorldPosition(pos);
-  w.socket.getWorldQuaternion(q);
-  dir.set(0,0,1).applyQuaternion(q); // socket +Z is the barrel axis the aim solver aligns
-  return { id: u.id, weaponId: u.weaponId, attached: w.socket.parent === w.hand,
+  w.model.getWorldQuaternion(q);
+  dir.set(1,0,0).applyQuaternion(q); // authored carbine barrel points along local +X
+  return { id: u.id, weaponId: u.weaponId, attached: w.model.parent === w.hand && w.muzzle.parent === w.hand,
+    integrated: !!w.integrated, animation: u.animationRef?.current ?? null,
     socketCount: w.hand.children.filter(c => c.name === 'WeaponSocket').length,
     muzzle: pos.toArray(), barrelDirection: dir.toArray(), aim: u.aimPoint?.toArray() ?? null };
 }
@@ -186,7 +187,7 @@ export function GameRuntime() {
     // Inside Physics; assets, bodies, attachments and a completed prior frame are required.
     if (!window.game?.ready) {
       const friendly = combat.units.filter(u => u.team === 'friendly' && u.alive);
-      if (combat.physics && friendly.length && friendly.every(u => u.weapon?.socket.parent && u.bodyRef.current)) {
+      if (combat.physics && friendly.length && friendly.every(u => u.weapon?.muzzle.parent && u.bodyRef.current)) {
         if (++frames.current > 1 && window.game) window.game.ready = true;
       } else frames.current = 0;
     }
