@@ -38,6 +38,7 @@ export const DRESSING = {
 export const BATTLEFIELD_DETAIL = {
   reliefAmplitude: 0.22, reliefTriangleSize: 3.5,
   craters: 12, wrecks: 8, rockPieces: 60, bagClusters: 8, shells: 24,
+  perimeterBand: 22, // Two-thirds of debris sites occupy this outer belt.
   ruins: 10, smokeSites: 6, puffsPerSite: 18, smokeLife: 12,
   smoke: '#4a4238', ember: '#ff9933', emberIntensity: 0.7,
 };

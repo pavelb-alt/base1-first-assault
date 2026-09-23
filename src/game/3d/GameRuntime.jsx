@@ -12,7 +12,7 @@ import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { tankState } from '@/game/3d/objects/tankState';
 import { artilleryState } from '@/game/3d/objects/artilleryState';
 import { winterWeather } from '@/game/3d/objects/WinterSnow';
-import { DETAIL_COUNT, SMOKE_SITES, FIELD_DETAIL } from '@/game/3d/dressing/battlefieldDetailLayout';
+import { DETAIL_COUNT, SMOKE_SITES, FIELD_DETAIL, detailDistribution } from '@/game/3d/dressing/battlefieldDetailLayout';
 import { selectUnit, selectionSnapshot, setCommandMode, issueCommand, clearOrders, clearSelection } from '@/game/3d/commands';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
@@ -43,7 +43,7 @@ export function GameRuntime() {
       getMode: () => gameState.mode,
       getCampaign: () => ({ level: gameState.currentLevel, wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), transitioning: levelTransition.current.active, paused: gameState.paused, result: battle.gameOver }),
       getWeather: () => ({ ...winterWeather }),
-      getBattlefieldDetail: () => ({ active: gameState.currentLevel !== 5, level: gameState.currentLevel, instances: DETAIL_COUNT, smokeSites: SMOKE_SITES.length, batches: Object.fromEntries(Object.entries(FIELD_DETAIL).map(([kind,items])=>[kind,items.length])), visualOnly: true }),
+      getBattlefieldDetail: () => ({ active: gameState.currentLevel !== 5, level: gameState.currentLevel, instances: DETAIL_COUNT, smokeSites: SMOKE_SITES.length, distribution: detailDistribution(), batches: Object.fromEntries(Object.entries(FIELD_DETAIL).map(([kind,items])=>[kind,items.length])), visualOnly: true }),
       getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
