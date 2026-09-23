@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { RigidBody, CuboidCollider } from '@react-three/rapier';
+import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier';
+import { createReliefGeometry, setReliefLevel } from '@/game/3d/dressing/terrainRelief';
 import * as THREE from 'three';
 import { FRONT, MAP, WINTER, CITY } from '@/game/config';
 import { SURFACE, COVER_SEGMENTS as covers, COMMUNICATION_SEGMENTS as communications, ARTILLERY_BAYS as artilleryBays, DUCKBOARDS as duckboards } from '@/game/3d/trenchShape';
@@ -10,7 +11,8 @@ import { gameState } from '@/game/3d/world';
 import { selection, issueCommand } from '@/game/3d/commands';
 import { createGroundMaterial, setGroundNightFactor, setGroundFrostFactor, setGroundCityFactor } from '@/game/3d/dressing/groundAppearance';
 
-// One surface for visible earth AND fixed concave collision; no plane over the cutouts.
+// The original surface remains authoritative for navigation and collision.
+// A separate tessellated visual copy adds shallow relief away from traversable routes.
 const ground = new THREE.BufferGeometry();
 const vertices=[],colors=[],flat=[];
 const palette=Object.fromEntries(Object.entries({ground:MAP.GROUND_COLOR,...FRONT.earthColors}).map(([k,v])=>[k,new THREE.Color(v)]));
@@ -30,6 +32,9 @@ ground.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
 ground.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
 ground.setAttribute('dressingFlat',new THREE.Float32BufferAttribute(flat,1));
 ground.computeVertexNormals();
+const visualGround=createReliefGeometry(ground);
+const colliderVertices=ground.getAttribute('position').array;
+const colliderIndices=Uint32Array.from({length:colliderVertices.length/3},(_,i)=>i);
 const groundMaterial=createGroundMaterial();
 const box=new THREE.BoxGeometry(1,1,1);
 const coverMaterial=new THREE.MeshStandardMaterial({color:FRONT.earthColors.edge,roughness:0.9});
@@ -42,6 +47,7 @@ export function TrenchTerrain(){
   useLayoutEffect(()=>{
     const onLevelChanged=(level)=>{
       const winter=level===4, city=level===5;
+      setReliefLevel(visualGround,level);
       setGroundNightFactor(level===2?1:0);
       setGroundFrostFactor(winter?1:0);
       setGroundCityFactor(city?1:0);
@@ -100,11 +106,12 @@ export function TrenchTerrain(){
     sandbagRef.current.instanceMatrix.needsUpdate=true;
   },[]);
   return <>
-    <RigidBody type="fixed" colliders="trimesh" friction={0.3}>
-      <mesh geometry={ground} material={groundMaterial} receiveShadow onClick={e=>{
-        if(gameState.mode==='strategic'&&selection.unit){e.stopPropagation();issueCommand(e.point.x,e.point.z);}
-      }}/>
+    <RigidBody type="fixed" colliders={false} friction={0.3}>
+      <TrimeshCollider args={[colliderVertices,colliderIndices]}/>
     </RigidBody>
+    <mesh name="Visually sculpted battlefield earth" geometry={visualGround} material={groundMaterial} receiveShadow onClick={e=>{
+      if(gameState.mode==='strategic'&&selection.unit){e.stopPropagation();issueCommand(e.point.x,e.point.z);}
+    }}/>
     <RigidBody type="fixed" colliders={false}>
       {covers.map((c,i)=><CuboidCollider key={i} args={[c.width/2,FRONT.parapetHeight/2,FRONT.edgeThickness/2]} position={[c.x,FRONT.parapetHeight/2,c.z]} rotation={[0,c.rotation,0]}/>)}
       {/* Side walls track the configured playable surface. */}

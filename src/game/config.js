@@ -34,6 +34,14 @@ export const DRESSING = {
   friendly: '#cf8140', friendlyAccent: '#a96736', enemy: '#b34c43', enemyAccent: '#843b37',
 };
 
+// Visual-only battlefield detail: fixed budgets, no navigation or combat changes.
+export const BATTLEFIELD_DETAIL = {
+  reliefAmplitude: 0.22, reliefTriangleSize: 3.5,
+  craters: 12, wrecks: 8, rockPieces: 60, bagClusters: 8, shells: 24,
+  ruins: 10, smokeSites: 6, puffsPerSite: 18, smokeLife: 12,
+  smoke: '#4a4238', ember: '#ff9933', emberIntensity: 0.7,
+};
+
 // --- Base positions (opposite corners) --------------------------------------
 // Friendly advances along -Z; enemies advance +Z. Fronts run across X.
 export const BASES = {

@@ -2,6 +2,7 @@ import { BASES, DRESSING } from '@/game/config';
 import { BattlefieldDressing } from '@/game/3d/objects/BattlefieldDressing';
 import { TrenchTerrain } from '@/game/3d/objects/TrenchTerrain';
 import { CityObstacles } from '@/game/3d/objects/CityObstacles';
+import { BattlefieldDetail } from '@/game/3d/objects/BattlefieldDetail';
 
 // --- Faction base platform --------------------------------------------------
 function Base({ position, color, accentColor }) {
@@ -36,6 +37,7 @@ export function Battlefield() {
     <Base {...BASES.friendly} color={DRESSING.friendly} accentColor={DRESSING.friendlyAccent} />
     <Base {...BASES.enemy} color={DRESSING.enemy} accentColor={DRESSING.enemyAccent} />
     <BattlefieldDressing />
+    <BattlefieldDetail />
     <CityObstacles />
   </group>;
 }

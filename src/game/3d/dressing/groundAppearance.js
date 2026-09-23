@@ -115,11 +115,14 @@ export function createGroundMaterial() {
     shader.uniforms.iceColor={value:new THREE.Color(WINTER.iceColor)};
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
       attribute float dressingFlat;
+      attribute float dressingRelief;
       varying vec2 vDressingUv;
-      varying float vDressingFlat;`)
+      varying float vDressingFlat;
+      varying float vDressingRelief;`)
       .replace('#include <begin_vertex>',`#include <begin_vertex>
       vDressingUv = vec2((position.x + ${MAP.HALF.toFixed(1)}) / ${MAP.SIZE.toFixed(1)}, 1.0 - (position.z + ${MAP.HALF.toFixed(1)}) / ${MAP.SIZE.toFixed(1)});
-      vDressingFlat = dressingFlat;`);
+      vDressingFlat = dressingFlat;
+      vDressingRelief = dressingRelief;`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
       uniform sampler2D dressingMap;
       uniform sampler2D cityMap;
@@ -129,9 +132,12 @@ export function createGroundMaterial() {
       uniform vec3 snowColor;
       uniform vec3 iceColor;
       varying vec2 vDressingUv;
-      varying float vDressingFlat;`)
+      varying float vDressingFlat;
+      varying float vDressingRelief;`)
       .replace('#include <color_fragment>',`#include <color_fragment>
       vec3 surface = texture2D(dressingMap,vDressingUv).rgb;
+      // Elevation-weighted earth: darker depressions and sun-bleached crests.
+      surface *= 1.0 + vDressingRelief * 1.15;
       if (cityTint > 0.5) surface = texture2D(cityMap,vDressingUv).rgb;
       diffuseColor.rgb = mix(diffuseColor.rgb, surface, vDressingFlat);
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.27, 0.3, 0.29), cityTint * (1.0 - vDressingFlat) * 0.7);
@@ -140,6 +146,6 @@ export function createGroundMaterial() {
       // Preserve subtle scars and trench contours beneath the snow albedo.
       diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-city-v4';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-relief-v5';
   return material;
 }
