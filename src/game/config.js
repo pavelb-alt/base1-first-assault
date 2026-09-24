@@ -606,7 +606,7 @@ export function getEnemyRules(level) {
 export const OPENING = {
   menuBackgroundUrl: 'https://media.base44.com/images/public/6aad7caf1cfd574f0bf92f13/14796c05d_9cb31aef-c38b-4790-88ff-e3ff9066e111.png',
   preMenuVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/88cc475e8_VID-08.mp4',
-  introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/8997d20e0_VID-041.mp4',
+  introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/2319d7841_VID-07.mp4',
   handoffTimeout: 60000,
   fadeDuration: 800,
   firstShipMinUnload: 3.5,
