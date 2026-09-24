@@ -28,7 +28,7 @@ export const LIGHTING = {
   thirdPersonFocus: 10, thirdPersonFocusRange: 35,
   vignetteOffset: 0.3, vignetteDarkness: 0.5,
   muzzleRadiance: 5, tracerRadiance: 3, fireRadiance: 3.2,
-  hazeOpacity: 0.035, shaftOpacity: 0.025,
+  hazeOpacity: 0.085, shaftOpacity: 0.16,
 };
 
 // --- Map dimensions ---------------------------------------------------------
