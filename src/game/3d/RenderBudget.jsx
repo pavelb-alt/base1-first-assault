@@ -18,7 +18,7 @@ export function RenderBudget() {
   return <>
     <PerformanceMonitor factor={1} step={0.1} iterations={8}
       bounds={() => [PERFORMANCE.targetFps, PERFORMANCE.targetFps + 15]}
-      onChange={adapt} />
+      onDecline={adapt} onIncline={adapt} />
     <AdaptiveDpr />
   </>;
 }
