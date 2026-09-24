@@ -174,10 +174,11 @@ export const ENEMY_TYPES = {
     animAttack: 'Attack',
   },
   eyedrone: {
-    modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/62cea419d_Enemy_500_dragonfly_v1.glb',
+    modelUrl: 'https://base44.app/api/apps/6a6060c7f9e002982672084c/files/mp/public/6a6060c7f9e002982672084c/7d1390bab_Enemy_500_insect_animated_v1.glb',
     scale: 1,
     hoverHeight: 3,        // flying unit
     tailGun: 'TailGun',
+    muzzleNode: 'Muzzle',
     colliderHalfHeight: 0.2,
     colliderRadius: 0.45,
     colliderY: 0.6,        // retain existing aiming height

@@ -63,7 +63,8 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
   const clonedScene = useMemo(() => clonePooledModel(scene, animations), [scene, animations]);
   const backCannon = useMemo(() => config.backCannon ? clonedScene.getObjectByName(config.backCannon.node) ?? null : null, [clonedScene, config]);
   const frontCannons = useMemo(() => config.frontCannons?.map(name => clonedScene.getObjectByName(name)) ?? null, [clonedScene, config]);
-  const tailGun = useMemo(() => config.tailGun ? clonedScene.getObjectByName(config.tailGun) : null, [clonedScene, config]);
+  const tailMuzzle = useMemo(() => config.tailGun
+    ? clonedScene.getObjectByName(config.tailGun)?.getObjectByName(config.muzzleNode) : null, [clonedScene, config]);
   const { actions } = useUnitVisuals(animations, clonedScene, groupRef, bodyRef, active, 'enemy', id, slot);
 
   // Play an animation with smooth fade (silently skips unknown names)
@@ -150,10 +151,10 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
             cannon.getWorldPosition(frontOrigin);
             if (fireShot(entry,frontOrigin,shotAim,shotOrigin)) entry.shotsFired++;
           }
-        } else if (tailGun) {
+        } else if (tailMuzzle) {
           group.rotation.y=entry.heading+config.facingOffset;
           group.updateWorldMatrix(true,true);
-          tailGun.getWorldPosition(frontOrigin);
+          tailMuzzle.getWorldPosition(frontOrigin);
           if (fireShot(entry,frontOrigin,shotAim,shotOrigin)) entry.shotsFired++;
         } else fireShot(entry,shotOrigin,shotAim);
         if(backCannon) {
