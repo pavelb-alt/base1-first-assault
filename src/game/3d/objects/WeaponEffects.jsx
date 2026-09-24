@@ -48,11 +48,12 @@ export function WeaponEffects() {
   useFrame((_, delta) => {
     if (gameState.paused) return;
     const pool = state.current;
-    for (const effect of combat.muzzleEffects.splice(0)) {
+    for (const effect of combat.muzzleEffects) {
       const slot = pool.flashes[pool.flashCursor++ % FLASH_CAPACITY];
       slot.active = true; slot.age = 0; slot.position.fromArray(effect.position); slot.direction.fromArray(effect.direction).normalize();
     }
-    for (const effect of combat.impactEffects.splice(0)) {
+    combat.muzzleEffects.length = 0;
+    for (const effect of combat.impactEffects) {
       const burst = pool.impacts[pool.impactCursor++ % IMPACT_CAPACITY];
       burst.active = true; burst.age = 0; burst.position.fromArray(effect.position);
       direction.fromArray(effect.direction).normalize();
@@ -64,6 +65,7 @@ export function WeaponEffects() {
         slot.velocity.copy(direction).multiplyScalar(-2.7).addScaledVector(side, (i - 1.5) * 2.1).addScaledVector(up, 1.3 + (i % 2) * 1.1);
       }
     }
+    combat.impactEffects.length = 0;
 
     let flashCount = 0;
     for (const slot of pool.flashes) {
