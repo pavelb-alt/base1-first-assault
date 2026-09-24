@@ -2,6 +2,7 @@ import { useContext, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Bloom, EffectComposer, EffectComposerContext, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { LIGHTING } from '@/game/config';
+import { BattlefieldDepthOfField } from '@/game/3d/BattlefieldDepthOfField';
 
 // Resize the HDR buffers as well as the canvas when adaptive resolution changes.
 // Logical CSS dimensions can stay fixed while the GPU pixel ratio changes.
@@ -20,6 +21,7 @@ export function CinematicEffects() {
   return <EffectComposer multisampling={0} enableNormalPass={false}>
     <Bloom mipmapBlur intensity={LIGHTING.bloomIntensity}
       luminanceThreshold={LIGHTING.bloomThreshold} luminanceSmoothing={LIGHTING.bloomSmoothing} />
+    <BattlefieldDepthOfField />
     <ToneMapping mode={6} />
     <Vignette eskil={false} offset={LIGHTING.vignetteOffset} darkness={LIGHTING.vignetteDarkness} />
     <SMAA />

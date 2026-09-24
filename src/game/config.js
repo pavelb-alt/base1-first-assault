@@ -23,9 +23,11 @@ export const PERFORMANCE = {
 export const LIGHTING = {
   exposure: 1.1,
   shadowMapSize: 2048, shadowRadius: 3,
-  bloomIntensity: 0.8, bloomThreshold: 1, bloomSmoothing: 0.2,
+  bloomIntensity: 1, bloomThreshold: 1.25, bloomSmoothing: 0.2,
+  depthOfFieldStrength: 0.5, strategicFocusRange: 85,
+  thirdPersonFocus: 10, thirdPersonFocusRange: 35,
   vignetteOffset: 0.3, vignetteDarkness: 0.5,
-  muzzleRadiance: 4, tracerRadiance: 3, fireRadiance: 2.2,
+  muzzleRadiance: 5, tracerRadiance: 3, fireRadiance: 3.2,
   hazeOpacity: 0.035, shaftOpacity: 0.025,
 };
 
