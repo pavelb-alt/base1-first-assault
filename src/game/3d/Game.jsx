@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
+import { ACESFilmicToneMapping } from 'three';
 import { GameScene } from '@/game/3d/scenes/GameScene';
-import { PERFORMANCE } from '@/game/config';
+import { PERFORMANCE, LIGHTING } from '@/game/config';
 import { RenderBudget } from '@/game/3d/RenderBudget';
 
 /**
@@ -12,9 +13,9 @@ import { RenderBudget } from '@/game/3d/RenderBudget';
 export default function Game({ onReady }) {
   return (
     <Canvas
-      shadows={PERFORMANCE.shadows}
-      dpr={PERFORMANCE.maxDpr}
-      gl={{ antialias: PERFORMANCE.antialias, powerPreference: 'high-performance' }}
+      shadows={PERFORMANCE.shadows ? 'soft' : false}
+      dpr={[PERFORMANCE.minDpr, PERFORMANCE.maxDpr]}
+      gl={{ antialias: PERFORMANCE.antialias, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping, toneMappingExposure: LIGHTING.exposure }}
       camera={{ fov: 55, near: 0.1, far: 1200, position: [0, 350, 270] }}
       onCreated={(state) => {
         if (typeof onReady === 'function') onReady(state);

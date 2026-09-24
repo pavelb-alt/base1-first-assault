@@ -7,16 +7,26 @@ export const GAME_PERSPECTIVE = 'top-down';
 
 // Rendering only: simulation, spawn budgets and weapon timing are unchanged.
 export const PERFORMANCE = {
-  minDpr: 0.6, maxDpr: 0.85,
-  shadows: false,
-  antialias: false,
-  targetFps: 45,
+  minDpr: 1, maxDpr: 2,
+  shadows: true,
+  antialias: true,
+  targetFps: 30,
   nearAnimationDistance: 35,
   nearAnimationHz: 20,
   farAnimationHz: 8,
-  unitShadowDistance: 0,
+  unitShadowDistance: 180,
   minimapHz: 10,
   ambientParticleScale: 0.3,
+};
+
+// Visual-only cinematic settings; never used by combat or navigation.
+export const LIGHTING = {
+  exposure: 1.1,
+  shadowMapSize: 2048, shadowRadius: 3,
+  bloomIntensity: 0.8, bloomThreshold: 1, bloomSmoothing: 0.2,
+  vignetteOffset: 0.3, vignetteDarkness: 0.5,
+  muzzleRadiance: 4, tracerRadiance: 3, fireRadiance: 2.2,
+  hazeOpacity: 0.035, shaftOpacity: 0.025,
 };
 
 // --- Map dimensions ---------------------------------------------------------
@@ -449,10 +459,10 @@ export const LEVELS = {
     defeatVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/f5c579759_VID-087.mp4',
     victoryVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/bd11edc88_VID-083.mp4',
     atmosphere: {
-      sky: '#9eb9ca', horizon: '#ead2ae', sun: '#fff0ce',
-      sunPosition: [-50, 80, 140], sunIntensity: 3.6,
-      fogNear: 150, fogFar: 460,
-      ambient: 0.36, hemisphere: 1.05, skyColor: '#d9ecf5', groundColor: '#a99476',
+      sky: '#a3bdcb', horizon: '#e6cba5', sun: '#ffdfad',
+      sunPosition: [-55, 65, 140], sunIntensity: 3.4,
+      fogNear: 110, fogFar: 360,
+      ambient: 0.22, hemisphere: 0.8, skyColor: '#d9ecf5', groundColor: '#a99476',
     },
   },
   night: {
@@ -463,7 +473,7 @@ export const LEVELS = {
     atmosphere: {
       sky: '#0a0e1a', horizon: '#1a2030', sun: '#8fa8d0',
       sunPosition: [-30, 70, 90], sunIntensity: 1.2,
-      fogNear: 30, fogFar: 120,
+      fogNear: 65, fogFar: 190,
       ambient: 0.12, hemisphere: 0.35, skyColor: '#2a3550', groundColor: '#1a1e2a',
     },
   },
@@ -475,7 +485,7 @@ export const LEVELS = {
     atmosphere: {
       sky: '#2d4a2a', horizon: '#5a7a48', sun: '#d4e8b8',
       sunPosition: [-20, 60, 80], sunIntensity: 2.4,
-      fogNear: 40, fogFar: 160,
+      fogNear: 85, fogFar: 225,
       ambient: 0.22, hemisphere: 0.65, skyColor: '#3d6a35', groundColor: '#2d3a1e',
     },
   },
@@ -486,7 +496,7 @@ export const LEVELS = {
     atmosphere: {
       sky: '#849eaf', horizon: '#c9dce5', sun: '#e7f6ff',
       sunPosition: [-30, 70, 100], sunIntensity: 1.8,
-      fogNear: 55, fogFar: 220,
+      fogNear: 90, fogFar: 250,
       ambient: 0.4, hemisphere: 0.85, skyColor: '#e5f5ff', groundColor: '#8197aa',
     },
   },
@@ -497,7 +507,7 @@ export const LEVELS = {
     atmosphere: {
       sky: '#8599a6', horizon: '#c1c4bc', sun: '#fff2d9',
       sunPosition: [-55, 85, 110], sunIntensity: 2.5,
-      fogNear: 100, fogFar: 340,
+      fogNear: 100, fogFar: 300,
       ambient: 0.3, hemisphere: 0.85, skyColor: '#d5e5ed', groundColor: '#858681',
     },
   },

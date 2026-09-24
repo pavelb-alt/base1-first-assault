@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LIGHTING } from '@/game/config';
 
 // A single tapered bolt per live projectile. Its tip is the authoritative
 // collision position; the fading tail only covers already-travelled space.
@@ -10,15 +11,15 @@ function boltMaterial(color) {
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, toneMapped: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { boltColor: { value: new THREE.Color(color) } },
+    uniforms: { boltColor: { value: new THREE.Color(color) }, radiance: { value: LIGHTING.tracerRadiance } },
     vertexShader: `varying float vAlong;
       void main(){vAlong=position.z+1.;
         gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.);}`,
-    fragmentShader: `uniform vec3 boltColor;varying float vAlong;
+    fragmentShader: `uniform vec3 boltColor;uniform float radiance;varying float vAlong;
       void main(){float head=smoothstep(.72,1.,vAlong);
         vec3 color=mix(boltColor,vec3(1.),head*.85);
         float alpha=smoothstep(0.,.35,vAlong)*mix(.4,1.,vAlong);
-        gl_FragColor=vec4(color,alpha);
+        gl_FragColor=vec4(color*radiance,alpha);
         #include <colorspace_fragment>
       }`,
   });

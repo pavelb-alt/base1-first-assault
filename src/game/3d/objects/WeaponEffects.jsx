@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
 import { gameState } from '@/game/3d/world';
+import { LIGHTING } from '@/game/config';
 
 const FLASH_CAPACITY = 96;
 const SPARK_CAPACITY = 192;
@@ -11,8 +12,8 @@ const SPARK_LIFE = 0.16;
 const flashGeometry = new THREE.ConeGeometry(0.065, 0.22, 5);
 flashGeometry.rotateX(-Math.PI / 2);
 const sparkGeometry = new THREE.TetrahedronGeometry(0.035, 0);
-const flashMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a8', toneMapped: false, transparent: true });
-const sparkMaterial = new THREE.MeshBasicMaterial({ color: '#ffb43c', toneMapped: false, transparent: true });
+const flashMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff0a8').multiplyScalar(LIGHTING.muzzleRadiance), toneMapped: false, transparent: true });
+const sparkMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb43c').multiplyScalar(LIGHTING.muzzleRadiance), toneMapped: false, transparent: true });
 const forward = new THREE.Vector3(0, 0, 1);
 const up = new THREE.Vector3(0, 1, 0);
 const side = new THREE.Vector3();

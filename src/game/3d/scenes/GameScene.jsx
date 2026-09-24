@@ -23,6 +23,7 @@ import { FRONT } from '@/game/config';
 import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
 import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlares';
 import { WinterSnow } from '@/game/3d/objects/WinterSnow';
+import { CinematicEffects } from '@/game/3d/CinematicEffects';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -68,6 +69,7 @@ export function GameScene() {
         <ArtilleryDeliveryManager />
         <SkyBattle />
         <TowerManager />
+        <CinematicEffects />
       </Suspense>
     </>
   );
