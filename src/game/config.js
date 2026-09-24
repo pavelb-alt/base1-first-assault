@@ -7,7 +7,7 @@ export const GAME_PERSPECTIVE = 'top-down';
 
 // Rendering only: simulation, spawn budgets and weapon timing are unchanged.
 export const PERFORMANCE = {
-  minDpr: 1, maxDpr: 2,
+  minDpr: 1, maxDpr: 1.25, // stable pixel density avoids repeated HDR buffer reallocations
   shadows: true,
   antialias: true,
   targetFps: 30,

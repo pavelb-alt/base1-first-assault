@@ -2,7 +2,6 @@ import { Canvas } from '@react-three/fiber';
 import { ACESFilmicToneMapping } from 'three';
 import { GameScene } from '@/game/3d/scenes/GameScene';
 import { PERFORMANCE, LIGHTING } from '@/game/config';
-import { RenderBudget } from '@/game/3d/RenderBudget';
 
 /**
  * 3D (React Three Fiber) flavor of the engine contract. The Canvas creates
@@ -21,7 +20,6 @@ export default function Game({ onReady }) {
         if (typeof onReady === 'function') onReady(state);
       }}
     >
-      <RenderBudget />
       <GameScene />
     </Canvas>
   );
