@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { combat } from '@/game/3d/combat';
@@ -25,6 +25,8 @@ const forward = new THREE.Vector3(0, 0, 1);
 const up = new THREE.Vector3(0, 1, 0);
 const side = new THREE.Vector3();
 const direction = new THREE.Vector3();
+const sparkDirection = new THREE.Vector3();
+const fadeColor = new THREE.Color();
 const transform = new THREE.Object3D();
 
 function createSlots(capacity) {
@@ -39,6 +41,9 @@ export function WeaponEffects() {
   const impactMesh = useRef();
   const sparkMesh = useRef();
   const state = useRef({ flashes: createSlots(FLASH_CAPACITY), impacts: createSlots(IMPACT_CAPACITY), sparks: createSlots(SPARK_CAPACITY), flashCursor: 0, impactCursor: 0, sparkCursor: 0 });
+  useEffect(() => {
+    for (const mesh of [flashMesh, glowMesh, impactMesh, sparkMesh]) mesh.current.count = 0;
+  }, []);
 
   useFrame((_, delta) => {
     if (gameState.paused) return;
@@ -68,7 +73,10 @@ export function WeaponEffects() {
       transform.quaternion.setFromUnitVectors(forward, slot.direction);
       transform.scale.setScalar(Math.max(0.05, fade)); transform.updateMatrix();
       flashMesh.current.setMatrixAt(flashCount, transform.matrix);
-      glowMesh.current.setMatrixAt(flashCount++, transform.matrix);
+      glowMesh.current.setMatrixAt(flashCount, transform.matrix);
+      fadeColor.setScalar(Math.max(0.06, fade));
+      flashMesh.current.setColorAt(flashCount, fadeColor);
+      glowMesh.current.setColorAt(flashCount++, fadeColor);
       // Draw every newly queued flash at least once, even on a slow frame.
       slot.age += delta;
       if (slot.age >= FLASH_LIFE) slot.active = false;
@@ -79,7 +87,9 @@ export function WeaponEffects() {
       const progress = slot.age / IMPACT_LIFE;
       transform.position.copy(slot.position); transform.quaternion.identity();
       transform.scale.setScalar(1 + progress * 2); transform.updateMatrix();
-      impactMesh.current.setMatrixAt(impactCount++, transform.matrix);
+      impactMesh.current.setMatrixAt(impactCount, transform.matrix);
+      fadeColor.setScalar(Math.max(0.03, 1 - progress));
+      impactMesh.current.setColorAt(impactCount++, fadeColor);
       slot.age += delta;
       if (slot.age >= IMPACT_LIFE) slot.active = false;
     }
@@ -87,18 +97,22 @@ export function WeaponEffects() {
     for (const slot of pool.sparks) {
       if (!slot.active) continue;
       transform.position.copy(slot.position);
-      transform.quaternion.setFromUnitVectors(forward, slot.velocity.clone().normalize());
-      transform.scale.set(0.8, 0.8, Math.max(0.08, (1 - slot.age / SPARK_LIFE) * 2.8)); transform.updateMatrix();
-      sparkMesh.current.setMatrixAt(sparkCount++, transform.matrix);
+      sparkDirection.copy(slot.velocity).normalize();
+      transform.quaternion.setFromUnitVectors(forward, sparkDirection);
+      const fade = Math.max(0.05, 1 - slot.age / SPARK_LIFE);
+      transform.scale.set(0.8, 0.8, fade * 2.8); transform.updateMatrix();
+      sparkMesh.current.setMatrixAt(sparkCount, transform.matrix);
+      fadeColor.setScalar(fade);
+      sparkMesh.current.setColorAt(sparkCount++, fadeColor);
       slot.velocity.y -= 10 * delta; slot.position.addScaledVector(slot.velocity, delta);
       slot.age += delta;
       if (slot.age >= SPARK_LIFE) slot.active = false;
     }
     flashMesh.current.count = flashCount; glowMesh.current.count = flashCount;
     impactMesh.current.count = impactCount; sparkMesh.current.count = sparkCount;
-    if (flashCount) { flashMesh.current.instanceMatrix.needsUpdate = true; glowMesh.current.instanceMatrix.needsUpdate = true; }
-    if (impactCount) impactMesh.current.instanceMatrix.needsUpdate = true;
-    if (sparkCount) sparkMesh.current.instanceMatrix.needsUpdate = true;
+    if (flashCount) { flashMesh.current.instanceMatrix.needsUpdate = true; glowMesh.current.instanceMatrix.needsUpdate = true; flashMesh.current.instanceColor.needsUpdate = true; glowMesh.current.instanceColor.needsUpdate = true; }
+    if (impactCount) { impactMesh.current.instanceMatrix.needsUpdate = true; impactMesh.current.instanceColor.needsUpdate = true; }
+    if (sparkCount) { sparkMesh.current.instanceMatrix.needsUpdate = true; sparkMesh.current.instanceColor.needsUpdate = true; }
   });
 
   return <>
