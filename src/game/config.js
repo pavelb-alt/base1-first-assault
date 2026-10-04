@@ -479,7 +479,7 @@ export const LEVELS = {
   night: {
     id: 2,
     name: 'NIGHT',
-    introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/5e78041df_now_i_want_it_to_be_landing_on.mp4',
+    introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/af3cd770b_VID-0833.mp4',
     maxWaves: 25,
     atmosphere: {
       sky: '#0a0e1a', horizon: '#1a2030', sun: '#8fa8d0',

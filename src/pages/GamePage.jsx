@@ -407,7 +407,7 @@ export default function GamePage() {
         {levelTransition && currentLevel >= 3 && <CampaignMissionBriefing currentLevel={currentLevel} />}
         {levelTransition && currentLevel < 3 && (
           <IntroVideo
-            src={currentLevel === 1 ? LEVELS.day.victoryVideoUrl : LEVELS.forest.introVideoUrl}
+            src={currentLevel === 1 ? LEVELS.night.introVideoUrl : LEVELS.forest.introVideoUrl}
             onEnd={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
             onSkip={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
           />
