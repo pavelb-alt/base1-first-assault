@@ -14,7 +14,7 @@ import { artilleryState, launchShell } from '@/game/3d/objects/artilleryState';
 import { explosionRequests } from '@/game/3d/objects/BattlefieldExplosions';
 import { SupportDelivery } from '@/game/3d/objects/TankManager';
 import { ArtilleryVisual } from '@/game/3d/objects/ArtilleryVisual';
-import { selectUnit, clearOrders, driveToOrder } from '@/game/3d/commands';
+import { selectUnit, clearOrders, driveToOrder, driveVehicleToward } from '@/game/3d/commands';
 
 const _muzzle = new THREE.Vector3();
 const _target = new THREE.Vector3();
@@ -77,7 +77,13 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
     const order = entry.order;
     let aim = null, driving = false;
     if (order?.type === 'move' && !order.arrived) driving = driveToOrder(entry, group, delta, ARTILLERY.moveSpeed);
-    else if (order?.type === 'attack') aim = order.target.bodyRef.current.translation();
+    else if (order?.type === 'attack') {
+      aim = order.target.bodyRef.current.translation();
+      if (Math.hypot(aim.x - pos.x, aim.z - pos.z) > entry.profile.range * 0.95) {
+        driving = driveVehicleToward(entry, group, delta, ARTILLERY.moveSpeed, aim);
+        aim = null;
+      }
+    }
     else if (order?.type === 'bombard') aim = order;
     else {
       const enemy = findNearestEnemy(entry, entry.profile.range);
@@ -126,7 +132,7 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
       <CuboidCollider args={[ARTILLERY.colliderHalfWidth, ARTILLERY.colliderHalfHeight, ARTILLERY.colliderHalfDepth]} position={[0, ARTILLERY.colliderY, 0]} />
       <group
         ref={groupRef}
-        onClick={e => { e.stopPropagation(); selectUnit(entryRef.current); }}
+        onClick={e => { e.stopPropagation(); selectUnit(entryRef.current, e.shiftKey); }}
         onPointerOver={e => { e.stopPropagation(); if (gameState.mode === 'strategic') document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { document.body.style.cursor = 'default'; }}
       >

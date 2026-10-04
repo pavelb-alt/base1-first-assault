@@ -296,7 +296,7 @@ export default function GamePage() {
                   <>
                     <div><span className="text-white font-semibold">WASD</span> Pan Camera</div>
                     <div><span className="text-white font-semibold">Wheel</span> Zoom</div>
-                    <div><span className="text-white font-semibold">Left Click Unit</span> Select</div>
+                    <div><span className="text-white font-semibold">Click / Drag</span> Select Unit / Squad</div>
                     <div><span className="text-white font-semibold">Left Click Ground</span> Order</div>
                     <div><span className="text-white font-semibold">Right Click</span> Place Tower</div>
                     <div><span className="text-white font-semibold">Tab</span> Join the Fight</div>

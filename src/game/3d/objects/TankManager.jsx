@@ -13,6 +13,7 @@ import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
 import { TankVisual } from '@/game/3d/objects/TankVisual';
+import { selectUnit, clearOrders, driveToOrder, driveVehicleToward } from '@/game/3d/commands';
 
 useGLTF.preload(CARGO_SHIP.modelUrl);
 
@@ -96,8 +97,21 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
     const frontlineZ = FRONT.rows[FRONT.mainRow] + FRONT.rampReach + 2; // hold on solid ground behind the bulwark
     cooldown.current -= delta;
 
-    // Engage threats as soon as they enter cannon range; otherwise advance.
-    const enemy = findNearestEnemy(entry, entry.profile.range, canSeeTarget);
+    // Explicit commands override advancing; hold still allows defensive fire.
+    if (entry.order?.type === 'attack' && !(entry.order.target.alive && entry.order.target.bodyRef.current)) clearOrders(entry);
+    const order = entry.order;
+    if (order?.type === 'move' && !order.arrived) {
+      driveToOrder(entry, group, delta, TANK.moveSpeed);
+      return;
+    }
+    let enemy = order?.type === 'attack' ? order.target : findNearestEnemy(entry, entry.profile.range, canSeeTarget);
+    if (order?.type === 'attack') {
+      const target = enemy.bodyRef.current.translation();
+      if (Math.hypot(target.x - pos.x, target.z - pos.z) > entry.profile.range || !canSeeTarget(entry, enemy)) {
+        driveVehicleToward(entry, group, delta, TANK.moveSpeed, target);
+        return;
+      }
+    }
     if (enemy) {
       const ep = enemy.bodyRef.current.translation();
       group.rotation.y = Math.atan2(ep.x - pos.x, ep.z - pos.z);
@@ -114,7 +128,7 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
         entry.shotsFired += 1;
         cooldown.current = entry.profile.cooldown;
       }
-    } else if (pos.z > frontlineZ) {
+    } else if (!order && pos.z > frontlineZ) {
       // Kinematic tracked advance cannot deadlock against infantry or trench lips.
       body.setNextKinematicTranslation({
         x: pos.x,
@@ -131,7 +145,7 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
         args={[TANK.colliderHalfWidth, TANK.colliderHalfHeight, TANK.colliderHalfDepth]}
         position={[0, TANK.colliderY, 0]}
       />
-      <group ref={groupRef} visible={true}>
+      <group ref={groupRef} visible={true} onClick={e => { e.stopPropagation(); selectUnit(combatEntryRef.current, e.shiftKey); }}>
         <TankVisual explosionRef={explosionRef} explosionMatRef={explosionMat} />
       </group>
     </RigidBody>

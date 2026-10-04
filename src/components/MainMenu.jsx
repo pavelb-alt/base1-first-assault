@@ -7,7 +7,12 @@ const BINDINGS = [
   { mode: 'Strategic View', keys: [
     { k: 'WASD', d: 'Pan Camera' },
     { k: 'Wheel', d: 'Zoom' },
-    { k: 'Click Soldier', d: 'Select' },
+    { k: 'Click / Drag', d: 'Select unit / squad' },
+    { k: 'Shift + Click', d: 'Add or remove unit' },
+    { k: 'Ctrl + A', d: 'Select all ground troops' },
+    { k: 'M / T / H', d: 'Move / Attack / Hold' },
+    { k: 'C / Esc', d: 'Automatic orders / Deselect' },
+    { k: 'Right Click', d: 'Place tower' },
   ]},
   { mode: 'Third-Person', keys: [
     { k: 'WASD', d: 'Move Soldier' },

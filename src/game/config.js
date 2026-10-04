@@ -449,7 +449,9 @@ export const COMMANDS = {
   retargetInterval: 1,    // seconds between re-routing toward a moving attack target
   hudInterval: 0.25,      // seconds between selection HUD refreshes
   selectColor: '#5eead4', moveColor: '#5eead4', attackColor: '#f87171',
-  ringScale: { soldier: 0.75, artillery: 2.6 },
+  ringScale: { soldier: 0.75, tank: 2.3, artillery: 2.6 },
+  maxSelected: 96, dragThreshold: 6,
+  formationSpacing: 2, vehicleSpacing: 4.5,
 };
 
 // --- Level system (day → night campaign) ------------------------------------

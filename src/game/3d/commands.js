@@ -7,9 +7,10 @@ import { walkRoute, terrainHeight } from '@/game/3d/terrain';
 import { followRoute, stop } from '@/game/3d/navigation/motion';
 import { releasePosition, resumeFrontline } from '@/game/3d/navigation/frontline';
 
-// Player-issued orders for one selected friendly unit (soldier or artillery).
-// entry.order: { type: 'move', x, z, arrived } | { type: 'attack', target } | { type: 'bombard', x, z }
-export const selection = { unit: null, mode: 'move' };
+// A live selection of ground units; `unit` remains the primary selection for possession.
+export const selection = { unit: null, units: [], mode: 'move' };
+export const canCommand = () => gameState.mode === 'strategic' && !gameState.paused && !gameState.preparing && !gameState.transitioning && !battle.gameOver;
+export const isCommandable = u => !!(u?.alive && u.team === 'friendly' && u.bodyRef?.current && ['soldier', 'tank', 'artillery'].includes(u.type));
 
 function describeOrder(o) {
   if (!o) return null;
@@ -18,46 +19,77 @@ function describeOrder(o) {
     : { type: o.type, x: o.x, z: o.z, arrived: !!o.arrived };
 }
 export function selectionSnapshot() {
-  const u = selection.unit;
-  return {
-    unit: u ? { id: u.id, type: u.type, health: Math.max(0, Math.round(u.health)), maxHealth: u.maxHealth } : null,
-    mode: selection.mode,
-    order: describeOrder(u?.order),
-  };
+  const units = selection.units.filter(isCommandable).map(u => ({
+    id: u.id, type: u.type, health: Math.max(0, Math.round(u.health)), maxHealth: u.maxHealth,
+    order: describeOrder(u.order),
+  }));
+  return { unit: units[0] ?? null, units, count: units.length, mode: selection.mode, order: units[0]?.order ?? null };
 }
 export const publishSelection = () => EventBus.emit('selection-changed', selectionSnapshot());
-const notify = entry => { if (entry === selection.unit) publishSelection(); };
+const notify = entry => { if (selection.units.includes(entry)) publishSelection(); };
 
-export function selectUnit(entry) {
-  if (!entry?.alive || entry.team !== 'friendly' || gameState.mode !== 'strategic') return false;
-  if (entry.type !== 'soldier' && entry.type !== 'artillery') return false;
-  selection.unit = entry;
-  selection.mode = entry.type === 'artillery' && entry.order?.type !== 'move' ? 'target' : 'move';
-  gameState.selectedSoldierId = entry.type === 'soldier' ? entry.id : null;
-  if (entry.type === 'soldier') EventBus.emit('soldier-selected');
+function applySelection(units) {
+  selection.units = [...new Set(units.filter(isCommandable))];
+  selection.unit = selection.units[0] ?? null;
+  gameState.selectedSoldierId = selection.units.find(u => u.type === 'soldier')?.id ?? null;
+  EventBus.emit(gameState.selectedSoldierId !== null ? 'soldier-selected' : 'soldier-deselected');
+  publishSelection();
+}
+export function selectUnits(units, additive = false) {
+  if (!canCommand()) return false;
+  applySelection(additive ? [...selection.units, ...units] : units);
+  return selection.units.length > 0;
+}
+export function selectUnit(entry, additive = false) {
+  if (!canCommand() || !isCommandable(entry)) return false;
+  if (additive && selection.units.includes(entry)) applySelection(selection.units.filter(u => u !== entry));
+  else selectUnits([entry], additive);
+  return true;
+}
+export function selectAllUnits() { return selectUnits(combat.units.filter(isCommandable)); }
+export function pruneSelection() {
+  if (selection.units.some(u => !isCommandable(u))) applySelection(selection.units);
+}
+export function clearSelection() { applySelection([]); }
+export function setCommandMode(mode) {
+  if (!canCommand() || (mode !== 'move' && mode !== 'target')) return false;
+  selection.mode = mode;
   publishSelection();
   return true;
 }
-export function clearSelection() {
-  if (!selection.unit) return;
-  selection.unit = null;
-  gameState.selectedSoldierId = null;
-  EventBus.emit('soldier-deselected');
-  publishSelection();
-}
-export function setCommandMode(mode) {
-  if (mode !== 'move' && mode !== 'target') return;
-  selection.mode = mode;
-  publishSelection();
-}
-// Returns the unit to its normal AI behaviour.
-export function clearOrders(entry = selection.unit) {
-  if (!entry?.order) return;
+// With no argument, return the whole selection to automatic behaviour.
+export function clearOrders(entry) {
+  if (!entry) {
+    if (!canCommand()) return;
+    selection.units.forEach(u => clearOrders(u));
+    return;
+  }
+  if (!entry.order) return;
   entry.order = null;
+  entry.commandRoute = null;
   if (entry.type === 'soldier') resumeFrontline(entry);
   notify(entry);
 }
-
+function assignOrder(u, order) {
+  if (u.type === 'soldier') {
+    releasePosition(u);
+    u.nav = { phase: 'ordered', route: null, index: 0, nextRoute: 0 };
+    stop(u);
+  } else u.bodyRef.current.setNextKinematicTranslation(u.bodyRef.current.translation());
+  u.commandRoute = null;
+  u.aiTarget = null;
+  u.order = order;
+}
+export function holdPosition() {
+  if (!canCommand()) return false;
+  pruneSelection();
+  for (const u of selection.units) {
+    const p = u.bodyRef.current.translation();
+    assignOrder(u, { type: 'hold', x: p.x, z: p.z, arrived: true });
+  }
+  publishSelection();
+  return selection.units.length > 0;
+}
 function enemyNear(x, z) {
   let best = null, bestDistance = COMMANDS.pickRadius;
   for (const u of combat.units) {
@@ -68,26 +100,35 @@ function enemyNear(x, z) {
   }
   return best;
 }
+export function issueAttack(target) {
+  if (!canCommand() || !target?.alive || target.team !== 'enemy' || !target.bodyRef?.current) return false;
+  pruneSelection();
+  for (const u of selection.units) assignOrder(u, { type: 'attack', target });
+  publishSelection();
+  return selection.units.length > 0;
+}
 
-// Ground click in strategic view: move order, or target order in target mode.
+// Commands fan out once; each unit owns its own order and route.
 export function issueCommand(x, z) {
-  const u = selection.unit;
-  if (!u?.alive) { clearSelection(); return false; }
-  const edge = MAP.HALF - 1;
-  x = Math.max(-edge, Math.min(edge, x));
-  z = Math.max(-edge, Math.min(edge, z));
-  let order;
+  if (!canCommand() || !Number.isFinite(x) || !Number.isFinite(z)) return false;
+  pruneSelection();
+  if (!selection.units.length) return false;
+  const units = selection.units, edge = MAP.HALF - 1;
   if (selection.mode === 'target') {
     const enemy = enemyNear(x, z);
-    if (enemy) order = { type: 'attack', target: enemy };
-    else if (u.type === 'artillery') order = { type: 'bombard', x, z };
-    else { EventBus.emit('command-feedback', 'No enemy there — click on or near an enemy.'); return false; }
-  } else order = { type: 'move', x, z, arrived: false };
-  if (u.type === 'soldier') {
-    releasePosition(u);
-    u.nav = { phase: 'ordered', route: null, index: 0, nextRoute: 0 };
+    if (enemy) return issueAttack(enemy);
+    const guns = units.filter(u => u.type === 'artillery');
+    if (!guns.length) { EventBus.emit('command-feedback', 'No enemy there — click on an enemy.'); return false; }
+    for (const u of guns) assignOrder(u, { type: 'bombard', x: Math.max(-edge, Math.min(edge, x)), z: Math.max(-edge, Math.min(edge, z)) });
+    if (guns.length !== units.length) EventBus.emit('command-feedback', 'Artillery shelling area; other troops keep their orders.');
+  } else {
+    const columns = Math.ceil(Math.sqrt(units.length)), rows = Math.ceil(units.length / columns);
+    const spacing = units.some(u => u.type !== 'soldier') ? COMMANDS.vehicleSpacing : COMMANDS.formationSpacing;
+    const halfX = (columns - 1) * spacing / 2, halfZ = (rows - 1) * spacing / 2;
+    x = Math.max(-edge + halfX, Math.min(edge - halfX, x));
+    z = Math.max(-edge + halfZ, Math.min(edge - halfZ, z));
+    units.forEach((u, i) => assignOrder(u, { type: 'move', x: x + (i % columns) * spacing - halfX, z: z + Math.floor(i / columns) * spacing - halfZ, arrived: false }));
   }
-  u.order = order;
   publishSelection();
   return true;
 }
@@ -95,6 +136,11 @@ export function issueCommand(x, z) {
 // Soldier order behaviour; runs instead of the frontline AI while an order is active.
 export function updateSoldierOrder(entry, delta, visibleEnemy, canSee) {
   const o = entry.order, nav = entry.nav, pos = entry.bodyRef.current.translation();
+  if (o.type === 'hold') {
+    stop(entry);
+    if (visibleEnemy) entry.aiTarget = visibleEnemy;
+    return;
+  }
   if (o.type === 'attack') {
     const t = o.target;
     if (!t.alive || !t.bodyRef.current) { clearOrders(entry); return; }
@@ -117,19 +163,31 @@ export function updateSoldierOrder(entry, delta, visibleEnemy, canSee) {
   if (followRoute(entry, delta)) { o.arrived = true; notify(entry); }
 }
 
-// Kinematic vehicle drive toward a move order; returns true while still driving.
-export function driveToOrder(entry, group, delta, speed) {
-  const body = entry.bodyRef.current, p = body.translation(), o = entry.order;
-  const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
-  if (d < 0.3) { o.arrived = true; notify(entry); return false; }
-  const step = Math.min(d, speed * delta);
-  const x = p.x + dx / d * step, z = p.z + dz / d * step;
+// Vehicle orders use the same trench-crossing routes as ground troops.
+export function driveVehicleToward(entry, group, delta, speed, target) {
+  const body = entry.bodyRef.current, p = body.translation();
+  let route = entry.commandRoute;
+  if (!route || Math.hypot(route.x - target.x, route.z - target.z) > 3 && battle.elapsed >= route.next) {
+    route = entry.commandRoute = { points: walkRoute(p, target), index: 0, x: target.x, z: target.z, next: battle.elapsed + COMMANDS.retargetInterval };
+  }
+  const next = route.points[route.index];
+  if (!next) return false;
+  const dx = next.x - p.x, dz = next.z - p.z, distance = Math.hypot(dx, dz);
+  if (distance < 0.35) { route.index++; return route.index < route.points.length; }
+  const step = Math.min(distance, speed * delta);
+  const x = p.x + dx / distance * step, z = p.z + dz / distance * step;
   body.setNextKinematicTranslation({ x, y: terrainHeight(x, z), z });
   group.rotation.y = Math.atan2(dx, dz);
   return true;
 }
+export function driveToOrder(entry, group, delta, speed) {
+  const driving = driveVehicleToward(entry, group, delta, speed, entry.order);
+  if (!driving && !entry.order.arrived) { entry.order.arrived = true; notify(entry); }
+  return driving;
+}
 
 export function resetCommands() {
+  selection.units = [];
   selection.unit = null;
   selection.mode = 'move';
   gameState.selectedSoldierId = null;

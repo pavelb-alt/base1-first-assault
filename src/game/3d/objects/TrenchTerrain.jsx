@@ -110,7 +110,7 @@ export function TrenchTerrain(){
       <TrimeshCollider args={[colliderVertices,colliderIndices]}/>
     </RigidBody>
     <mesh name="Visually sculpted battlefield earth" geometry={visualGround} material={groundMaterial} receiveShadow onClick={e=>{
-      if(gameState.mode==='strategic'&&selection.unit){e.stopPropagation();issueCommand(e.point.x,e.point.z);}
+      if(e.delta <= 6 && gameState.mode==='strategic'&&selection.unit){e.stopPropagation();issueCommand(e.point.x,e.point.z);}
     }}/>
     <RigidBody type="fixed" colliders={false}>
       {covers.map((c,i)=><CuboidCollider key={i} args={[c.width/2,FRONT.parapetHeight/2,FRONT.edgeThickness/2]} position={[c.x,FRONT.parapetHeight/2,c.z]} rotation={[0,c.rotation,0]}/>)}

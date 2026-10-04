@@ -38,6 +38,7 @@ export function bindInput(canvas) {
   const move = e => { if (document.pointerLockElement === canvas) look(e.movementX, e.movementY); };
   const keyDown = e => {
     if (e.code === 'Escape' || e.code === 'Tab') { clearInput(); return; }
+    if (gameState.mode === 'strategic' && e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) return;
     if (!gameState.paused) setKey(e.code, true);
   };
   const keyUp = e => setKey(e.code, false);

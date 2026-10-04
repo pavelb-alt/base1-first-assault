@@ -265,7 +265,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
         rotation={[0, SOLDIER.initialFacing, 0]}
         onClick={(e) => {
           e.stopPropagation();
-          selectUnit(combatEntryRef.current);
+          selectUnit(combatEntryRef.current, e.shiftKey);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();

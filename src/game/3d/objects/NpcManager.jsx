@@ -12,6 +12,7 @@ import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
 import { useWavePool } from '@/game/3d/waves';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
+import { selection, issueAttack } from '@/game/3d/commands';
 import { resetDeathPose, updateDeathAnimation } from '@/game/3d/objects/deathAnimation';
 const shotOrigin = new THREE.Vector3();
 const shotAim = new THREE.Vector3();
@@ -191,7 +192,9 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
         position={[0, config.hitboxY ?? config.colliderY, config.hitboxZ ?? 0]}
         rotation={config.tailGun ? [Math.PI / 2, 0, 0] : undefined}
       />
-      <group ref={groupRef} visible={active}>
+      <group ref={groupRef} visible={active} onClick={e => {
+        if (selection.units.length && issueAttack(combatEntryRef.current)) e.stopPropagation();
+      }}>
         <primitive object={clonedScene} scale={config.scale} />
       </group>
     </RigidBody>
