@@ -15,7 +15,9 @@ const BINDINGS = [
     { k: 'Right Click', d: 'Place tower' },
   ]},
   { mode: 'Third-Person', keys: [
-    { k: 'WASD', d: 'Move Soldier' },
+    { k: 'WASD', d: 'Move soldier / Drive vehicle' },
+    { k: 'E', d: 'Enter / Exit nearby gun position' },
+    { k: 'B', d: 'Deploy tower menu' },
     { k: 'Space', d: 'Jump / Double Jump' },
     { k: 'Mouse', d: 'Look Around' },
     { k: 'Left Click', d: 'Shoot' },
