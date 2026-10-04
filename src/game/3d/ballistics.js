@@ -95,7 +95,7 @@ export function applySplash(shooter, x, z, radius, damage, player = false) {
   const shot = { team: shooter.team, shooterId: shooter.id, shooter, player, damage };
   let hits = 0;
   visitNearby(x, z, radius, (u, _p, d2) => {
-    if (u.team === shooter.team || !u.alive) return;
+    if (u.team === shooter.team || !u.alive || u.seated) return;
     damageUnit(u, damage * (1 - 0.6 * Math.sqrt(d2) / radius), shot);
     hits++;
   });

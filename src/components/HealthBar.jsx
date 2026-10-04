@@ -17,7 +17,7 @@ export function HealthBar() {
   useEffect(() => {
     if (!visible) { setHealth(null); return; }
     let mounted = true;
-    let last = '', lastMaximum = COMBAT.maxHealth;
+    let last = '', lastMaximum = -1;
     const tick = () => {
       if (!mounted) return;
       const unit = window.game?.getControlledUnit?.();

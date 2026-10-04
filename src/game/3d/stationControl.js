@@ -4,7 +4,7 @@ import { combat } from '@/game/3d/combat';
 import { battle } from '@/game/3d/battleMetrics';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { clearInput } from '@/game/3d/input';
-import { DIRECT_CONTROL, MAP } from '@/game/config';
+import { DIRECT_CONTROL, MAP, ARTILLERY } from '@/game/config';
 import { terrainHeight } from '@/game/3d/terrain';
 
 export function getStation() {
@@ -72,5 +72,5 @@ export function interactStation() {
 }
 export function stationSnapshot() {
   const s=getStation(), type=gameState.controlledStation?.type;
-  return { active:s ? {type,id:s.id,name:type==='tower' ? `${s.type.toUpperCase()} TOWER` : type.toUpperCase(),position:stationPosition(s),shotsFired:s.shotsFired??0,cooldown:Math.max(0,s.cooldown??0),health:s.health??null,maxHealth:s.maxHealth??null} : null,nearby:nearestStation() };
+  return { active:s ? {type,id:s.id,name:type==='tower' ? `${s.type.toUpperCase()} TOWER` : type.toUpperCase(),position:stationPosition(s),shotsFired:s.shotsFired??0,fireBlocked:type==='artillery' && (s.aimRange??0)<ARTILLERY.minRange,cooldown:Math.max(0,s.cooldown??0),health:s.health??null,maxHealth:s.maxHealth??null} : null,nearby:nearestStation() };
 }

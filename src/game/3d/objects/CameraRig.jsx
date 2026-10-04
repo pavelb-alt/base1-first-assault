@@ -45,7 +45,7 @@ export function CameraRig() {
       const dz = enemy[2] - pos.z;
       thirdPersonYaw.current = Math.atan2(dx, dz);
       thirdPersonPitch.current = CAMERA.thirdPerson.initialPitch;
-      EventBus.emit('set-soldier-rotation', { id: unit.id, rotation: Math.atan2(dx, dz) });
+      if (unit.type === 'soldier') EventBus.emit('set-soldier-rotation', { id: unit.id, rotation: Math.atan2(dx, dz) });
       // Capture current camera state as the transition start point
       transition.current = {
         startPos: camera.position.clone(),

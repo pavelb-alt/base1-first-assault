@@ -90,6 +90,7 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
       const factor=dist>maxRange ? maxRange/dist : 1;
       _target.set(pos.x+dx*factor,0,pos.z+dz*factor);
       _target.y=terrainHeight(_target.x,_target.z); aim=_target;
+      entry.aimRange=Math.hypot(_target.x-pos.x,_target.z-pos.z);
     } else turretRef.current.rotation.y=0;
     if (!manual && order?.type === 'move' && !order.arrived) driving = driveToOrder(entry, group, delta, ARTILLERY.moveSpeed);
     else if (!manual && order?.type === 'attack') {
