@@ -11,9 +11,12 @@ import { cargoShipState } from '@/game/3d/objects/cargoShipState';
 import { gameState } from '@/game/3d/world';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
-import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
+import { cameraAim, fireShot, canSeeTarget } from '@/game/3d/ballistics';
 import { TankVisual } from '@/game/3d/objects/TankVisual';
 import { selectUnit, clearOrders, driveToOrder, driveVehicleToward } from '@/game/3d/commands';
+import { isStationControlled } from '@/game/3d/stationControl';
+import { driveManually } from '@/game/3d/manualDrive';
+import { input } from '@/game/3d/input';
 
 useGLTF.preload(CARGO_SHIP.modelUrl);
 
@@ -28,6 +31,7 @@ const _dir = new THREE.Vector3();
 const TankEntity = function TankEntity({ id, zone, onDespawn }) {
   const bodyRef = useRef();
   const groupRef = useRef();
+  const turretRef = useRef(), barrelRef = useRef();
   const explosionRef = useRef();
   const combatEntryRef = useRef(null);
   const cooldown = useRef(0);
@@ -97,6 +101,23 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
     const frontlineZ = FRONT.rows[FRONT.mainRow] + FRONT.rampReach + 2; // hold on solid ground behind the bulwark
     cooldown.current -= delta;
 
+    entry.cooldown = Math.max(0,cooldown.current);
+    if (isStationControlled('tank', id)) {
+      driveManually(entry, group, delta, TANK.moveSpeed);
+      cameraAim(_state.camera, entry, _aim);
+      const yaw = Math.atan2(_aim.x-pos.x, _aim.z-pos.z);
+      const pitch = THREE.MathUtils.clamp(Math.atan2(_aim.y-pos.y-1.06, Math.hypot(_aim.x-pos.x,_aim.z-pos.z)), -0.3, 0.65);
+      turretRef.current.rotation.y = yaw - group.rotation.y;
+      barrelRef.current.rotation.x = -pitch;
+      const reach = 0.94 + Math.cos(pitch)*1.96;
+      _muzzle.set(pos.x+Math.sin(yaw)*reach,pos.y+1.06+Math.sin(pitch)*1.96,pos.z+Math.cos(yaw)*reach);
+      if (input.mouseDown && cooldown.current <= 0) {
+        _dir.set(pos.x,pos.y+1.06,pos.z);
+        if (fireShot(entry,_muzzle,_aim,_dir,true)) { entry.shotsFired++; cooldown.current=entry.profile.cooldown; entry.cooldown=cooldown.current; }
+      }
+      return;
+    }
+    turretRef.current.rotation.y=0; barrelRef.current.rotation.x=0;
     // Explicit commands override advancing; hold still allows defensive fire.
     if (entry.order?.type === 'attack' && !(entry.order.target.alive && entry.order.target.bodyRef.current)) clearOrders(entry);
     const order = entry.order;
@@ -146,7 +167,7 @@ const TankEntity = function TankEntity({ id, zone, onDespawn }) {
         position={[0, TANK.colliderY, 0]}
       />
       <group ref={groupRef} visible={true} onClick={e => { e.stopPropagation(); selectUnit(combatEntryRef.current, e.shiftKey); }}>
-        <TankVisual explosionRef={explosionRef} explosionMatRef={explosionMat} />
+        <TankVisual explosionRef={explosionRef} explosionMatRef={explosionMat} turretRef={turretRef} barrelRef={barrelRef} />
       </group>
     </RigidBody>
   );

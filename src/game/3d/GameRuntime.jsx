@@ -15,6 +15,7 @@ import { winterWeather } from '@/game/3d/objects/WinterSnow';
 import { DETAIL_COUNT, SMOKE_SITES, FIELD_DETAIL } from '@/game/3d/dressing/battlefieldDetailLayout';
 import { selectUnit, selectAllUnits, holdPosition, issueAttack, selectionSnapshot, setCommandMode, issueCommand, clearOrders, clearSelection } from '@/game/3d/commands';
 import { selectScreenBox } from '@/game/3d/rtsSelection';
+import { getStation, interactStation, stationSnapshot } from '@/game/3d/stationControl';
 import { frontlineSnapshot, resetFrontline } from '@/game/3d/navigation/frontline';
 import { resetCrossings } from '@/game/3d/navigation/enemyTraversal';
 import { coverSnapshot, resetCombatCover } from '@/game/3d/navigation/coverTactics';
@@ -41,7 +42,7 @@ export function GameRuntime() {
   const performance = useRef({frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0});
   const levelTransition = useRef({ active: false, timer: 0 });
   useEffect(() => {
-    const selected = () => combat.units.find(u => u.team === 'friendly' && u.id === gameState.possessedSoldierId);
+    const selected = () => getStation() ?? combat.units.find(u => u.team === 'friendly' && u.type === 'soldier' && u.id === gameState.possessedSoldierId);
     window.game = {
       ready: false,
       getMode: () => gameState.mode,
@@ -74,7 +75,7 @@ export function GameRuntime() {
       getCombat: () => ({ ...combat.stats, activeProjectiles: combat.projectiles.filter(p => p.active).length,
         pending: combat.pendingProjectiles.length, lastShot: combat.lastShot ? JSON.parse(JSON.stringify(combat.lastShot)) : null,
         lastImpact: combat.lastImpact ? JSON.parse(JSON.stringify(combat.lastImpact)) : null }),
-      getControlledUnit: () => { const u = selected(); return u ? { ...weaponState(u), health: u.health, maxHealth: u.maxHealth, profile: { ...u.profile }, sectorIndex: u.sectorIndex, cooldown: u.cooldown, firing: input.mouseDown } : null; },
+      getControlledUnit: () => { const u = selected(); return u ? { ...weaponState(u), type: gameState.controlledStation?.type ?? 'soldier', health: u.health, maxHealth: u.maxHealth, profile: { ...u.profile }, sectorIndex: u.sectorIndex, cooldown: u.cooldown, firing: input.mouseDown } : null; },
       getUnit: (team,id) => { const u = combat.units.find(u => u.team === team && u.id === id); return u ? { id:u.id, team:u.team, type:u.type, sectorIndex:u.sectorIndex, squadId:u.squadId, health:u.health, maxHealth:u.maxHealth, profile:{...u.profile}, alive:u.alive, velocity:u.bodyRef.current?{...u.bodyRef.current.linvel()}:null, position:u.bodyRef.current?{...u.bodyRef.current.translation()}:null, navigation:u.nav?{phase:u.nav.phase,waypoint:u.nav.index??null,front:u.nav.front??null,target:u.nav.target?{...u.nav.target}:u.nav.route?.[u.nav.index]?{...u.nav.route[u.nav.index]}:null}:null, assignment:u.assignment?{...u.assignment}:null, reservedPosition:u.positionId??null } : null; },
       selectSoldier: id => selectUnit(combat.units.find(u => u.team === 'friendly' && u.type === 'soldier' && u.id === id && u.alive)),
       selectUnit: (type, id, additive = false) => selectUnit(combat.units.find(u => u.team === 'friendly' && u.type === type && u.id === id && u.alive), additive),
@@ -84,6 +85,8 @@ export function GameRuntime() {
       getSelection: selectionSnapshot,
       setCommandMode, issueCommand, clearOrders: () => clearOrders(), deselect: clearSelection,
       possess: () => EventBus.emit('possess-soldier'), release: () => EventBus.emit('release-soldier'),
+      possessUnit: (type,id) => EventBus.emit('possess-unit',{type,id}),
+      interactStation, getStationControl: stationSnapshot,
       setFire, setKey, look,
       reset: () => EventBus.emit('reset-game'),
       pause: () => EventBus.emit('pause-game'), resume: () => EventBus.emit('resume-game'),

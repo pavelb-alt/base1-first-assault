@@ -20,10 +20,10 @@ export const artilleryState = {
   },
 };
 
-export function launchShell(shooter, from, to) {
+export function launchShell(shooter, from, to, player = false) {
   const shell = artilleryState.shells.find(s => !s.active);
   if (!shell) return false;
-  shell.active = true; shell.t = 0; shell.shooter = shooter;
+  shell.active = true; shell.t = 0; shell.shooter = shooter; shell.player = player;
   shell.from.copy(from); shell.to.copy(to);
   shell.apex = ARTILLERY.shellApex * Math.min(1, from.distanceTo(to) / 50 + 0.35);
   artilleryState.shellsFired++;

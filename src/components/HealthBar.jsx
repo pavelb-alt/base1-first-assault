@@ -5,6 +5,7 @@ import { COMBAT } from '@/game/config';
 export function HealthBar() {
   const [visible, setVisible] = useState(false);
   const [health, setHealth] = useState(null);
+  const [maxHealth, setMaxHealth] = useState(COMBAT.maxHealth);
   const rafRef = useRef();
 
   useEffect(() => {
@@ -16,12 +17,14 @@ export function HealthBar() {
   useEffect(() => {
     if (!visible) { setHealth(null); return; }
     let mounted = true;
-    let last = -1;
+    let last = '', lastMaximum = COMBAT.maxHealth;
     const tick = () => {
       if (!mounted) return;
       const unit = window.game?.getControlledUnit?.();
       const hp = unit?.health ?? null;
       if (hp !== last) { last = hp; setHealth(hp); }
+      const maximum = unit?.maxHealth ?? COMBAT.maxHealth;
+      if (maximum !== lastMaximum) { lastMaximum = maximum; setMaxHealth(maximum); }
       rafRef.current = requestAnimationFrame(tick);
     };
     tick();
@@ -29,7 +32,7 @@ export function HealthBar() {
   }, [visible]);
 
   if (!visible || health === null) return null;
-  const pct = Math.max(0, Math.min(100, (health / COMBAT.maxHealth) * 100));
+  const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
   const color = pct > 50 ? 'bg-green-500' : pct > 25 ? 'bg-yellow-500' : 'bg-red-500';
 
   return (
@@ -39,7 +42,7 @@ export function HealthBar() {
         <div className="flex-1 h-4 rounded-full bg-black/70 border border-white/20 overflow-hidden">
           <div className={`h-full ${color} transition-all duration-150`} style={{ width: `${pct}%` }} />
         </div>
-        <span className="text-white text-xs font-mono w-12 text-right">{Math.ceil(health)}/{COMBAT.maxHealth}</span>
+        <span className="text-white text-xs font-mono w-12 text-right">{Math.ceil(health)}/{maxHealth}</span>
       </div>
     </div>
   );

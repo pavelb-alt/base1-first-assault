@@ -12,6 +12,12 @@ const TOWER_SLOTS = [
 
 export function InControlTowerMenu({ visible }) {
   const [open, setOpen] = useState(false);
+  const [inStation, setInStation] = useState(false);
+  useEffect(() => {
+    const update = s => { setInStation(!!s); setOpen(false); };
+    EventBus.on('station-changed', update);
+    return () => EventBus.off('station-changed', update);
+  }, []);
   const [scrap, setScrap] = useState(towerDefenseState.scrap);
   const openRef = useRef(false);
 
@@ -24,6 +30,7 @@ export function InControlTowerMenu({ visible }) {
   }, []);
 
   const deployTower = useCallback((type) => {
+    if (gameState.controlledStation || gameState.paused) return;
     const pos = gameState.soldierPosition;
     if (!pos) return;
     const position = { x: pos.x, z: pos.z };
@@ -40,7 +47,8 @@ export function InControlTowerMenu({ visible }) {
   useEffect(() => {
     if (!visible) { setOpen(false); return; }
     const onKeyDown = (e) => {
-      if (e.code === 'KeyE') {
+      if (gameState.controlledStation || gameState.paused || e.repeat) return;
+      if (e.code === 'KeyB') {
         e.preventDefault();
         setOpen(prev => !prev);
       } else if (openRef.current) {
@@ -54,7 +62,7 @@ export function InControlTowerMenu({ visible }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [visible, deployTower]);
 
-  if (!visible) return null;
+  if (!visible || inStation) return null;
 
   return (
     <>
@@ -62,7 +70,7 @@ export function InControlTowerMenu({ visible }) {
       {!open && (
         <div className="absolute bottom-20 right-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 pointer-events-none">
           <div className="text-slate-300 text-xs">
-            <span className="text-white font-semibold">E</span> Deploy Tower
+            <span className="text-white font-semibold">B</span> Deploy Tower
           </div>
         </div>
       )}
@@ -89,7 +97,7 @@ export function InControlTowerMenu({ visible }) {
             })}
           </div>
           <div className="text-center text-slate-400 text-xs mt-2">
-            Press 1/2/3 to deploy at your position · E or Esc to close
+            Press 1/2/3 to deploy at your position · B or Esc to close
           </div>
         </div>
       )}

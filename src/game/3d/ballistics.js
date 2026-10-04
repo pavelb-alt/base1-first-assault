@@ -91,8 +91,8 @@ export function applyImpact(hit, shot) {
 }
 
 // Area damage with distance falloff (artillery shells). Friendly fire is off.
-export function applySplash(shooter, x, z, radius, damage) {
-  const shot = { team: shooter.team, shooterId: shooter.id, shooter, player: false, damage };
+export function applySplash(shooter, x, z, radius, damage, player = false) {
+  const shot = { team: shooter.team, shooterId: shooter.id, shooter, player, damage };
   let hits = 0;
   visitNearby(x, z, radius, (u, _p, d2) => {
     if (u.team === shooter.team || !u.alive) return;

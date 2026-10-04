@@ -8,6 +8,9 @@ import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { combat } from '@/game/3d/combat';
 import { gameState } from '@/game/3d/world';
 import { battle } from '@/game/3d/battleMetrics';
+import { cameraAim, fireShot, trace } from '@/game/3d/ballistics';
+import { isStationControlled } from '@/game/3d/stationControl';
+import { input } from '@/game/3d/input';
 
 // Raycaster for ground-plane intersection (screen → world)
 const _raycaster = new THREE.Raycaster();
@@ -50,6 +53,23 @@ function Tower({ tower }) {
 
     tower.cooldown = Math.max(0, tower.cooldown - delta);
 
+    if (isStationControlled('tower',tower.id)) {
+      cameraAim(_state.camera,combatEntry,_aim);
+      const tx=tower.position.x,tz=tower.position.z;
+      tower.targetId=null;
+      tower.aimYaw=Math.atan2(tx-_aim.x,tz-_aim.z);
+      tower.aimPitch=Math.atan2(_aim.y-1.2,Math.hypot(_aim.x-tx,_aim.z-tz));
+      _origin.set(tx,1.2,tz);
+      if (input.mouseDown && tower.cooldown<=0 && fireShot(combatEntry,_origin,_aim,_origin,true)) {
+        tower.cooldown=cfg.cooldown; tower.shotsFired=(tower.shotsFired??0)+1;
+        if (tower.type==='frost') {
+          const distance=_dir.subVectors(_aim,_origin).length();
+          const hit=trace(_origin,_dir.normalize(),distance+0.1,combatEntry)?.unit;
+          if(hit?.alive && hit.team==='enemy') { hit.slowUntil=battle.elapsed+cfg.slowDuration; hit.slowFactor=cfg.slowFactor; }
+        }
+      }
+      return;
+    }
     // Find nearest enemy in range using spatial grid
     const tx = tower.position.x, tz = tower.position.z;
     let nearest = null;

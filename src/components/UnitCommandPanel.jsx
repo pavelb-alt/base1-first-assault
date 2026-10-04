@@ -79,6 +79,7 @@ export function UnitCommandPanel({ visible }) {
         <div className={`h-full ${hp > 0.5 ? 'bg-green-500' : hp > 0.25 ? 'bg-yellow-400' : 'bg-red-500'}`} style={{ width: `${hp * 100}%` }} />
       </div>
       <div className="flex flex-wrap gap-2 mb-2">
+        {count === 1 && ['tank','artillery','soldier'].includes(unit.type) && <button onClick={() => EventBus.emit('possess-unit',{type:unit.type,id:unit.id})} className="px-3 py-1.5 rounded-md text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white">Take control</button>}
         {modeBtn('move', 'Move', 'M')}
         {modeBtn('target', artillery ? 'Fire Mission' : 'Attack', 'T')}
         <button onClick={() => EventBus.emit('hold-position')} className="px-3 py-1.5 rounded-md text-sm font-semibold bg-slate-800 text-white hover:bg-slate-700">Hold <span className="opacity-60 text-xs">(H)</span></button>

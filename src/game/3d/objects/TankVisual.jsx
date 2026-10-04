@@ -18,7 +18,8 @@ const materials = {
 };
 
 function buildTank() {
-  const batches = Object.fromEntries(Object.keys(materials).map(k => [k, []]));
+  const batches = Object.fromEntries(['hull','turret','gun'].flatMap(part => Object.keys(materials).map(k => [`${part}:${k}`, []])));
+  let part = 'hull';
   const transform = new THREE.Matrix4();
   const rotation = new THREE.Quaternion();
   const translation = new THREE.Vector3();
@@ -30,7 +31,7 @@ function buildTank() {
     rotation.setFromEuler(euler.set(...r));
     transform.compose(translation.set(...p), rotation, scale);
     g.applyMatrix4(transform);
-    batches[kind].push(g);
+    batches[`${part}:${kind}`].push(g);
   }
   const box = (kind, size, p, r) => add(kind, new THREE.BoxGeometry(...size), p, r);
   const cylinder = (kind, radius, length, p, r, segments = 12) =>
@@ -99,6 +100,7 @@ function buildTank() {
     cylinder('dark', 0.078, 0.015, [side * 0.96, 0.57, -1.86], [Math.PI / 2, 0, 0]);
   }
 
+  part = 'turret';
   // Turret bearing, faceted turret, cheek armor, mantlet and sleeved cannon.
   cylinder('dark', 0.81, 0.12, [0, 0.82, 0]);
   cylinder('steel', 0.73, 0.055, [0, 0.895, 0]);
@@ -116,6 +118,7 @@ function buildTank() {
       cylinder('steel', 0.047, 0.22, [side * (0.94 + i * 0.045), 1.17, 0.5 - i * 0.16], [0.6, 0, side * 0.5], 8);
     }
   }
+  part = 'gun';
   box('dark', [0.66, 0.38, 0.26], [0, 1.06, 0.94]);
   cylinder('steel', 0.21, 0.43, [0, 1.06, 1.08], [Math.PI / 2, 0, 0]);
   cylinder('armor', 0.135, 0.74, [0, 1.06, 1.59], [Math.PI / 2, 0, 0]);
@@ -125,6 +128,7 @@ function buildTank() {
   box('dark', [0.16, 0.12, 0.012], [0, 1.06, 2.855]);
   for (const side of [-1, 1]) for (const z of [2.63, 2.75]) box('dark', [0.012, 0.12, 0.055], [side * 0.145, 1.06, z]);
 
+  part = 'turret';
   // Commander's cupola, hatch handle, periscopes, sensor and whip aerial.
   cylinder('dark', 0.33, 0.1, [-0.35, 1.44, -0.25]);
   cylinder('armor', 0.28, 0.08, [-0.35, 1.52, -0.25]);
@@ -143,24 +147,30 @@ function buildTank() {
   box('dark', [1.08, 0.25, 0.28], [0, 1.13, -1.06]);
   box('hull', [1.12, 0.06, 0.31], [0, 1.28, -1.06]);
   for (const x of [-0.38, 0.38]) box('steel', [0.055, 0.28, 0.3], [x, 1.15, -1.06]);
+  part = 'hull';
   for (const x of [-0.26, 0, 0.26]) box('steel', [0.19, 0.05, 0.28], [x, 0.85, 1.25], [0.28, 0, 0]);
 
-  return Object.entries(batches).map(([kind, parts]) => {
+  return Object.entries(batches).filter(([,parts]) => parts.length).map(([key, parts]) => {
+    const [part, kind] = key.split(':');
     const geometry = mergeGeometries(parts, false);
     parts.forEach(g => g.dispose());
+    if (part === 'gun') geometry.translate(0,-1.06,-0.94);
     geometry.computeBoundingSphere();
-    return { kind, geometry, material: materials[kind] };
+    return { part, kind, geometry, material: materials[kind] };
   });
 }
 const tankMeshes = buildTank();
 const explosionGeometry = new THREE.SphereGeometry(1, 8, 8);
 
-export function TankVisual({ explosionRef, explosionMatRef }) {
+const Parts = ({part}) => tankMeshes.filter(m => m.part === part).map(({kind,geometry,material}) => <mesh key={kind} name={`Tank-${part}-${kind}`} geometry={geometry} material={material} castShadow receiveShadow />);
+export function TankVisual({ explosionRef, explosionMatRef, turretRef, barrelRef }) {
   return (
     <group name="DetailedTank" dispose={null}>
-      {tankMeshes.map(({ kind, geometry, material }) => (
-        <mesh key={kind} name={`Tank-${kind}`} geometry={geometry} material={material} castShadow receiveShadow />
-      ))}
+      <Parts part="hull" />
+      <group ref={turretRef}>
+        <Parts part="turret" />
+        <group ref={barrelRef} position={[0,1.06,0.94]}><Parts part="gun" /></group>
+      </group>
       <mesh ref={explosionRef} geometry={explosionGeometry} material={explosionMatRef} visible={false} />
     </group>
   );

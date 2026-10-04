@@ -14,6 +14,7 @@ import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
 import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { UnitCommandPanel } from '@/components/UnitCommandPanel';
+import { StationControlHUD } from '@/components/StationControlHUD';
 
 export default function GamePage() {
   // Opening flow: 'opening' → 'menu' → 'intro' → 'handoff' → 'playing'
@@ -269,6 +270,7 @@ export default function GamePage() {
             <Minimap />
             <TowerDefenseHUD visible={mode === 'strategic'} />
             <InControlTowerMenu visible={mode === 'third_person'} />
+            <StationControlHUD visible={mode === 'third_person'} />
             <UnitCommandPanel visible={mode === 'strategic'} />
 
             {/* Mode indicator */}
@@ -277,7 +279,7 @@ export default function GamePage() {
                 {mode === 'strategic' ? '◉ STRATEGIC VIEW' : '🎮 THIRD-PERSON'}
               </div>
               <div className="text-slate-400 text-xs mt-0.5">
-                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : currentLevel === 3 ? 'Forest Operation' : currentLevel === 4 ? 'Frost Operation' : 'City Operation'} • {mode === 'strategic' ? 'Overview' : 'Possessing Soldier'}
+                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : currentLevel === 3 ? 'Forest Operation' : currentLevel === 4 ? 'Frost Operation' : 'City Operation'} • {mode === 'strategic' ? 'Overview' : 'Direct Control'}
               </div>
             </div>
 
@@ -303,12 +305,13 @@ export default function GamePage() {
                   </>
                 ) : (
                   <>
-                    <div><span className="text-white font-semibold">WASD</span> Move Soldier</div>
+                    <div><span className="text-white font-semibold">WASD</span> Move / Drive</div>
                     <div><span className="text-white font-semibold">Space</span> Jump / Double Jump</div>
                     <div><span className="text-white font-semibold">Mouse</span> Look Around</div>
                     <div><span className="text-white font-semibold">Left Click</span> Shoot</div>
                     <div><span className="text-white font-semibold">Right Click</span> Aim Down Sights</div>
-                    <div><span className="text-white font-semibold">E</span> Deploy Tower</div>
+                    <div><span className="text-white font-semibold">E</span> Enter / Exit Gun Position</div>
+                    <div><span className="text-white font-semibold">B</span> Deploy Tower</div>
                     <div><span className="text-white font-semibold">Tab / Esc</span> Release Control</div>
                   </>
                 )}

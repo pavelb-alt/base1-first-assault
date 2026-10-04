@@ -22,7 +22,7 @@ const wheels = [];
 for (const side of [-1, 1]) for (let i = 0; i < 6; i++) wheels.push([side * 1.22, 0.3, -1.5 + i * 0.6]);
 const L = ARTILLERY.barrelLength;
 
-export function ArtilleryVisual({ barrelRef, recoilRef, explosionRef, explosionMat }) {
+export function ArtilleryVisual({ turretRef, barrelRef, recoilRef, explosionRef, explosionMat }) {
   return (
     <group name="MobileArtillery" dispose={null}>
       {/* Chassis and tracks */}
@@ -32,6 +32,9 @@ export function ArtilleryVisual({ barrelRef, recoilRef, explosionRef, explosionM
       <B mat="hull" s={[2.1, 0.55, 3.7]} p={[0, 0.7, 0]} />
       <B mat="armor" s={[2.0, 0.18, 0.9]} p={[0, 0.9, 1.55]} r={[0.35, 0, 0]} />
       <B mat="hull" s={[2.7, 0.08, 3.9]} p={[0, 0.98, 0]} />
+      {/* Rear recoil spade stays on the chassis. */}
+      <B mat="steel" s={[1.6, 0.5, 0.12]} p={[0, 0.45, -1.95]} r={[-0.4, 0, 0]} />
+      <group ref={turretRef}>
       {/* Rear casemate turret */}
       <B mat="armor" s={[1.9, 0.95, 2.3]} p={[0, 1.45, -0.45]} />
       <B mat="hull" s={[1.7, 0.1, 2.1]} p={[0, 1.97, -0.45]} />
@@ -40,8 +43,7 @@ export function ArtilleryVisual({ barrelRef, recoilRef, explosionRef, explosionM
       <B mat="steel" s={[0.5, 0.25, 0.5]} p={[-0.5, 2.12, -0.9]} />
       <B mat="lens" s={[0.3, 0.1, 0.02]} p={[-0.5, 2.14, -0.64]} />
       <B mat="steel" s={[0.03, 0.9, 0.03]} p={[0.7, 2.45, -1.3]} />
-      {/* Rear recoil spade */}
-      <B mat="steel" s={[1.6, 0.5, 0.12]} p={[0, 0.45, -1.95]} r={[-0.4, 0, 0]} />
+
       {/* Elevating gun: pivot at mantlet, barrel along +Z */}
       <group ref={barrelRef} position={ARTILLERY.barrelPivot}>
         <group ref={recoilRef}>
@@ -50,6 +52,7 @@ export function ArtilleryVisual({ barrelRef, recoilRef, explosionRef, explosionM
           <B mat="steel" s={[0.34, 0.3, 0.4]} p={[0, 0, L - 0.1]} />
           <B mat="accent" s={[0.3, 0.05, 0.1]} p={[0, 0.16, 1.2]} />
         </group>
+      </group>
       </group>
       <mesh ref={explosionRef} geometry={g.sphere} material={explosionMat} visible={false} />
     </group>

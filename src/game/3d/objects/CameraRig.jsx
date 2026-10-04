@@ -2,7 +2,11 @@ import { useRef, useEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
-import { CAMERA, BASES, MAP } from '@/game/config';
+import { CAMERA, BASES, MAP, DIRECT_CONTROL } from '@/game/config';
+import { enterStation, exitStation } from '@/game/3d/stationControl';
+import { selection } from '@/game/3d/commands';
+import { random } from '@/game/3d/random';
+const thirdPersonRig = () => gameState.controlledStation ? (gameState.controlledStation.type === 'tower' ? DIRECT_CONTROL.towerCamera : DIRECT_CONTROL.camera) : CAMERA.thirdPerson;
 import { gameState } from '@/game/3d/world';
 import { input, clearInput, bindInput } from '@/game/3d/input';
 import { combat } from '@/game/3d/combat';
@@ -22,15 +26,16 @@ export function CameraRig() {
 
   // --- Possess / release handlers -------------------------------------------
   useEffect(() => {
-    const onPossess = () => {
-      const eligible = combat.units.filter(u => u.team === 'friendly' && u.alive && u.weapon && u.bodyRef.current);
-      if (eligible.length === 0) {
-        EventBus.emit('no-eligible-soldier');
-        return;
-      }
-      const unit = eligible[Math.floor(Math.random() * eligible.length)];
+    const onPossess = (requested) => {
+      if (gameState.mode !== 'strategic' || gameState.paused || gameState.preparing || gameState.transitioning) return;
+      const eligible = combat.units.filter(u => u.team === 'friendly' && u.alive && u.bodyRef.current && (u.weapon || ['tank','artillery'].includes(u.type)));
+      const chosen = requested?.type ? eligible.find(u => u.type === requested.type && u.id === requested.id) : eligible.find(u => u === selection.unit);
+      const soldiers = eligible.filter(u => u.type === 'soldier');
+      const unit = chosen ?? (!requested?.type ? soldiers[Math.floor(random() * soldiers.length)] : null);
+      if (!unit) { EventBus.emit('no-eligible-soldier'); return; }
       clearInput();
-      gameState.possessedSoldierId = unit.id;
+      gameState.possessedSoldierId = unit.type === 'soldier' ? unit.id : null;
+      if (unit.type !== 'soldier' && !enterStation(unit.type,unit.id)) return;
       const p = unit.bodyRef.current.translation();
       gameState.soldierPosition.set(p.x, p.y, p.z);
       // Don't switch mode yet — start smooth camera transition
@@ -53,6 +58,7 @@ export function CameraRig() {
     };
 
     const onRelease = () => {
+      exitStation();
       clearInput();
       // Capture current third-person lookAt as the transition start point
       const yaw = thirdPersonYaw.current;
@@ -82,11 +88,13 @@ export function CameraRig() {
     const onFrameLanding=()=>{strategicTarget.current.set(0,0,56);strategicDistance.current=45;};
     EventBus.on('reset-camera',onResetCamera);
     EventBus.on('frame-landing-area',onFrameLanding);
+    EventBus.on('possess-unit', onPossess);
     EventBus.on('possess-soldier', onPossess);
     EventBus.on('release-soldier', onRelease);
     return () => {
       EventBus.off('reset-camera',onResetCamera);
       EventBus.off('frame-landing-area',onFrameLanding);
+      EventBus.off('possess-unit', onPossess);
       EventBus.off('possess-soldier', onPossess);
       EventBus.off('release-soldier', onRelease);
     };
@@ -134,7 +142,7 @@ export function CameraRig() {
       const pos = gameState.soldierPosition;
       const yaw = thirdPersonYaw.current;
       const pitch = thirdPersonPitch.current;
-      const tp = CAMERA.thirdPerson;
+      const tp = thirdPersonRig();
       _tpPos.set(
         pos.x - tp.distance * Math.sin(yaw) * Math.cos(pitch) - tp.shoulder * Math.cos(yaw),
         pos.y + tp.height + tp.distance * Math.sin(pitch),
@@ -237,9 +245,9 @@ export function CameraRig() {
       const pos = gameState.soldierPosition;
       const yaw = thirdPersonYaw.current;
       const pitch = thirdPersonPitch.current;
-      const aiming = input.rightMouseDown;
+      const aiming = input.rightMouseDown && !gameState.controlledStation;
       const ads = CAMERA.ads;
-      const tp = CAMERA.thirdPerson;
+      const tp = thirdPersonRig();
       const d = aiming ? ads.distance : tp.distance;
       const h = aiming ? ads.height : tp.height;
       const targetFov = aiming ? ads.fov : 60;
