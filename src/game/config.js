@@ -443,6 +443,13 @@ export const ARTILLERY = {
   delivery: { interval: 35, startDelay: 30, maxAlive: 2 },
 };
 
+// Direct vehicle driving shares the existing rotating soldier camera convention.
+export const DIRECT_CONTROL = {
+  enterRadius: 6, exitOffset: 4.5, rightX: -1, vehicleMargin: 3, maxStep: 0.45,
+  camera: { distance: 8, height: 3.4, shoulder: 0.6 },
+  towerCamera: { distance: 4, height: 2.2, shoulder: 0.4 },
+};
+
 // --- Direct unit commands (strategic view) -----------------------------------
 export const COMMANDS = {
   pickRadius: 5,          // target-mode click snaps to an enemy within this distance

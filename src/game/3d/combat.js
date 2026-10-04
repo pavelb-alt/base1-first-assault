@@ -16,7 +16,7 @@ export function findNearestEnemy(selfEntry, maxRange, visible = () => true) {
   const selfPos = selfEntry.bodyRef.current.translation();
   const cached = selfEntry.cachedTarget;
   if (battle.elapsed < (selfEntry.targetScan || 0)) {
-    if (cached?.alive && cached.bodyRef.current) {
+    if (cached?.alive && !cached.seated && cached.bodyRef.current) {
       const p = cached.bodyRef.current.translation();
       if (Math.hypot(p.x - selfPos.x, p.z - selfPos.z) < maxRange && visible(selfEntry,cached)) return cached;
     }
@@ -26,7 +26,7 @@ export function findNearestEnemy(selfEntry, maxRange, visible = () => true) {
   let nearest = null;
   let nearestDist = maxRange;
   visitNearby(selfPos.x,selfPos.z,maxRange,(u,p,d2)=>{
-    if(u.team===selfEntry.team)return;
+    if(u.team===selfEntry.team || u.seated)return;
     const dist=Math.sqrt(d2);
     if(dist<nearestDist&&visible(selfEntry,u)){nearestDist=dist;nearest=u;}
   });

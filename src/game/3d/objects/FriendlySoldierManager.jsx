@@ -154,6 +154,8 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
       if (!entry.playDeathAnimation || updateDeathAnimation(entry, body, group, actions, currentAnim, delta)) onDespawn(id);
       return;
     }
+    group.visible = !entry.seated;
+    if (entry.seated) return;
     entry.aiTarget = null;
     const pos = body.translation();
     const vel = body.linvel();
@@ -161,7 +163,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
     const isSelected = gameState.selectedSoldierId === id;
 
     // Update gameState.soldierPosition if this is the active soldier
-    if (isPossessed || isSelected) {
+    if ((isPossessed || isSelected) && !gameState.controlledStation) {
       gameState.soldierPosition.set(pos.x, pos.y, pos.z);
     }
 

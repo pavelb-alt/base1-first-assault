@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { GameRuntime } from '@/game/3d/GameRuntime';
+import { StationControlSystem } from '@/game/3d/StationControlSystem';
 import { clearInput } from '@/game/3d/input';
 import { useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
@@ -62,6 +63,7 @@ export function GameScene() {
           <ArtilleryEntityManager />
           <ArtilleryShells />
           <SelectionSystem />
+          <StationControlSystem />
           <GameRuntime />
         </Physics>
         <CargoShipManager />

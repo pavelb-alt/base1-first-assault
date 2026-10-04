@@ -43,7 +43,7 @@ export function useWeaponAttachment(character, weaponId, entryRef, leaseId, acti
 
   useFrame(({ camera }, delta) => {
     const entry = entryRef.current;
-    if (!entry?.alive) return;
+    if (!entry?.alive || entry.seated) return;
     if (gameState.paused) return;
     const cooldown = entry.profile?.cooldown ?? COMBAT.attackCooldown;
     entry.cooldown = Math.max(-cooldown, (entry.cooldown || 0) - delta);

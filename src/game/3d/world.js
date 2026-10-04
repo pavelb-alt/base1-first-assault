@@ -7,6 +7,7 @@ export const gameState = {
   paused: false,
   mode: 'strategic',            // 'strategic' | 'third_person'
   selectedSoldierId: null,     // ID of selected friendly soldier in strategic mode
+  controlledStation: null,    // { type: 'tank' | 'artillery' | 'tower', id }
   possessedSoldierId: null,    // ID of possessed friendly soldier in third-person mode
   soldierPosition: new THREE.Vector3(...SOLDIER.spawnPosition),
   cameraYaw: 0,                // current third-person camera yaw

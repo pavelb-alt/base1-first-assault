@@ -6,10 +6,10 @@ export function clearInput() {
   input.mouseDown = false; input.rightMouseDown = false; input.wheelDelta = 0;
 }
 export function setFire(held) {
-  input.mouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && gameState.possessedSoldierId !== null;
+  input.mouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && (gameState.possessedSoldierId !== null || !!gameState.controlledStation);
 }
 export function setAim(held) {
-  input.rightMouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && gameState.possessedSoldierId !== null;
+  input.rightMouseDown = !!held && gameState.mode === 'third_person' && !gameState.paused && (gameState.possessedSoldierId !== null || !!gameState.controlledStation);
 }
 export function setKey(code, held) { input.keys[code] = !!held; }
 export function look(dx, dy) {
