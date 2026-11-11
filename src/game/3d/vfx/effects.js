@@ -73,13 +73,13 @@ export function explosion(x, z, power = 1, style = 'ambient') {
   const big = style === 'vehicle' || style === 'shell';
   vfxStats.bursts++;
   // Flash core
-  reset(SHAPE.GLOW, ORIENT.BILLBOARD); rgb(C.core, 2.4);
+  reset(SHAPE.GLOW, ORIENT.BILLBOARD); rgb(C.core, 1.6);
   P.x = x; P.y = y + 0.8 * power; P.z = z; P.life = 0.16; P.size0 = 1.8 * power; P.size1 = 3.6 * power;
   layers.emissive.emit(P);
   // Fireball
   for (let i = 0, n = count(big ? 9 : 6) * Math.ceil(power); i < n; i++) {
     const a = rnd() * Math.PI * 2, s = 1.2 + rnd() * 3.2;
-    reset(SHAPE.FIRE, ORIENT.BILLBOARD); rgb(C.fire, 1.1 + rnd() * 0.5);
+    reset(SHAPE.FIRE, ORIENT.BILLBOARD); rgb(C.fire, 0.8 + rnd() * 0.35);
     P.x = x + Math.cos(a) * 0.35 * power; P.y = y + 0.3 + rnd() * 0.6 * power; P.z = z + Math.sin(a) * 0.35 * power;
     P.vx = Math.cos(a) * s; P.vy = 2 + rnd() * 4 * power; P.vz = Math.sin(a) * s;
     P.drag = 2.6; P.gravity = -1.5; P.life = 0.45 + rnd() * 0.45 * power; P.delay = rnd() * 0.06;

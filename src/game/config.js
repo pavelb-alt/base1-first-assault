@@ -36,7 +36,7 @@ export const LIGHTING = {
   vignetteOffset: 0.3, vignetteDarkness: 0.5,
   muzzleRadiance: 5, tracerRadiance: 3, fireRadiance: 3.2,
   hazeOpacity: 0.085, shaftOpacity: 0.16,
-  sanitizeMaxRadiance: 40, // HDR clamp before bloom: tames sun/flash fireflies
+  sanitizeMaxRadiance: 18, // HDR clamp before bloom: tames sun/flash fireflies
   // N8AO tuned for ~0.7m soldiers: contact shadows under feet, trench lips, crates.
   aoRadius: 1.6, aoDistanceFalloff: 0.6, aoIntensity: 2.4,
   grainIntensity: 0.035, chromaticOffset: 0.0016, // CA is radial: zero at center, ~3px at corners
@@ -339,7 +339,7 @@ export const EXPLOSIONS = {
   scorchCapacity: 48, scorchLife: 28, burnerCapacity: 6,
   fireColor: '#ffb35c', coreColor: '#fff3d6', emberColor: '#ff6a1f',
   sparkColor: '#ffc46b', dustColor: '#a99474', scorchColor: '#1b1714',
-  lightColor: '#ffab4c', lightIntensity: 60, lightRange: 16,
+  lightColor: '#ffab4c', lightIntensity: 36, lightRange: 16,
   // Alien energy-dissipation palettes (enemy accents), by enemy type.
   alienEnergy: { quadshell: '#ff5a4a', spider403: '#ff8a3c', eyedrone: '#c47bff', trilobite: '#ff3d7f' },
   friendlyImpact: '#ffb04a', enemyImpact: '#ff5c7a',

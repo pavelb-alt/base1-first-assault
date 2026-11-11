@@ -99,5 +99,5 @@ export function KillFeed() {
     };
   }, []);
 
-  return <div ref={listRef} className="absolute right-4 top-16 flex flex-col items-end gap-1 pointer-events-none max-w-[calc(100%-2rem)]" aria-live="polite" />;
+  return <div ref={listRef} className="absolute right-4 top-[288px] flex flex-col items-end gap-1 pointer-events-none max-w-[calc(100%-2rem)]" aria-live="polite" />;
 }
