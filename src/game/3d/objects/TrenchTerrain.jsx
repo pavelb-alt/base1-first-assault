@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier';
 import { createReliefGeometry, setReliefLevel } from '@/game/3d/dressing/terrainRelief';
 import * as THREE from 'three';
@@ -9,7 +9,8 @@ import { AntiTankObstacles } from '@/game/3d/objects/AntiTankObstacles';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { selection, issueCommand } from '@/game/3d/commands';
-import { createGroundMaterial, setGroundNightFactor, setGroundFrostFactor, setGroundCityFactor } from '@/game/3d/dressing/groundAppearance';
+import { createGroundMaterial, setGroundNightFactor, setGroundFrostFactor, setGroundCityFactor, setGroundDetail } from '@/game/3d/dressing/groundAppearance';
+import { useRenderQuality } from '@/game/3d/vfx/quality';
 
 // The original surface remains authoritative for navigation and collision.
 // A separate tessellated visual copy adds shallow relief away from traversable routes.
@@ -44,6 +45,8 @@ const duckboardMaterial=new THREE.MeshStandardMaterial({color:'#4a3d2e',roughnes
 const sandbagMaterial=new THREE.MeshStandardMaterial({color:'#6b5d44',roughness:1});
 export function TrenchTerrain(){
   const mesh=useRef(),communicationFloor=useRef(),communicationBanks=useRef(),bayFloors=useRef(),bayBanks=useRef(),duckboardRef=useRef(),sandbagRef=useRef();
+  const {preset}=useRenderQuality();
+  useEffect(()=>setGroundDetail(preset.groundDetail),[preset]);
   useLayoutEffect(()=>{
     const onLevelChanged=(level)=>{
       const winter=level===4, city=level===5;

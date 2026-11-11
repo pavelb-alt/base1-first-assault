@@ -5,11 +5,16 @@ import { WINTER } from '@/game/config';
 import { gameState } from '@/game/3d/world';
 import { EventBus } from '@/game/EventBus';
 import { dressingNoise } from '@/game/3d/dressing/groundAppearance';
+import { useRenderQuality } from '@/game/3d/vfx/quality';
 
 // Weather is purely visual: independent of the combat random stream and physics.
 export const winterWeather = { active: false, elapsed: 0, flakes: 0 };
 export function WinterSnow() {
   const points = useRef();
+  const { preset } = useRenderQuality();
+  const snowCount = Math.round(WINTER.snowCount * preset.snowScale);
+  const countRef = useRef(snowCount);
+  countRef.current = snowCount;
   const positions = useMemo(() => {
     const data = new Float32Array(WINTER.snowCount * 3);
     for (let i = 0; i < data.length; i++) data[i] = dressingNoise(94000 + i);
@@ -24,7 +29,7 @@ export function WinterSnow() {
     const update = level => {
       winterWeather.active = level === 4;
       winterWeather.elapsed = 0;
-      winterWeather.flakes = level === 4 ? WINTER.snowCount : 0;
+      winterWeather.flakes = level === 4 ? countRef.current : 0;
       uniforms.time.value = 0;
       if (points.current) points.current.visible = winterWeather.active;
     };
@@ -36,6 +41,11 @@ export function WinterSnow() {
       winterWeather.flakes = 0;
     };
   }, [uniforms]);
+  // Quality presets thin the flake budget live (no buffer reallocation).
+  useEffect(() => {
+    points.current?.geometry.setDrawRange(0, snowCount);
+    if (winterWeather.active) winterWeather.flakes = snowCount;
+  }, [snowCount]);
   useFrame(({ camera, size, gl }, delta) => {
     if (!winterWeather.active) return;
     if (!gameState.paused) winterWeather.elapsed += delta;
