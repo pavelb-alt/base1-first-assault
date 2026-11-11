@@ -25,6 +25,7 @@ import { GoldenHourAtmosphere } from '@/game/3d/objects/GoldenHourAtmosphere';
 import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlares';
 import { WinterSnow } from '@/game/3d/objects/WinterSnow';
 import { CinematicEffects } from '@/game/3d/CinematicEffects';
+import { VfxSystem } from '@/game/3d/vfx/VfxSystem';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -47,6 +48,7 @@ export function GameScene() {
       <GoldenHourAtmosphere />
       <NightIlluminationFlares />
       <WinterSnow />
+      <VfxSystem />
 
       <CameraRig />
 
