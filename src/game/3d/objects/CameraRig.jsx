@@ -10,10 +10,37 @@ const thirdPersonRig = () => gameState.controlledStation ? (gameState.controlled
 import { gameState } from '@/game/3d/world';
 import { input, clearInput, bindInput } from '@/game/3d/input';
 import { combat } from '@/game/3d/combat';
+import { settings } from '@/game/settings';
+import { cameraView, cameraJuice, stepCameraFeedback, installCameraFeedback, resetCameraFeedback } from '@/game/3d/feedback/cameraFeedback';
 const cameraAnchor=new THREE.Vector3(),cameraRay=new THREE.Vector3();
 // Scratch vectors for transition blending (avoid per-frame allocations)
 const _stratPos=new THREE.Vector3(),_tpPos=new THREE.Vector3();
 const _stratLook=new THREE.Vector3(),_tpLook=new THREE.Vector3();
+const _viewDir=new THREE.Vector3();
+const BASE_FOV = 60;
+// Zoomed FOV while holding right mouse on a station (soldier ADS uses CAMERA.ads).
+const STATION_ZOOM_FOV = { tank: 42, artillery: 48, tower: 45 };
+// FOV spring: slightly under-damped so ADS in/out lands with a tiny punch.
+const FOV_STIFFNESS = 140, FOV_DAMPING = 2 * Math.sqrt(140) * 0.72;
+// Head-bob while the possessed soldier runs (metres / radians per second).
+const BOB = { rate: 10.5, vertical: 0.035, lateral: 0.022, roll: 0.004 };
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD'];
+const isMoving = keys => { for (const k of MOVE_KEYS) if (keys[k]) return true; return false; };
+const motionScale = () => { const s = settings.get().screenShake; return Number.isFinite(s) ? Math.max(0, Math.min(1, s)) : 1; };
+
+// Applies camera-local shake (rotations + translation) after lookAt. Roll and
+// translation dominate so the crosshair ray (camera centre) barely moves.
+function applyShake(camera, j, rotScale, posScale) {
+  if (j.shakeYaw || j.shakePitch || j.shakeRoll) {
+    camera.rotateY(j.shakeYaw * rotScale);
+    camera.rotateX(j.shakePitch * rotScale);
+    camera.rotateZ(j.shakeRoll);
+  }
+  if (j.shakeX || j.shakeY) {
+    camera.translateX(j.shakeX * posScale);
+    camera.translateY(j.shakeY * posScale);
+  }
+}
 
 export function CameraRig() {
   const { camera, gl } = useThree();
@@ -23,6 +50,10 @@ export function CameraRig() {
   const thirdPersonYaw = useRef(0);
   const thirdPersonPitch = useRef(CAMERA.thirdPerson.initialPitch);
   const transition = useRef(null); // { startPos: Vector3, startLook: Vector3, duration, elapsed }
+  const fov = useRef({ value: null, velocity: 0, strategic: null }); // spring state; strategic = FOV to restore on release
+  const bob = useRef({ phase: 0, amount: 0 });
+
+  useEffect(() => installCameraFeedback(), []);
 
   // --- Possess / release handlers -------------------------------------------
   useEffect(() => {
@@ -46,6 +77,8 @@ export function CameraRig() {
       thirdPersonYaw.current = Math.atan2(dx, dz);
       thirdPersonPitch.current = CAMERA.thirdPerson.initialPitch;
       if (unit.type === 'soldier') EventBus.emit('set-soldier-rotation', { id: unit.id, rotation: Math.atan2(dx, dz) });
+      resetCameraFeedback();
+      if (fov.current.strategic === null) fov.current.strategic = camera.fov;
       // Capture current camera state as the transition start point
       transition.current = {
         startPos: camera.position.clone(),
@@ -73,9 +106,11 @@ export function CameraRig() {
       gameState.selectedSoldierId = null;
       gameState.possessedSoldierId = null;
       // Start smooth camera transition back up to strategic view
+      resetCameraFeedback();
       transition.current = {
         startPos: camera.position.clone(),
         startLook: _tpLook.clone(),
+        startFov: camera.fov,
         direction: 'release',
         duration: 1.2,
         elapsed: 0,
@@ -120,6 +155,10 @@ export function CameraRig() {
   // --- Per-frame camera update ----------------------------------------------
   useFrame((_state, delta) => {
     if (gameState.paused) return;
+    const dt = Math.min(delta, 0.1);
+    stepCameraFeedback(dt);
+    const j = cameraJuice;
+    cameraView.camera = camera;
 
     // --- Smooth camera transition (possess or release) ------------------------
     if (transition.current) {
@@ -159,12 +198,19 @@ export function CameraRig() {
         );
         _stratLook.copy(strategicTarget.current);
         camera.lookAt(_tpLook.lerp(_stratLook, ease));
+        // Return the lens to its strategic FOV (ADS/kicks must not leak into RTS view).
+        const strategicFov = fov.current.strategic ?? BASE_FOV;
+        if (tr.startFov !== undefined && Math.abs(camera.fov - strategicFov) > 0.01) {
+          camera.fov = THREE.MathUtils.lerp(tr.startFov, strategicFov, ease);
+          camera.updateProjectionMatrix();
+        }
         camera.updateMatrixWorld(true);
 
         if (t >= 1) {
           transition.current = null;
           gameState.transitioning = false;
           gameState.mode = 'strategic';
+          fov.current.value = null;
           EventBus.emit('mode-changed', 'strategic');
         }
       } else {
@@ -189,6 +235,8 @@ export function CameraRig() {
           gl.domElement.requestPointerLock?.()?.catch?.(() => {});
         }
       }
+      camera.getWorldDirection(_viewDir);
+      cameraView.yaw = Math.atan2(_viewDir.x, _viewDir.z);
       return;
     }
 
@@ -227,12 +275,21 @@ export function CameraRig() {
         strategicTarget.current.z + dist * Math.cos(angle),
       );
       camera.lookAt(strategicTarget.current);
+      // Gentle shake from big blasts only; translation scales with zoom distance.
+      applyShake(camera, j, 1, dist);
+      cameraView.focusX = strategicTarget.current.x;
+      cameraView.focusZ = strategicTarget.current.z;
+      cameraView.yaw = Math.PI; // fixed RTS heading (looking toward -Z)
     } else {
-      // Third-person: process mouse look
+      // Third-person: process mouse look (settings: sensitivity multiplier, invert Y)
+      const aimHeld = input.rightMouseDown;
       if (input.mouseDelta.x !== 0 || input.mouseDelta.y !== 0) {
-        thirdPersonYaw.current -= input.mouseDelta.x * CAMERA.thirdPerson.mouseSensitivity;
+        const prefs = settings.get();
+        const userSens = Number.isFinite(prefs.mouseSensitivity) && prefs.mouseSensitivity > 0 ? prefs.mouseSensitivity : 1;
+        const sens = CAMERA.thirdPerson.mouseSensitivity * userSens * (aimHeld ? CAMERA.ads.sensitivityMult : 1);
+        thirdPersonYaw.current -= input.mouseDelta.x * sens;
         thirdPersonPitch.current = THREE.MathUtils.clamp(
-          thirdPersonPitch.current + input.mouseDelta.y * CAMERA.thirdPerson.mouseSensitivity * (input.rightMouseDown ? CAMERA.ads.sensitivityMult : 1),
+          thirdPersonPitch.current + input.mouseDelta.y * sens * (prefs.invertY ? -1 : 1),
           CAMERA.thirdPerson.minPitch,
           CAMERA.thirdPerson.maxPitch,
         );
@@ -243,16 +300,26 @@ export function CameraRig() {
 
       // Follow the soldier — ADS tightens the rig when right-click is held
       const pos = gameState.soldierPosition;
-      const yaw = thirdPersonYaw.current;
-      const pitch = thirdPersonPitch.current;
-      const aiming = input.rightMouseDown && !gameState.controlledStation;
+      const station = gameState.controlledStation;
+      // Recoil is a recovering view offset: it moves the crosshair ray (real kick)
+      // but never permanently drags the player's chosen aim.
+      const yaw = thirdPersonYaw.current + j.recoilYaw;
+      const pitch = THREE.MathUtils.clamp(thirdPersonPitch.current - j.recoilPitch, CAMERA.thirdPerson.minPitch - 0.1, CAMERA.thirdPerson.maxPitch);
+      const aiming = aimHeld && !station;
       const ads = CAMERA.ads;
       const tp = thirdPersonRig();
       const d = aiming ? ads.distance : tp.distance;
       const h = aiming ? ads.height : tp.height;
-      const targetFov = aiming ? ads.fov : 60;
-      if (Math.abs(camera.fov - targetFov) > 0.1) {
-        camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 10);
+
+      // FOV: under-damped spring toward the ADS/zoom/base FOV, plus decaying kicks.
+      const targetFov = aiming ? ads.fov : aimHeld && station ? (STATION_ZOOM_FOV[station.type] ?? BASE_FOV) : BASE_FOV;
+      const f = fov.current;
+      if (f.value === null) { f.value = camera.fov; f.velocity = 0; }
+      f.velocity += ((targetFov - f.value) * FOV_STIFFNESS - f.velocity * FOV_DAMPING) * dt;
+      f.value += f.velocity * dt;
+      const nextFov = f.value + j.fovKick * motionScale();
+      if (Math.abs(camera.fov - nextFov) > 0.01) {
+        camera.fov = nextFov;
         camera.updateProjectionMatrix();
       }
 
@@ -276,7 +343,23 @@ export function CameraRig() {
         camera.position.y - Math.sin(pitch),
         camera.position.z + Math.cos(yaw) * Math.cos(pitch),
       );
+
+      // Subtle run head-bob for the possessed soldier (not while aiming or seated).
+      const b = bob.current;
+      const running = !station && !aiming && isMoving(input.keys);
+      b.amount += ((running ? 1 : 0) - b.amount) * Math.min(1, dt * 6);
+      if (b.amount > 0.001) {
+        b.phase += dt * BOB.rate;
+        const m = b.amount * motionScale();
+        camera.translateY((Math.abs(Math.sin(b.phase)) - 0.5) * BOB.vertical * m);
+        camera.translateX(Math.sin(b.phase * 0.5) * BOB.lateral * m);
+        camera.rotateZ(Math.sin(b.phase * 0.5) * BOB.roll * m);
+      } else b.phase = 0;
+
+      // Screen shake (reduced while aiming down sights so precision stays usable).
+      applyShake(camera, j, aimHeld ? 0.5 : 1, aimHeld ? 0.6 : 1);
       camera.updateMatrixWorld(true);
+      cameraView.yaw = thirdPersonYaw.current;
     }
   }, -1);
 
