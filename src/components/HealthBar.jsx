@@ -2,11 +2,25 @@ import { useState, useEffect, useRef } from 'react';
 import { EventBus } from '@/game/EventBus';
 import { COMBAT } from '@/game/config';
 
+const TYPE_LABEL = {
+  soldier: 'Rifleman', tank: 'Battle Tank', artillery: 'Artillery', tower: 'Gun Emplacement',
+};
+const LOW = 0.3;
+const TRAIL_DELAY = 380;
+
+/**
+ * Possessed-unit health: segmented bar with a delayed white damage trail and a
+ * low-health pulse. The per-frame poll writes to the DOM through refs; React only
+ * re-renders when visibility or the unit type changes.
+ */
 export function HealthBar() {
   const [visible, setVisible] = useState(false);
-  const [health, setHealth] = useState(null);
-  const [maxHealth, setMaxHealth] = useState(COMBAT.maxHealth);
-  const rafRef = useRef();
+  const [present, setPresent] = useState(false);
+  const [type, setType] = useState('soldier');
+  const fillRef = useRef(null);
+  const trailRef = useRef(null);
+  const textRef = useRef(null);
+  const rootRef = useRef(null);
 
   useEffect(() => {
     const onMode = (m) => setVisible(m === 'third_person');
@@ -15,34 +29,58 @@ export function HealthBar() {
   }, []);
 
   useEffect(() => {
-    if (!visible) { setHealth(null); return; }
-    let mounted = true;
-    let last = '', lastMaximum = -1;
+    if (!visible) { setPresent(false); return undefined; }
+    let raf = 0;
+    let lastHp = null;
+    let lastMax = -1;
+    let lastType = null;
+    let trailTimer = 0;
+    let shownPresent = false;
     const tick = () => {
-      if (!mounted) return;
+      raf = requestAnimationFrame(tick);
       const unit = window.game?.getControlledUnit?.();
       const hp = unit?.health ?? null;
-      if (hp !== last) { last = hp; setHealth(hp); }
-      const maximum = unit?.maxHealth ?? COMBAT.maxHealth;
-      if (maximum !== lastMaximum) { lastMaximum = maximum; setMaxHealth(maximum); }
-      rafRef.current = requestAnimationFrame(tick);
+      const has = hp !== null;
+      if (has !== shownPresent) { shownPresent = has; setPresent(has); }
+      if (!has) { lastHp = null; return; }
+      if (unit.type !== lastType) { lastType = unit.type; setType(unit.type); }
+      const max = unit.maxHealth ?? COMBAT.maxHealth;
+      if (hp === lastHp && max === lastMax) return;
+      const fill = fillRef.current, trail = trailRef.current;
+      if (!fill || !trail) return; // bar mounts on the next render; retry next frame
+      const frac = Math.max(0, Math.min(1, hp / max));
+      const prevFrac = lastHp === null ? frac : Math.max(0, Math.min(1, lastHp / lastMax));
+      lastHp = hp; lastMax = max;
+      fill.style.width = `${frac * 100}%`;
+      fill.style.background = frac > 0.5 ? 'linear-gradient(90deg,#14b8a6,#5eead4)' : frac > LOW ? 'linear-gradient(90deg,#d97706,#fbbf24)' : 'linear-gradient(90deg,#b91c1c,#f87171)';
+      if (frac < prevFrac) {
+        clearTimeout(trailTimer);
+        trailTimer = setTimeout(() => { trail.style.width = `${frac * 100}%`; }, TRAIL_DELAY);
+      } else {
+        clearTimeout(trailTimer);
+        trail.style.width = `${frac * 100}%`;
+      }
+      if (textRef.current) textRef.current.textContent = `${Math.ceil(hp)} / ${max}`;
+      rootRef.current?.classList.toggle('hud-low-pulse', frac <= LOW && frac > 0);
     };
     tick();
-    return () => { mounted = false; cancelAnimationFrame(rafRef.current); };
+    return () => { cancelAnimationFrame(raf); clearTimeout(trailTimer); };
   }, [visible]);
 
-  if (!visible || health === null) return null;
-  const pct = Math.max(0, Math.min(100, (health / maxHealth) * 100));
-  const color = pct > 50 ? 'bg-green-500' : pct > 25 ? 'bg-yellow-500' : 'bg-red-500';
+  if (!visible || !present) return null;
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-72 pointer-events-none">
-      <div className="flex items-center gap-2">
-        <span className="text-white text-xs font-bold tracking-wider w-6">HP</span>
-        <div className="flex-1 h-4 rounded-full bg-black/70 border border-white/20 overflow-hidden">
-          <div className={`h-full ${color} transition-all duration-150`} style={{ width: `${pct}%` }} />
-        </div>
-        <span className="text-white text-xs font-mono w-12 text-right">{Math.ceil(health)}/{maxHealth}</span>
+    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[360px] max-w-[calc(100%-2rem)] pointer-events-none hud-root">
+      <div className="flex items-end justify-between mb-1 px-0.5">
+        <span className="hud-label !text-teal-300/90">{TYPE_LABEL[type] ?? type}</span>
+        <span ref={textRef} className="hud-value text-xs" />
+      </div>
+      <div ref={rootRef} className="relative h-3.5 bg-black/70 border border-white/15 skew-x-[-12deg] overflow-hidden"
+        style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>
+        <div ref={trailRef} className="absolute inset-y-0 left-0 bg-white/85 transition-[width] duration-500 ease-out" style={{ width: '100%' }} />
+        <div ref={fillRef} className="absolute inset-y-0 left-0 transition-[width] duration-100" style={{ width: '100%' }} />
+        <div className="absolute inset-0 hud-segments" />
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10" />
       </div>
     </div>
   );
