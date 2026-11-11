@@ -258,16 +258,16 @@ export function onBaseDamage(e) {
     playBuffer(getSound('klaxon'), bus.gameMix, 0.3, 0, 1, 20000, 0.35, 98, 'ui');
     duckMusic(0.3, 0.05, 1.5, 1.2);
   } else if (allow(limObjective, t)) {
-    playBuffer(getSound('objective'), bus.gameMix, 0.26, 0, 1, 20000, 0.3, 70, 'ui', 0, bus.musicVerbIn);
+    playBuffer(getSound('objective'), bus.gameMix, 0.26, 0, 1, 20000, 0.3, 70, 'ui');
   }
 }
 export function onWaveStart() {
   if (!engine.ready || !allow(limHorn, engine.ctx.currentTime)) return;
-  playBuffer(getSound('horn'), bus.gameMix, 0.5, 0, 1, 20000, 0.45, 97, 'ui', 0, bus.musicVerbIn);
+  playBuffer(getSound('horn'), bus.gameMix, 0.5, 0, 1, 20000, 0.45, 97, 'ui');
   duckMusic(0.55, 0.15, 1.6, 2.0);
 }
 export function playStinger(kind) {
   if (!engine.ready) return;
-  playBuffer(getSound(kind === 'victory' ? 'victory' : 'defeat'), bus.gameMix, 0.55, 0, 1, 20000, 0.5, 120, 'ui', 0, bus.musicVerbIn);
+  playBuffer(getSound(kind === 'victory' ? 'victory' : 'defeat'), bus.gameMix, 0.55, 0, 1, 20000, 0.5, 120, 'ui');
   duckMusic(0.9, 0.3, 4, 3);
 }
