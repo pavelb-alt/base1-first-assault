@@ -59,6 +59,7 @@ export function PauseMenu({ level, wave, onResume, onRestart, onQuit }) {
     <motion.div className="hud-root absolute inset-0 z-[55] pointer-events-auto"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
       <div className="absolute inset-0 bg-black/55 backdrop-blur-[6px]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/30" />
       <div className="hud-screen-fx opacity-70" />
       <div className="relative h-full flex items-center px-6 md:px-16">
         <motion.div className="w-full max-w-sm" initial={{ x: -24, opacity: 0 }} animate={{ x: 0, opacity: 1 }}

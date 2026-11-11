@@ -3,6 +3,7 @@
 // - progression: persisted campaign progress (unlocked levels, best results per level).
 import { useSyncExternalStore } from 'react';
 import { gameEvents } from '@/game/gameEvents';
+import { EventBus } from '@/game/EventBus';
 
 const STORAGE_KEY = 'base1.progress.v1';
 export const TOTAL_LEVELS = 5;
@@ -14,6 +15,8 @@ const freshStats = () => ({
   level: 1,
   startedAt: 0,           // performance.now() ms
   endedAt: 0,
+  pausedMs: 0,            // accumulated paused time, excluded from the mission clock
+  pausedAt: 0,
   enemiesKilled: 0,       // by any friendly source
   playerKills: 0,
   playerShots: 0,
@@ -32,12 +35,30 @@ const freshStats = () => ({
 export const missionStats = freshStats();
 
 export function resetMissionStats(level = 1) {
-  Object.assign(missionStats, freshStats(), { level, startedAt: performance.now() });
+  const now = performance.now();
+  Object.assign(missionStats, freshStats(), { level, startedAt: now, pausedAt: gamePaused ? now : 0 });
 }
 export function missionElapsedSeconds() {
   if (!missionStats.startedAt) return 0;
-  return ((missionStats.endedAt || performance.now()) - missionStats.startedAt) / 1000;
+  const now = missionStats.endedAt || performance.now();
+  const openPause = missionStats.pausedAt ? now - missionStats.pausedAt : 0;
+  return Math.max(0, now - missionStats.startedAt - missionStats.pausedMs - openPause) / 1000;
 }
+
+// Pause menu, cinematics and briefings pause the game: keep them off the mission clock.
+let gamePaused = false;
+EventBus.on('pause-game', () => {
+  gamePaused = true;
+  if (missionStats.startedAt && !missionStats.pausedAt && !missionStats.endedAt) missionStats.pausedAt = performance.now();
+});
+const endPause = () => {
+  gamePaused = false;
+  if (!missionStats.pausedAt) return;
+  missionStats.pausedMs += performance.now() - missionStats.pausedAt;
+  missionStats.pausedAt = 0;
+};
+EventBus.on('resume-game', endPause);
+EventBus.on('reset-game', endPause);
 export function missionAccuracy() {
   return missionStats.playerShots ? missionStats.playerHits / missionStats.playerShots : 0;
 }
@@ -94,7 +115,9 @@ export const progression = {
   isUnlocked: level => level <= progress.unlockedLevel,
   /** Call once when a level is cleared or lost. Returns { stars, newRecord }. */
   recordMissionResult(level, result) {
-    missionStats.endedAt = performance.now();
+    const endedAt = performance.now();
+    if (missionStats.pausedAt) { missionStats.pausedMs += endedAt - missionStats.pausedAt; missionStats.pausedAt = 0; }
+    missionStats.endedAt = endedAt;
     const stars = starsFor(result, missionStats.baseHealth);
     const prev = progress.levels[level] ?? { stars: 0, bestTime: null, bestKills: 0, completed: false };
     const time = missionElapsedSeconds();
