@@ -8,6 +8,8 @@ import { gameState } from '@/game/3d/world';
 const BAR_WIDTH = 1.0;
 const BAR_HEIGHT = 0.12;
 const BAR_OFFSET = 0.35; // gap above the unit
+const NEAR_HIDE = 5;      // bars closer than this to the camera are hidden
+const DIST_SCALE = 0.016, MIN_SCALE = 0.45, MAX_SCALE = 1.8;
 
 function unitTopY(entry) {
   if (entry.type === 'tank') return TANK.colliderY * 2 + 1.0 + BAR_OFFSET;
@@ -24,8 +26,10 @@ const ELITE_COLOR = new THREE.Color('#f59e0b');
 const BG_COLOR = new THREE.Color('#1a1a1a');
 
 // Shared geometry — a horizontal bar centered on origin, anchored left for fill scaling
-const bgGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT);
-const fillGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT);
+// Left edge at the origin so scaling X drains the fill from right to left.
+const bgGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT).translate(BAR_WIDTH / 2, 0, 0);
+const fillGeo = new THREE.PlaneGeometry(BAR_WIDTH, BAR_HEIGHT).translate(BAR_WIDTH / 2, 0, 0);
+const camRight = new THREE.Vector3();
 
 const dummy = new THREE.Object3D();
 const camPos = new THREE.Vector3();
@@ -41,6 +45,7 @@ export function HealthBars() {
   useFrame(() => {
     if (gameState.paused) return;
     camera.getWorldPosition(camPos);
+    camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
 
     const bg = bgRef.current;
     const fill = fillRef.current;
@@ -55,18 +60,21 @@ export function HealthBars() {
       const p = u.bodyRef.current.translation();
       const y = unitTopY(u);
 
-      // Position (elites carry a wider bar so the boss reads at strategic zoom)
-      const wide = u.elite ? 3 : 1;
-      dummy.position.set(p.x, y, p.z);
-      dummy.scale.set(wide, u.elite ? 1.6 : 1, 1);
-      // Billboard: face the camera (yaw only, keep vertical)
-      dummy.lookAt(camPos.x, y, camPos.z);
+      // Screen-aligned billboard sized by camera distance: legible from the strategic
+      // camera, never a giant slab right in front of a low or third-person camera.
+      const dist = Math.hypot(p.x - camPos.x, y - camPos.y, p.z - camPos.z);
+      if (dist < NEAR_HIDE) continue;
+      const k = THREE.MathUtils.clamp(dist * DIST_SCALE, MIN_SCALE, MAX_SCALE);
+      const wide = (u.elite ? 3 : 1) * k, tall = (u.elite ? 1.6 : 1) * k;
+      dummy.position.set(p.x, y, p.z).addScaledVector(camRight, -BAR_WIDTH * wide / 2);
+      dummy.quaternion.copy(camera.quaternion);
+      dummy.scale.set(wide, tall, 1);
       dummy.updateMatrix();
       bg.setMatrixAt(count, dummy.matrix);
 
-      // Fill: same position, scale X by health fraction
+      // Fill: same position, scale X by health fraction (geometry is left-anchored)
       const pct = Math.max(0, Math.min(1, u.health / u.maxHealth));
-      dummy.scale.set(pct * wide, u.elite ? 1.6 : 1, 1);
+      dummy.scale.set(pct * wide, tall, 1);
       dummy.updateMatrix();
       fill.setMatrixAt(count, dummy.matrix);
 

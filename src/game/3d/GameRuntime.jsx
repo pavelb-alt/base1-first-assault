@@ -62,6 +62,7 @@ export function GameRuntime() {
       getOutposts: () => coverSnapshot(),
       getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],crossings:[...FRONT.crossings],crossingWidth:FRONT.crossingHalfWidth*2,sections:[...FRONT.sectionCenters],capPerTeam:BALANCE.friendly.maxAlive}),
       getPerformance: () => ({...performance.current,averageFps:performance.current.seconds?performance.current.frames/performance.current.seconds:0}),
+      getCamera: () => { const d = new THREE.Vector3(); camera.getWorldDirection(d); return { position: camera.position.toArray(), up: camera.up.toArray(), direction: d.toArray(), rotation: camera.rotation.toArray().slice(0, 3), fov: camera.fov }; },
       getSoldierPosition: () => ({...gameState.soldierPosition}),
       isSelected: () => gameState.selectedSoldierId !== null,
       getSelectedId: () => gameState.selectedSoldierId,

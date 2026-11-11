@@ -22,6 +22,7 @@ const BASE_FOV = 60;
 const STATION_ZOOM_FOV = { tank: 42, artillery: 48, tower: 45 };
 // FOV spring: slightly under-damped so ADS in/out lands with a tiny punch.
 const FOV_STIFFNESS = 140, FOV_DAMPING = 2 * Math.sqrt(140) * 0.72;
+const FOV_STEP = 1 / 120, FOV_MIN = 20, FOV_MAX = 100;
 // Head-bob while the possessed soldier runs (metres / radians per second).
 const BOB = { rate: 10.5, vertical: 0.035, lateral: 0.022, roll: 0.004 };
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD'];
@@ -315,9 +316,16 @@ export function CameraRig() {
       const targetFov = aiming ? ads.fov : aimHeld && station ? (STATION_ZOOM_FOV[station.type] ?? BASE_FOV) : BASE_FOV;
       const f = fov.current;
       if (f.value === null) { f.value = camera.fov; f.velocity = 0; }
-      f.velocity += ((targetFov - f.value) * FOV_STIFFNESS - f.velocity * FOV_DAMPING) * dt;
-      f.value += f.velocity * dt;
-      const nextFov = f.value + j.fovKick * motionScale();
+      // Fixed sub-steps keep the spring stable at any frame time (a single large
+      // step diverged at low fps and flipped the projection upside down).
+      for (let left = dt; left > 1e-6; left -= FOV_STEP) {
+        const h = Math.min(FOV_STEP, left);
+        f.velocity += ((targetFov - f.value) * FOV_STIFFNESS - f.velocity * FOV_DAMPING) * h;
+        f.value += f.velocity * h;
+      }
+      if (!Number.isFinite(f.value)) { f.value = targetFov; f.velocity = 0; }
+      f.value = THREE.MathUtils.clamp(f.value, FOV_MIN, FOV_MAX);
+      const nextFov = THREE.MathUtils.clamp(f.value + j.fovKick * motionScale(), FOV_MIN, FOV_MAX);
       if (Math.abs(camera.fov - nextFov) > 0.01) {
         camera.fov = nextFov;
         camera.updateProjectionMatrix();
