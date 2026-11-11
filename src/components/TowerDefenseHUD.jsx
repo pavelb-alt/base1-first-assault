@@ -1,42 +1,109 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { X } from 'lucide-react';
 import { EventBus } from '@/game/EventBus';
-import { TOWER_DEFENSE, getMaxWaves, getLevelConfig } from '@/game/config';
-import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { TOWER_DEFENSE, ABILITIES } from '@/game/config';
+import { towerDefenseState, placementProblem } from '@/game/3d/towerDefenseState';
 import { gameState } from '@/game/3d/world';
+import { canCommand } from '@/game/3d/commands';
+import { callWaveEarly } from '@/game/3d/waves';
+import { tacticalState, startPlacement, startTargeting, cancelTactical, flashInvalid } from '@/game/3d/abilities/tacticalState';
+import { activateAbility, abilityProblem, TARGETED } from '@/game/3d/abilities/abilities';
+import { MissionBar, BossBar } from '@/components/tactical/MissionBar';
+import { AbilityBar, BuildBar } from '@/components/tactical/CommandBars';
+import { TowerPanel } from '@/components/tactical/TowerPanel';
+import { TOWER_ORDER } from '@/components/tactical/useTicker';
+import { TOWER_ICONS } from '@/components/tactical/icons';
 
-const TOWER_KEYS = ['mg', 'cannon', 'frost'];
+const KEY_TO_TOWER = { Digit1: 'mg', Digit2: 'cannon', Digit3: 'frost' };
+const KEY_TO_ABILITY = Object.fromEntries(Object.entries(ABILITIES).map(([id, cfg]) => [cfg.key, id]));
+const typing = e => /INPUT|TEXTAREA|SELECT/.test(e.target?.tagName) || e.target?.isContentEditable;
 
 export function TowerDefenseHUD({ visible }) {
   const [scrap, setScrap] = useState(towerDefenseState.scrap);
-  const [wave, setWave] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(gameState.currentLevel);
-  const [showPieMenu, setShowPieMenu] = useState(false);
-  const [piePos, setPiePos] = useState({ x: 0, y: 0 });
-  const [worldPos, setWorldPos] = useState(null);
+  const [pie, setPie] = useState(null);            // { x, y, world: {x,z} }
+  const [tactical, setTactical] = useState({ mode: null, placeType: null, abilityId: null });
+  const [selectedTower, setSelectedTower] = useState(towerDefenseState.selectedTowerId);
+  const [toast, setToast] = useState(null);         // { text, tone, key }
+  const toastTimer = useRef(null);
+
+  const feedback = useCallback((text, tone = 'bad') => {
+    setToast({ text, tone, key: performance.now() });
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2200);
+  }, []);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
     const onCurrency = (amt) => setScrap(amt);
-    const onWave = (w) => setWave(w);
-    const onLevelChanged = (l) => setLevel(l);
+    const onLevelChanged = (l) => { setLevel(l); setPie(null); };
+    const onTactical = (t) => setTactical(t);
+    const onTowerSelected = (id) => setSelectedTower(id);
+    const onReset = () => { setPie(null); towerDefenseState.selectTower(null); };
     EventBus.on('currency-changed', onCurrency);
-    EventBus.on('wave-changed', onWave);
     EventBus.on('level-changed', onLevelChanged);
-    return () => { EventBus.off('currency-changed', onCurrency); EventBus.off('wave-changed', onWave); EventBus.off('level-changed', onLevelChanged); };
-  }, []);
+    EventBus.on('tactical-mode', onTactical);
+    EventBus.on('tower-selected', onTowerSelected);
+    EventBus.on('reset-game', onReset);
+    EventBus.on('tactical-feedback', feedback);
+    return () => {
+      EventBus.off('currency-changed', onCurrency); EventBus.off('level-changed', onLevelChanged);
+      EventBus.off('tactical-mode', onTactical); EventBus.off('tower-selected', onTowerSelected);
+      EventBus.off('reset-game', onReset); EventBus.off('tactical-feedback', feedback);
+    };
+  }, [feedback]);
 
-  // Survival timer
+  // Leaving strategic view drops any half-finished placement/targeting and the pie.
   useEffect(() => {
-    if (!visible) return;
-    const interval = setInterval(() => {
-      if (!gameState.paused) {
-        setElapsed(Math.floor((Date.now() - (towerDefenseState.startTime || Date.now())) / 1000));
-      }
-    }, 500);
-    return () => clearInterval(interval);
+    if (visible) return;
+    cancelTactical(); setPie(null); tacticalState.preview = null;
+    towerDefenseState.selectTower(null);
   }, [visible]);
 
-  // Right-click on canvas opens radial pie menu
+  const closePie = useCallback(() => { setPie(null); tacticalState.preview = null; tacticalState.pieAnchor = null; }, []);
+
+  const pickTower = useCallback((type) => {
+    closePie();
+    if (tacticalState.mode === 'place' && tacticalState.placeType === type) { cancelTactical(); return; }
+    const cfg = TOWER_DEFENSE.towers[type];
+    if (towerDefenseState.scrap < cfg.cost) feedback(`Not enough scrap for ${cfg.name} (${cfg.cost})`);
+    towerDefenseState.selectTower(null);
+    startPlacement(type);
+  }, [closePie, feedback]);
+
+  const triggerAbility = useCallback((id) => {
+    closePie();
+    if (tacticalState.mode === 'ability' && tacticalState.abilityId === id) { cancelTactical(); return; }
+    const problem = abilityProblem(id);
+    if (problem) { feedback(problem); return; }
+    if (TARGETED[id]) { towerDefenseState.selectTower(null); startTargeting(id); return; }
+    const result = activateAbility(id);
+    if (result.ok) feedback(id === 'reinforce' ? `Reinforcements inbound: ${result.squad} soldiers` : `${ABILITIES[id].name} deployed`, 'good');
+    else feedback(result.problem);
+  }, [closePie, feedback]);
+
+  // Place a tower or fire an ability at the current ground cursor.
+  const commitTactical = useCallback((shift) => {
+    const c = tacticalState.cursor;
+    if (!c.onGround) return;
+    if (tacticalState.mode === 'place') {
+      const type = tacticalState.placeType;
+      const problem = towerDefenseState.placementProblem(type, c);
+      if (problem) { feedback(problem); flashInvalid(c.x, c.z); return; }
+      towerDefenseState.spend(type, { x: c.x, z: c.z });
+      // Shift-click keeps placing the same type.
+      if (!shift || towerDefenseState.scrap < TOWER_DEFENSE.towers[type].cost) cancelTactical();
+    } else if (tacticalState.mode === 'ability') {
+      const id = tacticalState.abilityId;
+      const result = activateAbility(id, c.x, c.z);
+      if (result.ok) {
+        cancelTactical();
+        if (id === 'repair') feedback(`Field repair: ${result.healed} units patched${result.baseRepaired ? `, base +${Math.round(result.baseRepaired)}` : ''}`, 'good');
+      } else feedback(result.problem);
+    }
+  }, [feedback]);
+
+  // Canvas input: right-click pie / cancel, left-click commit, empty-click deselects tower.
   useEffect(() => {
     if (!visible) return;
     const canvas = document.querySelector('#game-container canvas');
@@ -45,226 +112,161 @@ export function TowerDefenseHUD({ visible }) {
     const onContextMenu = (e) => {
       if (gameState.mode !== 'strategic') return;
       e.preventDefault();
+      if (tacticalState.mode) { cancelTactical(); return; }
+      if (!canCommand()) return;
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setPiePos({ x, y });
-      // Request world position from game via EventBus
-      EventBus.emit('request-ground-position', { x, y, rect });
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const c = tacticalState.cursor;
+      if (!c.onGround) return;
+      const world = { x: c.x, z: c.z };
+      // Right-clicking an existing tower selects it.
+      const hitTower = towerDefenseState.towers.find(t => Math.hypot(t.position.x - world.x, t.position.z - world.z) < TOWER_DEFENSE.towers[t.type].baseRadius + 0.6);
+      if (hitTower) { closePie(); towerDefenseState.selectTower(hitTower.id); return; }
+      const problem = placementProblem('mg', world, towerDefenseState.towers);
+      if (problem) { closePie(); feedback(problem); flashInvalid(world.x, world.z); return; }
+      tacticalState.pieAnchor = world;
+      setPie({ x, y, world });
     };
-
-    const onGroundPos = (pos) => {
-      if (!pos) return;
-      // Validate friendly half
-      if (pos.z <= TOWER_DEFENSE.friendlyHalfZ) return;
-      // Check spacing
-      for (const t of towerDefenseState.towers) {
-        if (Math.hypot(t.position.x - pos.x, t.position.z - pos.z) < TOWER_DEFENSE.minSpacing) return;
-      }
-      setWorldPos(pos);
-      setShowPieMenu(true);
+    // Capture phase: runs before R3F and the RTS selection handlers.
+    const onClickCapture = (e) => {
+      if (gameState.mode !== 'strategic' || e.button !== 0 || !tacticalState.mode) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      if (canCommand()) commitTactical(e.shiftKey);
     };
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setShowPieMenu(false);
+    const onWindowClick = (e) => {
+      if (e.target !== canvas || gameState.mode !== 'strategic') return;
+      setPie(null); tacticalState.preview = null;
+      // Clicks that landed on a tower stamp towerClickAt during R3F dispatch.
+      if (towerDefenseState.selectedTowerId !== null && performance.now() - (tacticalState.towerClickAt ?? 0) > 120) towerDefenseState.selectTower(null);
     };
-
-    const onClickOutside = () => setShowPieMenu(false);
-
     canvas.addEventListener('contextmenu', onContextMenu);
-    EventBus.on('ground-position-response', onGroundPos);
-    window.addEventListener('keydown', onKeyDown);
-    if (showPieMenu) window.addEventListener('click', onClickOutside);
-
+    canvas.addEventListener('click', onClickCapture, true);
+    window.addEventListener('click', onWindowClick);
     return () => {
       canvas.removeEventListener('contextmenu', onContextMenu);
-      EventBus.off('ground-position-response', onGroundPos);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('click', onClickOutside);
+      canvas.removeEventListener('click', onClickCapture, true);
+      window.removeEventListener('click', onWindowClick);
     };
-  }, [visible, showPieMenu]);
+  }, [visible, closePie, commitTactical, feedback]);
 
-  const handleSelect = useCallback((type) => {
-    if (!worldPos) return;
-    const cfg = TOWER_DEFENSE.towers[type];
-    if (!cfg || scrap < cfg.cost) return;
-    if (towerDefenseState.spend(type, worldPos)) {
-      setScrap(towerDefenseState.scrap);
-    }
-    setShowPieMenu(false);
-    setWorldPos(null);
-  }, [worldPos, scrap]);
+  // Strategic hotkeys: 1/2/3 build, Q/R/F abilities, N call wave, U upgrade, Delete sell, Esc cancel.
+  useEffect(() => {
+    if (!visible) return;
+    const onKeyDown = (e) => {
+      if (gameState.mode !== 'strategic' || e.repeat || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === 'Escape') {
+        if (tacticalState.mode) cancelTactical();
+        else if (pie) closePie();
+        else if (towerDefenseState.selectedTowerId !== null) towerDefenseState.selectTower(null);
+        return;
+      }
+      if (!canCommand()) return;
+      if (KEY_TO_TOWER[e.code]) { e.preventDefault(); pickTower(KEY_TO_TOWER[e.code]); return; }
+      if (KEY_TO_ABILITY[e.code]) { e.preventDefault(); triggerAbility(KEY_TO_ABILITY[e.code]); return; }
+      if (e.code === 'KeyN') {
+        const bonus = callWaveEarly();
+        if (bonus) feedback(`Wave called early: +${bonus} scrap`, 'good'); else feedback('Next wave cannot be called yet');
+        return;
+      }
+      const tower = towerDefenseState.getTower(towerDefenseState.selectedTowerId);
+      if (!tower) return;
+      if (e.code === 'KeyU') {
+        const cost = towerDefenseState.upgradeCost(tower);
+        if (towerDefenseState.upgrade(tower.id)) feedback(`Upgraded to level ${tower.level}`, 'good');
+        else feedback(cost === null ? 'Tower is at max level' : `Not enough scrap (${cost} needed)`);
+      } else if (e.code === 'Delete' || e.code === 'Backspace') {
+        e.preventDefault();
+        const refund = towerDefenseState.sell(tower.id);
+        if (refund !== false) feedback(`Tower sold: +${refund} scrap`, 'good');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [visible, pie, closePie, pickTower, triggerAbility, feedback]);
+
+  const handlePieSelect = useCallback((type) => {
+    if (!pie) return;
+    const problem = towerDefenseState.placementProblem(type, pie.world);
+    if (problem) { feedback(problem); flashInvalid(pie.world.x, pie.world.z); }
+    else towerDefenseState.spend(type, pie.world);
+    closePie();
+  }, [pie, closePie, feedback]);
 
   if (!visible) return null;
 
+  const hint = tactical.mode === 'place'
+    ? `Placing ${TOWER_DEFENSE.towers[tactical.placeType]?.name} · Click to build · Shift-click to keep building · Right-click / Esc to cancel`
+    : tactical.mode === 'ability'
+      ? `${ABILITIES[tactical.abilityId]?.name} · Click a target · Right-click / Esc to cancel`
+      : null;
+
   return (
     <>
-      {/* Resource counter — top center pill */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-        style={{
-          top: '12px',
-          padding: '13px 24px',
-          border: '1px solid #ff8c426e',
-          background: '#201c1cdd',
-          backdropFilter: 'blur(14px)',
-          borderRadius: '999px',
-          boxShadow: '0 0 30px #ff8c4226',
-          color: '#ffad75',
-          font: '800 17px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-          letterSpacing: '0.12em',
-        }}
-      >
-        ◈ {scrap}
-      </div>
+      <MissionBar level={level} scrap={scrap} onFeedback={feedback} />
+      <BossBar />
+      <BuildBar scrap={scrap} placeType={tactical.mode === 'place' ? tactical.placeType : null} onPick={pickTower} />
+      <AbilityBar activeId={tactical.mode === 'ability' ? tactical.abilityId : null} onTrigger={triggerAbility} />
+      {selectedTower !== null && <TowerPanel towerId={selectedTower} scrap={scrap} onFeedback={feedback} />}
 
-      {/* Wave counter + survival timer — top left */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: '56px',
-          left: '16px',
-          padding: '8px 14px',
-          border: '1px solid #454149',
-          background: '#17171bd9',
-          backdropFilter: 'blur(12px)',
-          borderRadius: '8px',
-          color: '#bebac2',
-          fontSize: '12px',
-          lineHeight: 1.8,
-          fontFamily: 'ui-monospace, monospace',
-        }}
-      >
-        <div style={{ color: '#ff9b5a', fontWeight: 800, letterSpacing: '0.1em' }}>
-          {level === 5 ? '▥' : level === 4 ? '❄' : level === 3 ? '🌲' : level === 2 ? '🌙' : '☀'} {getLevelConfig(level).name} WAVE {wave}/{getMaxWaves(level)}
+      {hint && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-[124px] pointer-events-none hud-root">
+          <div className="hud-panel px-4 py-1.5 text-xs tracking-wide text-amber-100">{hint}</div>
         </div>
-        <div>⏱ {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</div>
-      </div>
+      )}
+      {toast && (
+        <div key={toast.key} className="absolute left-1/2 -translate-x-1/2 top-[158px] pointer-events-none hud-root" data-testid="tactical-toast">
+          <div className={`hud-panel px-4 py-1.5 text-sm font-semibold ${toast.tone === 'good' ? 'text-teal-300 border-teal-400/40' : 'text-red-300 border-red-400/50'}`}>{toast.text}</div>
+        </div>
+      )}
 
-      {/* Radial pie menu */}
-      {showPieMenu && piePos && (
-        <RadialPieMenu
-          x={piePos.x}
-          y={piePos.y}
-          scrap={scrap}
-          onSelect={handleSelect}
-          onClose={() => setShowPieMenu(false)}
-        />
+      {pie && (
+        <RadialPieMenu x={pie.x} y={pie.y} world={pie.world} scrap={scrap} onSelect={handlePieSelect} onClose={closePie} />
       )}
     </>
   );
 }
 
-function RadialPieMenu({ x, y, scrap, onSelect, onClose }) {
-  // Position is set to the cursor — we use fixed positioning relative to the game frame
+function RadialPieMenu({ x, y, world, scrap, onSelect, onClose }) {
   // The 3 tower choices are arranged in a circle at 120° intervals
   const radius = 70;
   const angles = [-90, 30, 150]; // top, bottom-right, bottom-left (in degrees)
+  const [hover, setHover] = useState(null);
+  const preview = type => { setHover(type); tacticalState.preview = type ? { type, x: world.x, z: world.z } : null; };
+  const hovered = hover ? TOWER_DEFENSE.towers[hover] : null;
 
   return (
     <div
-      className="absolute pointer-events-auto"
-      style={{
-        left: `${x}px`,
-        top: `${y}px`,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 40,
-      }}
+      className="absolute pointer-events-auto hud-root"
+      style={{ left: `${x}px`, top: `${y}px`, transform: 'translate(-50%, -50%)', zIndex: 40 }}
       onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+      data-testid="tower-pie"
     >
-      {/* Backdrop circle */}
-      <div
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '180px',
-          height: '180px',
-          borderRadius: '50%',
-          border: '1px solid #ff8c4266',
-          background: '#17171bd9',
-          backdropFilter: 'blur(16px)',
-          boxShadow: '0 18px 40px #0009, 0 0 34px #ff8c4218',
-        }}
-      />
-      {/* Center button */}
+      <div className="hud-panel absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[184px] h-[184px] !rounded-full border-amber-400/30" />
       <button
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          border: '1px solid #ffb581',
-          background: '#ff8c42',
-          color: '#151216',
-          fontSize: '10px',
-          fontWeight: 900,
-          letterSpacing: '0.08em',
-          boxShadow: '0 0 28px #ff8c4288',
-          cursor: 'pointer',
-          transition: '0.2s',
-        }}
-        onClick={onClose}
+        className="hud-btn absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[54px] h-[54px] !rounded-full flex items-center justify-center"
+        onClick={onClose} aria-label="Close" title="Close (Esc)"
       >
-        CLOSE
+        {hovered ? <span className="text-[9px] leading-tight text-center">{Math.round(hovered.range)}m<br />range</span> : <X size={16} />}
       </button>
-      {/* Tower choice buttons */}
-      {TOWER_KEYS.map((key, i) => {
-        const cfg = TOWER_DEFENSE.towers[key];
+      {TOWER_ORDER.map((key, i) => {
+        const cfg = TOWER_DEFENSE.towers[key], Icon = TOWER_ICONS[key];
         const angle = (angles[i] * Math.PI) / 180;
-        const bx = Math.cos(angle) * radius;
-        const by = Math.sin(angle) * radius;
         const affordable = scrap >= cfg.cost;
         return (
           <button
             key={key}
-            disabled={!affordable}
             aria-label={cfg.name}
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: `translate(calc(-50% + ${bx}px), calc(-50% + ${by}px))`,
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              border: '1px solid #5c5962',
-              background: affordable ? '#29272d' : '#1a181c',
-              color: affordable ? '#fff' : '#555',
-              fontSize: '9px',
-              fontWeight: 700,
-              display: 'grid',
-              placeItems: 'center',
-              transition: '0.2s',
-              boxShadow: '0 8px 16px #0008',
-              cursor: affordable ? 'pointer' : 'not-allowed',
-              opacity: affordable ? 1 : 0.4,
-              textAlign: 'center',
-              lineHeight: 1.3,
-            }}
-            onMouseEnter={(e) => {
-              if (affordable) {
-                e.currentTarget.style.background = '#ff8c42';
-                e.currentTarget.style.color = '#171216';
-                e.currentTarget.style.boxShadow = '0 0 24px #ff8c42';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (affordable) {
-                e.currentTarget.style.background = '#29272d';
-                e.currentTarget.style.color = '#fff';
-                e.currentTarget.style.boxShadow = '0 8px 16px #0008';
-              }
-            }}
+            data-testid={`pie-${key}`}
+            className={`hud-btn absolute left-1/2 top-1/2 w-[64px] h-[64px] !rounded-full flex flex-col items-center justify-center gap-0.5 ${affordable ? '' : 'opacity-60'}`}
+            style={{ transform: `translate(calc(-50% + ${Math.cos(angle) * radius}px), calc(-50% + ${Math.sin(angle) * radius}px))` }}
+            onMouseEnter={() => preview(key)}
+            onMouseLeave={() => preview(null)}
             onClick={() => onSelect(key)}
           >
-            {cfg.name.split(' ')[0]}
-            <br />
-            <span style={{ fontSize: '8px', opacity: 0.8 }}>{cfg.cost}</span>
+            <Icon size={16} className={affordable ? 'text-amber-300' : 'text-stone-500'} />
+            <span className="text-[9px] leading-none">{cfg.name.split(' ')[0]}</span>
+            <span className={`text-[10px] leading-none ${affordable ? 'text-amber-200' : 'text-red-400'}`}>{cfg.cost}</span>
           </button>
         );
       })}
