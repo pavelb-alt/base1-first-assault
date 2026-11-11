@@ -38,6 +38,12 @@ export function bindInput(canvas) {
   const move = e => { if (document.pointerLockElement === canvas) look(e.movementX, e.movementY); };
   const keyDown = e => {
     if (e.code === 'Escape' || e.code === 'Tab') { clearInput(); return; }
+    // Space is jump while controlling a unit: it must never "click" a HUD button
+    // that kept focus (e.g. Join the Fight → Release), which dropped control.
+    if (e.code === 'Space' && (gameState.mode === 'third_person' || gameState.transitioning)) {
+      e.preventDefault();
+      if (document.activeElement instanceof HTMLButtonElement) document.activeElement.blur();
+    }
     if (gameState.mode === 'strategic' && e.code === 'KeyA' && (e.ctrlKey || e.metaKey)) return;
     if (!gameState.paused) setKey(e.code, true);
   };
