@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { GameContainer } from '@/components/game/GameContainer';
 import { EventBus } from '@/game/EventBus';
+import { gameEvents } from '@/game/gameEvents';
 import { gameState } from '@/game/3d/world';
 import { cargoShipState } from '@/game/3d/objects/cargoShipState';
-import { OPENING, LEVELS, getLevelConfig } from '@/game/config';
+import { OPENING, LEVELS, getLevelConfig, getMaxWaves } from '@/game/config';
+import { resetMissionStats, missionStats, missionElapsedSeconds, missionAccuracy, progression } from '@/game/progression';
 import { MainMenu } from '@/components/MainMenu';
 import { CampaignMissionBriefing } from '@/components/CampaignMissionBriefing';
 import { IntroVideo } from '@/components/IntroVideo';
@@ -15,6 +18,20 @@ import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { UnitCommandPanel } from '@/components/UnitCommandPanel';
 import { StationControlHUD } from '@/components/StationControlHUD';
+import { PauseMenu } from '@/components/shell/PauseMenu';
+import { MissionDebrief } from '@/components/shell/MissionDebrief';
+import { LoadingOverlay } from '@/components/shell/LoadingOverlay';
+import { isEditableTarget } from '@/components/shell/keyLayers';
+import { uiPrefs } from '@/components/shell/uiPrefs';
+import {
+  ObjectiveTracker, WaveBanner, ModeIndicator, ControlsHint, PauseButton, ActionButton, ReinforcementToast, ErrorPanel,
+} from '@/components/shell/HudChrome';
+
+// Dev-only hooks for playtesting the shell (e.g. __debugEmit('game-over', 'defeat')).
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  window.__debugEmit = (event, ...args) => EventBus.emit(event, ...args);
+  window.__debugGameEvent = (event, payload) => gameEvents.emit(event, payload);
+}
 
 export default function GamePage() {
   // Opening flow: 'opening' → 'menu' → 'intro' → 'handoff' → 'playing'
@@ -38,6 +55,47 @@ export default function GamePage() {
   const [artilleryCount, setArtilleryCount] = useState(0);
   const [resultVideoDone, setResultVideoDone] = useState(false);
 
+  // Shell state
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [debrief, setDebrief] = useState(null);                       // outcome snapshot for MissionDebrief
+  const [transitionRevealed, setTransitionRevealed] = useState(false); // cleared level: debrief dismissed → show transition
+  const [pendingStart, setPendingStart] = useState(null);             // level to launch after a full game unmount
+  const recordedRef = useRef(false);
+
+  // Mission stats lifecycle: reset when a mission/level starts, record exactly once per outcome.
+  const beginMissionStats = useCallback((level) => {
+    resetMissionStats(level);
+    recordedRef.current = false;
+  }, []);
+
+  const recordOutcome = useCallback((kind, result) => {
+    if (recordedRef.current) return;
+    recordedRef.current = true;
+    const level = gameState.currentLevel;
+    const maxWaves = getMaxWaves(level);
+    // Base health persists across level transitions; sync the real value before stars are scored.
+    const battle = window.game?.getBattle?.();
+    if (battle?.baseHealth) missionStats.baseHealth = Math.max(0, battle.baseHealth.friendly);
+    const { stars, newRecord } = progression.recordMissionResult(level, result);
+    const clearedAllWaves = kind === 'cleared' || (result === 'victory' && towerDefenseState.wave >= maxWaves);
+    if (document.pointerLockElement) document.exitPointerLock?.();
+    setDebrief({
+      kind, outcome: result, level, stars, newRecord,
+      stats: {
+        time: missionElapsedSeconds(),
+        wavesSurvived: clearedAllWaves ? maxWaves : missionStats.wavesSurvived,
+        maxWaves,
+        enemiesKilled: missionStats.enemiesKilled,
+        playerKills: missionStats.playerKills,
+        accuracy: missionAccuracy(),
+        bestStreak: missionStats.bestStreak,
+        towersBuilt: missionStats.towersBuilt,
+        scrapEarned: missionStats.scrapEarned,
+        baseHealth: missionStats.baseHealth,
+      },
+    });
+  }, []);
+
   // EventBus subscriptions for gameplay events
   useEffect(() => {
     const onMode = (m) => { setMode(m); setWaitingForReinforcements(false); };
@@ -49,6 +107,8 @@ export default function GamePage() {
     };
     const onGameOver = (result) => {
       setGameOver(result);
+      setPauseOpen(false);
+      recordOutcome('gameover', result);
       // First mission outcomes play their cinematics before the result panel.
       if (gameState.currentLevel === 1 && (result === 'defeat' || result === 'victory')) {
         setResultVideoDone(false);
@@ -57,13 +117,21 @@ export default function GamePage() {
     };
     const onCurrency = (amt) => setScrapAmount(amt);
     const onWave = (w) => setWaveNumber(w);
-    const onLevelTransition = () => setLevelTransition(true);
+    const onLevelTransition = () => {
+      setLevelTransition(true);
+      setTransitionRevealed(false);
+      setPauseOpen(false);
+      recordOutcome('cleared', 'victory');
+    };
     const onLevelChanged = (level) => {
       setCurrentLevel(level);
       setLevelTransition(false);
       setWaveNumber(0);
       setGameOver(null);
       setResultVideoDone(false);
+      setDebrief(null);
+      setTransitionRevealed(false);
+      beginMissionStats(level);
     };
     const onTankCount = (count) => setTankCount(count);
     const onArtilleryCount = (count) => setArtilleryCount(count);
@@ -93,7 +161,7 @@ export default function GamePage() {
       EventBus.off('tank-count-changed', onTankCount);
       EventBus.off('artillery-count-changed', onArtilleryCount);
     };
-  }, []);
+  }, [recordOutcome, beginMissionStats]);
 
   // Phase: menu → intro (mount game running so cargo ships land during the video)
   const startMission = useCallback((level = 1) => {
@@ -102,13 +170,14 @@ export default function GamePage() {
     gameState.paused = false;
     gameState.preparing = true; // block player input during video
     setCurrentLevel(level);
+    beginMissionStats(level);
     if (level > 1) {
       gameState.currentLevel = level;
       towerDefenseState.reset();
       EventBus.emit('level-changed', level);
     }
     setPhase('intro');
-  }, []);
+  }, [beginMissionStats]);
 
   // Phase: intro → handoff (game already running; just frame the landing area)
   const onVideoComplete = useCallback(() => {
@@ -147,6 +216,8 @@ export default function GamePage() {
       setPhase('playing');
       setFading(false);
       gameState.preparing = false;
+      // The mission clock starts when the player gets control, not during the intro video.
+      missionStats.startedAt = performance.now();
     }, OPENING.fadeDuration);
     return () => clearTimeout(t);
   }, [missionReady]);
@@ -174,8 +245,24 @@ export default function GamePage() {
     setLevelTransition(false);
     setTankCount(0);
     setArtilleryCount(0);
+    setPauseOpen(false);
+    setDebrief(null);
+    setTransitionRevealed(false);
     setPhase('menu');
   }, []);
+
+  // Restart / next mission: full reset (unmounts the game), then launch `level` fresh.
+  const launchFresh = useCallback((level) => {
+    handleReset();
+    setPendingStart(level);
+  }, [handleReset]);
+
+  useEffect(() => {
+    if (phase !== 'menu' || pendingStart == null) return;
+    const level = pendingStart;
+    setPendingStart(null);
+    startMission(level);
+  }, [phase, pendingStart, startMission]);
 
   // Retry from handoff failure
   const retryHandoff = useCallback(() => {
@@ -203,10 +290,48 @@ export default function GamePage() {
     setPhase('menu');
   }, []);
 
+  // --- Pause -----------------------------------------------------------------
+  const canPause = phase === 'playing' && !gameOver && !levelTransition && !debrief && loaded && !error;
+  const openPause = useCallback(() => {
+    if (document.pointerLockElement) document.exitPointerLock?.();
+    EventBus.emit('pause-game');
+    setPauseOpen(true);
+  }, []);
+  const resumeGame = useCallback(() => {
+    setPauseOpen(false);
+    EventBus.emit('resume-game');
+  }, []);
+
+  // Page-level hotkeys. Registered once at mount, so this bubble listener runs BEFORE
+  // the game's own window listeners (which mount later) and can inspect the selection
+  // before SelectionSystem clears it on Esc. Open menus swallow keys via key layers.
+  const hotkeys = useRef({});
+  hotkeys.current = { canPause, pauseOpen, phase, openPause };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.repeat || isEditableTarget(e)) return;
+      const s = hotkeys.current;
+      if (s.phase !== 'playing') return;
+      if (e.code === 'Slash') { uiPrefs.set({ hintsCollapsed: !uiPrefs.get().hintsCollapsed }); return; }
+      if (!s.canPause || s.pauseOpen) return;
+      if (e.code === 'KeyP') { e.preventDefault(); s.openPause(); return; }
+      // Esc: third-person keeps its release behaviour; strategic pauses unless it is deselecting.
+      if (e.code === 'Escape' && gameState.mode === 'strategic') {
+        const sel = window.game?.getSelection?.();
+        if (!sel || !sel.count) s.openPause();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const gameMounted = phase !== 'opening' && phase !== 'menu';
+  const showDebrief = phase === 'playing' && debrief &&
+    (debrief.kind === 'cleared' ? levelTransition && !transitionRevealed : gameOver && resultVideoDone);
+  const showTransition = levelTransition && (transitionRevealed || !debrief);
 
   return (
-    <main className="game-page">
+    <main className="game-page bg-black">
       <div className="game-frame">
         {gameMounted && <GameContainer />}
 
@@ -219,8 +344,9 @@ export default function GamePage() {
           />
         )}
 
-        {/* Main Menu */}
-        {phase === 'menu' && <MainMenu onStart={startMission} />}
+        {/* Main Menu (held back while a restart is relaunching the mission) */}
+        {phase === 'menu' && pendingStart == null && <MainMenu onStart={startMission} />}
+        {phase === 'menu' && pendingStart != null && <div className="absolute inset-0 bg-black z-50" />}
 
         {/* Intro Video */}
         {phase === 'intro' && (
@@ -232,39 +358,17 @@ export default function GamePage() {
         )}
 
         {/* Handoff overlay */}
-        {phase === 'handoff' && (
-          <div className="absolute inset-0 grid place-items-center bg-black/85 pointer-events-auto z-30">
-            {!missionReady && !loadError && (
-              <div className="text-center">
-                <div className="w-10 h-10 border-4 border-slate-600 border-t-orange-500 rounded-full animate-spin mx-auto mb-3" />
-                <div className="text-white font-medium">Preparing mission…</div>
-                <div className="text-slate-400 text-xs mt-1">Awaiting first reinforcement delivery</div>
-              </div>
-            )}
-            {loadError && (
-              <div className="text-center max-w-md px-6">
-                <div className="text-red-400 font-bold text-lg mb-2">Mission Loading Failed</div>
-                <div className="text-slate-400 text-sm mb-6">{loadError}</div>
-                <button
-                  onClick={retryHandoff}
-                  className="px-6 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium transition-colors mr-3"
-                >
-                  Retry
-                </button>
-                <button
-                  onClick={backToMenu}
-                  className="px-6 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors"
-                >
-                  Back to Menu
-                </button>
-              </div>
-            )}
-          </div>
+        {phase === 'handoff' && !loadError && (
+          <LoadingOverlay level={currentLevel} ready={missionReady} subtitle="Awaiting first reinforcement delivery" />
+        )}
+        {phase === 'handoff' && loadError && (
+          <ErrorPanel title="Mission Loading Failed" message={loadError}
+            actions={[{ label: 'Back to Menu', run: backToMenu }, { label: 'Retry', run: retryHandoff, primary: true }]} />
         )}
 
         {/* Gameplay HUD (only during active play) */}
         {phase === 'playing' && (
-          <div className="absolute inset-0 pointer-events-none select-none">
+          <div className="hud-root absolute inset-0 pointer-events-none select-none">
             {mode === 'third_person' && <AimOverlay />}
             <HealthBar />
             <Minimap />
@@ -273,128 +377,42 @@ export default function GamePage() {
             <StationControlHUD visible={mode === 'third_person'} />
             <UnitCommandPanel visible={mode === 'strategic'} />
 
-            {/* Mode indicator */}
-            <div className="absolute top-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
-              <div className="text-white font-bold text-sm tracking-wider">
-                {mode === 'strategic' ? '◉ STRATEGIC VIEW' : '🎮 THIRD-PERSON'}
-              </div>
-              <div className="text-slate-400 text-xs mt-0.5">
-                {currentLevel === 1 ? 'Day Operation' : currentLevel === 2 ? 'Night Operation' : currentLevel === 3 ? 'Forest Operation' : currentLevel === 4 ? 'Frost Operation' : 'City Operation'} • {mode === 'strategic' ? 'Overview' : 'Direct Control'}
-              </div>
-            </div>
+            {/* COMBAT FEEDBACK MOUNT POINT — lead integration:
+                <CombatFeedbackLayer mode={mode} />
+                (from src/components/combat/**; renders hit markers, kill feed, damage numbers).
+                Mount it here, inside the pointer-events-none HUD and below the shell chrome. */}
 
-            {/* Tank counter */}
-            {(tankCount > 0 || artilleryCount > 0) && (
-              <div className="absolute top-16 left-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 flex gap-3">
-                {tankCount > 0 && <span className="text-orange-400 font-bold text-sm">🛡 Tanks: {tankCount}</span>}
-                {artilleryCount > 0 && <span className="text-amber-300 font-bold text-sm">🎯 Artillery: {artilleryCount}</span>}
-              </div>
-            )}
-
-            {/* Control hints */}
-            <div className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10">
-              <div className="text-slate-300 text-xs space-y-0.5">
-                {mode === 'strategic' ? (
-                  <>
-                    <div><span className="text-white font-semibold">WASD</span> Pan Camera</div>
-                    <div><span className="text-white font-semibold">Wheel</span> Zoom</div>
-                    <div><span className="text-white font-semibold">Click / Drag</span> Select Unit / Squad</div>
-                    <div><span className="text-white font-semibold">Left Click Ground</span> Order</div>
-                    <div><span className="text-white font-semibold">Right Click</span> Place Tower</div>
-                    <div><span className="text-white font-semibold">Tab</span> Join the Fight</div>
-                  </>
-                ) : (
-                  <>
-                    <div><span className="text-white font-semibold">WASD</span> Move / Drive</div>
-                    <div><span className="text-white font-semibold">Space</span> Jump / Double Jump</div>
-                    <div><span className="text-white font-semibold">Mouse</span> Look Around</div>
-                    <div><span className="text-white font-semibold">Left Click</span> Shoot</div>
-                    <div><span className="text-white font-semibold">Right Click</span> Aim Down Sights</div>
-                    <div><span className="text-white font-semibold">E</span> Enter / Exit Gun Position</div>
-                    <div><span className="text-white font-semibold">B</span> Deploy Tower</div>
-                    <div><span className="text-white font-semibold">Tab / Esc</span> Release Control</div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            {mode === 'strategic' && (
-              <button
-                className="absolute bottom-4 right-4 px-6 py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold pointer-events-auto transition-colors shadow-lg"
-                onClick={() => EventBus.emit('possess-soldier')}
-              >
-                {waitingForReinforcements ? 'Waiting for reinforcements' : 'Join the Fight'}
-              </button>
-            )}
-            {mode === 'third_person' && (
-              <button
-                className="absolute bottom-4 right-4 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold pointer-events-auto transition-colors shadow-lg"
-                onClick={() => EventBus.emit('release-soldier')}
-              >
-                Release (Tab)
-              </button>
-            )}
-
-            {/* Reset button */}
-            <button
-              className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium pointer-events-auto transition-colors shadow-lg"
-              onClick={handleReset}
-            >
-              Reset Test
-            </button>
-
-            {/* Victory / Defeat overlay */}
-            {gameOver && resultVideoDone && (
-              <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
-                <div className="text-center max-w-md px-6">
-                  <div className={`text-5xl font-extrabold mb-2 ${gameOver === 'victory' ? 'text-green-400' : 'text-red-400'}`}>
-                    {gameOver === 'victory' ? '★ VICTORY ★' : '✖ DEFEAT ✖'}
-                  </div>
-                  <div className="text-slate-300 text-sm mb-6">
-                    {gameOver === 'victory'
-                      ? 'Friendly forces destroyed the enemy base. The battlefield is yours.'
-                      : 'Enemy forces breached your base. The front has collapsed.'}
-                  </div>
-                  <button
-                    className="px-8 py-3 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold text-lg transition-colors shadow-lg"
-                    onClick={handleReset}
-                  >
-                    Restart Match
-                  </button>
-                </div>
-              </div>
-            )}
+            <ModeIndicator mode={mode} level={currentLevel} />
+            <ObjectiveTracker level={currentLevel} wave={waveNumber} mode={mode} tankCount={tankCount} artilleryCount={artilleryCount} />
+            <WaveBanner />
+            <ControlsHint mode={mode} />
+            <ActionButton mode={mode} waiting={waitingForReinforcements}
+              onJoin={() => EventBus.emit('possess-soldier')} onRelease={() => EventBus.emit('release-soldier')} />
+            <ReinforcementToast show={waitingForReinforcements && mode === 'strategic'} />
+            {canPause && <PauseButton onClick={openPause} />}
 
             {/* Loading overlay (during gameplay if model loads late) */}
             {!loaded && !error && (
-              <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
-                <div className="text-center">
-                  <div className="w-10 h-10 border-4 border-slate-600 border-t-green-500 rounded-full animate-spin mx-auto mb-3" />
-                  <div className="text-white font-medium">Loading Soldier Model…</div>
-                </div>
-              </div>
+              <LoadingOverlay level={currentLevel} title="Loading soldier model" showChecklist={false} expectedMs={6000} />
             )}
 
             {/* Error overlay */}
             {error && (
-              <div className="absolute inset-0 grid place-items-center bg-black/80 pointer-events-auto">
-                <div className="text-center max-w-md px-6">
-                  <div className="text-red-400 font-bold text-lg mb-2">Failed to Load Soldier</div>
-                  <div className="text-slate-400 text-sm mb-4">{error}</div>
-                  <button
-                    className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
-                    onClick={handleReset}
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
+              <ErrorPanel title="Failed to Load Soldier" message={String(error)}
+                actions={[{ label: 'Main Menu', run: handleReset }, { label: 'Retry Mission', run: () => launchFresh(currentLevel), primary: true }]} />
             )}
           </div>
         )}
 
-        {/* First mission result cinematic — plays before the outcome panel */}
+        {/* Pause menu */}
+        <AnimatePresence>
+          {phase === 'playing' && pauseOpen && (
+            <PauseMenu key="pause" level={currentLevel} wave={waveNumber}
+              onResume={resumeGame} onRestart={() => launchFresh(currentLevel)} onQuit={handleReset} />
+          )}
+        </AnimatePresence>
+
+        {/* First mission result cinematic — plays before the debrief */}
         {phase === 'playing' && gameOver && currentLevel === 1 && !resultVideoDone && (
           <IntroVideo
             src={gameOver === 'victory' ? LEVELS.day.victoryVideoUrl : LEVELS.day.defeatVideoUrl}
@@ -403,9 +421,21 @@ export default function GamePage() {
           />
         )}
 
-        {/* Level transition: cinematic for day→night or night→forest */}
-        {levelTransition && currentLevel >= 3 && <CampaignMissionBriefing currentLevel={currentLevel} />}
-        {levelTransition && currentLevel < 3 && (
+        {/* Mission debrief: game over (after any result video) or a cleared level (before its transition) */}
+        {showDebrief && (
+          <MissionDebrief
+            key={`${debrief.kind}-${debrief.level}`}
+            result={debrief}
+            onContinue={() => setTransitionRevealed(true)}
+            onRetry={() => launchFresh(debrief.level)}
+            onNext={() => launchFresh(Math.min(5, debrief.level + 1))}
+            onMenu={handleReset}
+          />
+        )}
+
+        {/* Level transition: cinematic for day→night or night→forest, briefing for later levels */}
+        {showTransition && currentLevel >= 3 && <CampaignMissionBriefing currentLevel={currentLevel} />}
+        {showTransition && currentLevel < 3 && (
           <IntroVideo
             src={currentLevel === 1 ? LEVELS.night.introVideoUrl : LEVELS.forest.introVideoUrl}
             onEnd={() => EventBus.emit(currentLevel === 1 ? 'proceed-to-night' : 'proceed-to-forest')}
