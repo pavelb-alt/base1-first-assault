@@ -4,7 +4,7 @@ import { TowerVisual } from '@/game/3d/objects/TowerVisual';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
-import { TOWER_DEFENSE } from '@/game/config';
+import { TOWER_DEFENSE, BASES } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { combat } from '@/game/3d/combat';
 import { gameState } from '@/game/3d/world';
@@ -12,6 +12,7 @@ import { battle } from '@/game/3d/battleMetrics';
 import { cameraAim, fireShot, trace } from '@/game/3d/ballistics';
 import { isStationControlled } from '@/game/3d/stationControl';
 import { input } from '@/game/3d/input';
+import { TacticalOverlay } from '@/game/3d/abilities/TacticalOverlay';
 
 // Raycaster for ground-plane intersection (screen → world)
 const _raycaster = new THREE.Raycaster();
@@ -20,12 +21,10 @@ const _groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const _hitPoint = new THREE.Vector3();
 
 // Scratch vectors — never allocate inside useFrame
-
 const _origin = new THREE.Vector3();
 const _aim = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-
-
+const BASE_X = BASES.friendly.position[0], BASE_Z = BASES.friendly.position[2];
 
 // Pseudo-tower entry for combat registry — lets fireShot/trace work with tower projectiles
 function createTowerCombatEntry(tower, cfg) {
@@ -33,6 +32,7 @@ function createTowerCombatEntry(tower, cfg) {
     id: `tower-${tower.id}`,
     team: 'friendly',
     type: 'tower',
+    tower,
     profile: { damage: cfg.damage, aiSpread: 0.02, range: cfg.range },
     bodyRef: { current: null },  // towers don't have physics bodies
     aimHeight: 1.2,
@@ -41,16 +41,34 @@ function createTowerCombatEntry(tower, cfg) {
   };
 }
 
+// Target selection by the tower's priority. 'first' = the hostile closest to the base.
+function pickTarget(tower, range) {
+  const tx = tower.position.x, tz = tower.position.z, mode = tower.targeting ?? 'first';
+  let best = null, bestScore = Infinity, bestDist = 0;
+  for (const unit of combat.units) {
+    if (!unit.alive || unit.team !== 'enemy' || !unit.bodyRef?.current) continue;
+    const p = unit.bodyRef.current.translation();
+    const dist = Math.hypot(p.x - tx, p.z - tz);
+    if (dist >= range) continue;
+    const score = mode === 'closest' ? dist
+      : mode === 'strongest' ? -unit.health * 1000 + dist
+      : Math.hypot(p.x - BASE_X, p.z - BASE_Z);
+    if (score < bestScore) { bestScore = score; best = unit; bestDist = dist; }
+  }
+  return best ? { unit: best, dist: bestDist } : null;
+}
+
 function Tower({ tower }) {
   const cfg = TOWER_DEFENSE.towers[tower.type];
-  const combatEntry = useMemo(() => {
-    const entry = createTowerCombatEntry(tower, cfg);
-    entry.bodyRef = { current: null }; // towers have no physics body — fine for projectile exclusion
-    return entry;
-  }, [tower.id, cfg]);
+  const combatEntry = useMemo(() => createTowerCombatEntry(tower, cfg), [tower, cfg]);
 
   useFrame((_state, delta) => {
     if (gameState.paused) return;
+    const stats = tower.stats;
+    combatEntry.profile.damage = stats.damage;
+    combatEntry.profile.range = stats.range;
+    combatEntry.splashRadius = stats.splashRadius;
+    combatEntry.splashDamage = stats.splashRadius ? stats.damage * 0.5 : null;
 
     tower.cooldown = Math.max(0, tower.cooldown - delta);
 
@@ -62,43 +80,30 @@ function Tower({ tower }) {
       tower.aimPitch=Math.atan2(_aim.y-1.2,Math.hypot(_aim.x-tx,_aim.z-tz));
       _origin.set(tx,1.2,tz);
       if (input.mouseDown && tower.cooldown<=0 && fireShot(combatEntry,_origin,_aim,_origin,true)) {
-        tower.cooldown=cfg.cooldown; tower.shotsFired=(tower.shotsFired??0)+1;
+        tower.cooldown=stats.cooldown; tower.shotsFired=(tower.shotsFired??0)+1;
         if (tower.type==='frost') {
           const distance=_dir.subVectors(_aim,_origin).length();
           const hit=trace(_origin,_dir.normalize(),distance+0.1,combatEntry)?.unit;
-          if(hit?.alive && hit.team==='enemy') { hit.slowUntil=battle.elapsed+cfg.slowDuration; hit.slowFactor=cfg.slowFactor; }
+          if(hit?.alive && hit.team==='enemy') { hit.slowUntil=battle.elapsed+stats.slowDuration; hit.slowFactor=stats.slowFactor; }
         }
       }
       return;
     }
-    // Find nearest enemy in range using spatial grid
     const tx = tower.position.x, tz = tower.position.z;
-    let nearest = null;
-    let nearestDist = cfg.range;
-
-    for (const unit of combat.units) {
-      if (!unit.alive || unit.team !== 'enemy' || !unit.bodyRef?.current) continue;
-      const p = unit.bodyRef.current.translation();
-      const dist = Math.hypot(p.x - tx, p.z - tz);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearest = unit;
-      }
-    }
-
+    const found = pickTarget(tower, stats.range);
+    const nearest = found?.unit ?? null;
     tower.targetId = nearest?.id ?? null;
 
     if (nearest) {
       // Model barrels face local -Z; visuals smoothly follow the combat target.
       const p = nearest.bodyRef.current.translation();
       tower.aimYaw = Math.atan2(tx - p.x, tz - p.z);
-      tower.aimPitch = Math.atan2(p.y + nearest.aimHeight - 1.2, nearestDist);
+      tower.aimPitch = Math.atan2(p.y + nearest.aimHeight - 1.2, found.dist);
 
       // Fire on cooldown
       if (tower.cooldown <= 0) {
         _origin.set(tx, 1.2, tz);
         _aim.set(p.x, p.y + nearest.aimHeight, p.z);
-        // Use fireShot with the tower's combat entry as shooter
         const shot = {
           origin: _origin.toArray(),
           direction: _dir.subVectors(_aim, _origin).normalize().toArray(),
@@ -106,7 +111,9 @@ function Tower({ tower }) {
           shooterId: combatEntry.id,
           shooter: combatEntry,
           player: false,
-          damage: cfg.damage,
+          damage: stats.damage,
+          splashRadius: combatEntry.splashRadius,
+          splashDamage: combatEntry.splashDamage,
         };
         // Directly push to pending projectiles (bypassing fireShot's shooter validation)
         if (combat.physics) {
@@ -118,15 +125,14 @@ function Tower({ tower }) {
             combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
           }
           combat.stats.muzzleFlashes++;
-          if (gameEvents.has('shot')) gameEvents.emit('shot', { team: 'friendly', kind: `tower-${tower.type}`, player: false, x: tx, y: 1.2, z: tz });
+          if (gameEvents.has('shot')) gameEvents.emit('shot', { team: 'friendly', kind: `tower-${tower.type}`, player: false, x: tx, y: 1.2, z: tz, level: tower.level });
         }
-        tower.cooldown = cfg.cooldown;
+        tower.cooldown = stats.cooldown;
 
-        // Frost tower applies slow on hit via a delayed effect
-        if (tower.type === 'frost' && tower.slowFactor) {
-          // Apply slow immediately since we don't track per-projectile effects
-          nearest.slowUntil = battle.elapsed + tower.slowDuration;
-          nearest.slowFactor = tower.slowFactor;
+        // Frost tower applies slow on fire (no per-projectile effect tracking)
+        if (tower.type === 'frost' && stats.slowFactor) {
+          nearest.slowUntil = battle.elapsed + stats.slowDuration;
+          nearest.slowFactor = stats.slowFactor;
         }
       }
     }
@@ -143,6 +149,8 @@ export function TowerManager() {
     const onPlace = () => publish();
     const onReset = () => { towerDefenseState.reset(); publish(); };
     EventBus.on('tower-placed', onPlace);
+    EventBus.on('tower-changed', onPlace);
+    EventBus.on('tower-selected', onPlace);
     EventBus.on('reset-game', onReset);
 
     // Handle right-click ground raycast: screen point → world position on y=0 plane
@@ -160,6 +168,8 @@ export function TowerManager() {
 
     return () => {
       EventBus.off('tower-placed', onPlace);
+      EventBus.off('tower-changed', onPlace);
+      EventBus.off('tower-selected', onPlace);
       EventBus.off('reset-game', onReset);
       EventBus.off('request-ground-position', onGroundRequest);
     };
@@ -170,6 +180,7 @@ export function TowerManager() {
       {towerDefenseState.towers.map(t => (
         <Tower key={t.id} tower={t} />
       ))}
+      <TacticalOverlay />
     </>
   );
 }
