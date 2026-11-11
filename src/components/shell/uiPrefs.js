@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 const STORAGE_KEY = 'base1.ui.v1';
 const DEFAULTS = {
   unlockAllMissions: false, // developer: play any mission from Mission Select
-  hintsCollapsed: false,    // in-game controls hint panel
+  hintsCollapsed: true,     // in-game controls hint panel (the command bar already shows key hints)
 };
 
 function load() {

@@ -161,8 +161,8 @@ export function ModeIndicator({ mode, level }) {
 }
 
 const HINT_KEYS = {
-  strategic: ['Pan camera', 'Zoom', 'Select unit / box-select squad', 'Move / Attack / Hold', 'Place tower', 'Deselect (pause when nothing selected)'],
-  third_person: ['Move soldier / drive vehicle', 'Shoot', 'Aim down sights', 'Space', 'Enter / exit gun position', 'Deploy tower menu', 'Release control'],
+  strategic: ['Pan camera', 'Zoom', 'Select unit / box-select squad', 'Move / Attack / Hold', 'Build MG / Cannon / Frost', 'Upgrade / sell selected tower', 'Orbital strike / Reinforce / Repair', 'Call next wave early'],
+  third_person: ['Move soldier / drive vehicle', 'Shoot', 'Aim down sights', 'Sprint (uses stamina)', 'Space', 'Enter / exit gun position', 'Deploy tower menu', 'Release control'],
 };
 
 /** Contextual controls panel; collapsible by click or the ? key. Hidden if tutorial hints are off. */

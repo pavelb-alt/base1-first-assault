@@ -165,7 +165,7 @@ export function IntroVideo({ src, onEnd, onSkip }) {
           <span className="block font-display text-[11px] font-bold tracking-[0.22em] uppercase text-stone-100">
             Hold <span className="hud-key !h-5 !text-[10px] mx-0.5">SPACE</span> to skip
           </span>
-          <span className="block hud-label !text-[9px] mt-0.5">or click</span>
+          <span className="block hud-label !text-[9px] mt-0.5">or click here</span>
         </span>
       </button>
 

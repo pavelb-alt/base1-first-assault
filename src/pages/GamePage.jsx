@@ -381,7 +381,7 @@ export default function GamePage() {
             <CombatFeedbackLayer mode={mode} />
 
             <ModeIndicator mode={mode} level={currentLevel} />
-            <ObjectiveTracker level={currentLevel} wave={waveNumber} mode={mode} tankCount={tankCount} artilleryCount={artilleryCount} />
+            {mode === 'third_person' && <ObjectiveTracker level={currentLevel} wave={waveNumber} mode={mode} tankCount={tankCount} artilleryCount={artilleryCount} />}
             <WaveBanner />
             <ControlsHint mode={mode} />
             <ActionButton mode={mode} waiting={waitingForReinforcements}

@@ -253,7 +253,7 @@ export default function AimOverlay() {
       <HitMarker markerRef={markerRef} />
     </div>
     {!locked && (
-      <div className="hud-panel hud-panel-accent absolute top-20 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 text-sm text-stone-200 whitespace-nowrap max-w-[calc(100%-2rem)] overflow-hidden" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="hud-panel hud-panel-accent absolute top-[104px] left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 text-sm text-stone-200 whitespace-nowrap max-w-[calc(100%-2rem)] overflow-hidden" style={{ fontFamily: 'var(--font-body)' }}>
         <span className="hud-label" style={{ color: AMBER }}>Click to capture mouse</span>
         <span className="h-3 w-px bg-white/15" />
         <span className="flex items-center gap-1.5"><span className="hud-key">LMB</span> Fire</span>

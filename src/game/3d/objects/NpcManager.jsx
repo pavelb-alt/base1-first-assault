@@ -201,7 +201,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
         friction={0}
         args={[config.colliderHalfHeight * bossScale, config.colliderRadius * bossScale]}
         position={[0, (config.hitboxY ?? config.colliderY) * bossScale, config.hitboxZ ?? 0]}
-        rotation={config.tailGun ? [Math.PI / 2, 0, 0] : undefined}
+        rotation={config.tailGun ? FLYER_ROTATION : GROUND_ROTATION}
       />
       <group ref={groupRef} visible={active} onClick={e => {
         if (selection.units.length && issueAttack(combatEntryRef.current)) e.stopPropagation();
@@ -211,6 +211,10 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
     </RigidBody>
   );
 });
+
+// Constant-length rotation keeps rapier's collider dependency list stable when a pooled slot changes type.
+const FLYER_ROTATION = [Math.PI / 2, 0, 0];
+const GROUND_ROTATION = [0, 0, 0];
 
 // All enemy models load before the first complete wave is scheduled.
 export function NpcManager() {
