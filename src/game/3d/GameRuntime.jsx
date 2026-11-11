@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
+import { gameEvents } from '@/game/gameEvents';
 import { combat } from '@/game/3d/combat';
 import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
@@ -153,6 +154,7 @@ export function GameRuntime() {
       if (battle.waves.enemy > towerDefenseState.wave) {
         towerDefenseState.wave = battle.waves.enemy;
         EventBus.emit('wave-changed', towerDefenseState.wave);
+        gameEvents.emit('wave-start', { wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), level: gameState.currentLevel });
         // Victory after surviving all waves — day level transitions to night
         const maxWaves = getMaxWaves(gameState.currentLevel);
         if (towerDefenseState.wave >= maxWaves && !battle.gameOver) {
@@ -184,6 +186,7 @@ export function GameRuntime() {
             u.breached = true;
             const target = u.team === 'enemy' ? 'friendly' : 'enemy';
             battle.baseHealth[target] -= BASE.breachDamage;
+            gameEvents.emit('base-damage', { team: target, health: Math.max(0, battle.baseHealth[target]) });
             if (battle.baseHealth[target] <= 0) {
               battle.baseHealth[target] = 0;
               battle.gameOver = u.team === 'enemy' ? 'defeat' : 'victory';

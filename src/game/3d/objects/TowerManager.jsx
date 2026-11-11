@@ -1,3 +1,4 @@
+import { gameEvents } from '@/game/gameEvents';
 import { useReducer, useEffect, useMemo } from 'react';
 import { TowerVisual } from '@/game/3d/objects/TowerVisual';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -117,6 +118,7 @@ function Tower({ tower }) {
             combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
           }
           combat.stats.muzzleFlashes++;
+          if (gameEvents.has('shot')) gameEvents.emit('shot', { team: 'friendly', kind: `tower-${tower.type}`, player: false, x: tx, y: 1.2, z: tz });
         }
         tower.cooldown = cfg.cooldown;
 

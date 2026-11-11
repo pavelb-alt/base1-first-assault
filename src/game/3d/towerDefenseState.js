@@ -1,5 +1,6 @@
 import { TOWER_DEFENSE } from '@/game/config';
 import { EventBus } from '@/game/EventBus';
+import { gameEvents } from '@/game/gameEvents';
 
 // Shared tower defense state — module scope, read/written by useFrame and React overlay.
 export const towerDefenseState = {
@@ -25,6 +26,7 @@ export const towerDefenseState = {
   addScrap(amount) {
     this.scrap += amount;
     EventBus.emit('currency-changed', this.scrap);
+    gameEvents.emit('scrap', { amount, total: this.scrap });
   },
   canAfford(type) {
     const cfg = TOWER_DEFENSE.towers[type];
@@ -53,6 +55,7 @@ export const towerDefenseState = {
     this.towers.push(tower);
     EventBus.emit('currency-changed', this.scrap);
     EventBus.emit('tower-placed', { id: tower.id, type, position: tower.position });
+    gameEvents.emit('tower-built', { type, x: tower.position.x, z: tower.position.z });
     return true;
   },
 };

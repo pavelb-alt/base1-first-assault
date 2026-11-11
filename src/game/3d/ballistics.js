@@ -6,6 +6,16 @@ import { AIM } from '@/game/3d/weapons';
 import { random } from '@/game/3d/random';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { gameEvents } from '@/game/gameEvents';
+import { gameState } from '@/game/3d/world';
+
+// True when this unit is the one the player is directly controlling.
+export function isPlayerUnit(u) {
+  if (!u || u.team !== 'friendly') return false;
+  if (u.type === 'soldier') return u.id === gameState.possessedSoldierId;
+  const st = gameState.controlledStation;
+  return !!st && st.type === u.type && st.id === u.id;
+}
 
 const direction = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
@@ -85,6 +95,7 @@ export function applyImpact(hit, shot) {
     direction: Array.isArray(shot.direction) ? [...shot.direction] : [shot.direction.x, shot.direction.y, shot.direction.z],
   });
   combat.stats.impactBursts++;
+  if (gameEvents.has('impact')) gameEvents.emit('impact', { team: shot.team, player: !!shot.player, cover: !target, x: hit.point.x, y: hit.point.y, z: hit.point.z });
   if (target && target.alive && target.team !== shot.team) damageUnit(target, shot.damage, shot);
   else if (!target) combat.stats.coverHits++;
   combat.lastImpact = { team: shot.team, shooterId: shot.shooterId, targetId: target?.id ?? null, targetTeam: target?.team ?? null, cover: !target, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } };
@@ -115,7 +126,17 @@ function damageUnit(target, amount, shot) {
       if (hasCover) damage *= TANK.coverDamageReduction;
     }
     target.health -= damage;
-    if (target.health <= 0) {
+    const killed = target.health <= 0;
+    if (gameEvents.has('damage') || (killed && gameEvents.has('kill'))) {
+      const tp = target.bodyRef?.current?.translation();
+      const sp = shot.shooter?.bodyRef?.current?.translation?.();
+      const ev = { team: shot.team, targetTeam: target.team, targetType: target.type, amount: damage, player: !!shot.player,
+        playerTarget: isPlayerUnit(target), killed, x: tp?.x ?? 0, y: (tp?.y ?? 0) + (target.aimHeight ?? 1), z: tp?.z ?? 0,
+        fromX: sp?.x ?? (Array.isArray(shot.origin) ? shot.origin[0] : tp?.x ?? 0), fromZ: sp?.z ?? (Array.isArray(shot.origin) ? shot.origin[2] : tp?.z ?? 0) };
+      gameEvents.emit('damage', ev);
+      if (killed) gameEvents.emit('kill', { team: shot.team, targetTeam: target.team, targetType: target.type, player: !!shot.player, x: ev.x, y: ev.y, z: ev.z });
+    }
+    if (killed) {
       target.health = 0;
       target.alive = false;
       target.playDeathAnimation = true;
@@ -158,6 +179,7 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
   combat.stats.shots++; battle.shots[shooter.team]++; if (player) combat.stats.playerShots++;
   if (combat.muzzleEffects.length < 128) combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
   combat.stats.muzzleFlashes++;
+  if (gameEvents.has('shot')) gameEvents.emit('shot', { team: shooter.team, kind: shooter.type ?? 'soldier', player: !!player, x: shot.origin[0], y: shot.origin[1], z: shot.origin[2] });
   combat.lastShot = { origin: [...shot.origin], direction: [...shot.direction], aimPoint: aimPoint.toArray(), team: shot.team, shooterId: shot.shooterId, weaponId: shooter.weaponId ?? null };
   // A long barrel must not poke through cover and spawn its bullet on the far side.
   pathDirection.subVectors(origin, clearanceOrigin);

@@ -1,3 +1,4 @@
+import { gameEvents } from '@/game/gameEvents';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -70,6 +71,7 @@ export function BattlefieldExplosions() {
       glow.current.position.set(x, y + 1.5, z); pool.glowAge = 0;
       explosionVisuals.bursts++;
       EventBus.emit('battlefield-explosion', { position: [x, y, z] });
+      gameEvents.emit('explosion', { x, y, z, size: 1, kind: 'ambient' });
   };
   useFrame((_, delta) => {
     if (gameState.paused) return;

@@ -1,3 +1,4 @@
+import { gameEvents } from '@/game/gameEvents';
 import { useRef, useReducer, useCallback, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -128,6 +129,7 @@ function ArtilleryEntity({ id, zone, onDespawn }) {
             battle.shots.friendly++;
             cooldown.current = entry.profile.cooldown;
             recoil.current = 1;
+            gameEvents.emit('artillery-fire', { player: manual, x: _muzzle.x, y: _muzzle.y, z: _muzzle.z });
             if (combat.muzzleEffects.length < 128) combat.muzzleEffects.push({
               position: _muzzle.toArray(), direction: [Math.sin(yaw) * Math.cos(el), Math.sin(el), Math.cos(yaw) * Math.cos(el)],
             });
@@ -205,6 +207,7 @@ export function ArtilleryShells() {
         artilleryState.impacts++;
         applySplash(s.shooter, s.to.x, s.to.z, ARTILLERY.splashRadius, s.shooter.profile.damage, s.player);
         explosionRequests.push([s.to.x, s.to.z, 1.6]);
+        gameEvents.emit('explosion', { x: s.to.x, y: s.to.y ?? 0, z: s.to.z, size: 1.6, kind: 'shell', player: !!s.player });
         continue;
       }
       _obj.position.lerpVectors(s.from, s.to, s.t);
