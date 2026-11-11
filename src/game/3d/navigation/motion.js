@@ -1,6 +1,7 @@
 import { combat } from '@/game/3d/combat';
 import { BALANCE } from '@/game/config';
 import { visitNearby } from '@/game/3d/spatial';
+import { battle } from '@/game/3d/battleMetrics';
 import { steerAroundOutposts } from '@/game/3d/dressing/outpostLayout';
 
 // Player input and NPC steering use exactly the same normalized ground speed.
@@ -45,8 +46,10 @@ export function moveToward(entry,target,delta,{flying=false,separate=true,avoidO
     const d=Math.sqrt(d2),weight=(1.6-d)*0.8;
     dx+=(p.x-q.x)/d*weight;dz+=(p.z-q.z)/d*weight;
   });
+  // Frost towers apply a timed slow (slowUntil/slowFactor on the unit).
+  const slow = entry.slowUntil > battle.elapsed ? (entry.slowFactor ?? 1) : 1;
   applyMovement(body, dx, dz, flying ? (entry.hoverHeight-p.y)*5 : v.y,
-    distance / Math.max(delta, 0.001), entry.moveSpeed ?? BALANCE.moveSpeed);
+    distance / Math.max(delta, 0.001), (entry.moveSpeed ?? BALANCE.moveSpeed) * slow);
   entry.heading=Math.atan2(dx,dz);
   return false;
 }

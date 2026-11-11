@@ -98,21 +98,29 @@ export function applyImpact(hit, shot) {
   if (gameEvents.has('impact')) gameEvents.emit('impact', { team: shot.team, player: !!shot.player, cover: !target, x: hit.point.x, y: hit.point.y, z: hit.point.z });
   if (target && target.alive && target.team !== shot.team) damageUnit(target, shot.damage, shot);
   else if (!target) combat.stats.coverHits++;
+  // Cannon rounds burst on impact (units or cover): falloff splash around the hit point.
+  // Pooled projectiles only copy core fields, so splash is read from the shooter (cannon towers).
+  const splash = shot.splashRadius ?? shot.shooter?.splashRadius;
+  if (splash && shot.shooter) {
+    applySplash(shot.shooter, hit.point.x, hit.point.z, splash, shot.splashDamage ?? shot.shooter.splashDamage ?? shot.damage * 0.5, !!shot.player, target);
+    if (gameEvents.has('explosion')) gameEvents.emit('explosion', { x: hit.point.x, y: hit.point.y, z: hit.point.z, size: splash / 3, kind: 'tower-splash', player: !!shot.player });
+  }
   combat.lastImpact = { team: shot.team, shooterId: shot.shooterId, targetId: target?.id ?? null, targetTeam: target?.team ?? null, cover: !target, point: { x: hit.point.x, y: hit.point.y, z: hit.point.z } };
 }
 
 // Area damage with distance falloff (artillery shells). Friendly fire is off.
-export function applySplash(shooter, x, z, radius, damage, player = false) {
+export function applySplash(shooter, x, z, radius, damage, player = false, exclude = null) {
   const shot = { team: shooter.team, shooterId: shooter.id, shooter, player, damage };
   let hits = 0;
   visitNearby(x, z, radius, (u, _p, d2) => {
-    if (u.team === shooter.team || !u.alive || u.seated) return;
+    if (u === exclude || u.team === shooter.team || !u.alive || u.seated) return;
     damageUnit(u, damage * (1 - 0.6 * Math.sqrt(d2) / radius), shot);
     hits++;
   });
   return hits;
 }
 
+const tp0 = u => u.bodyRef?.current?.translation?.() ?? { x: 0, z: 0 };
 function damageUnit(target, amount, shot) {
   {
     let damage = Math.min(target.health, amount);
@@ -126,7 +134,11 @@ function damageUnit(target, amount, shot) {
       if (hasCover) damage *= TANK.coverDamageReduction;
     }
     target.health -= damage;
+    target.lastHitAt = battle.elapsed;
     const killed = target.health <= 0;
+    // Towers keep a service record for the selection panel.
+    const tower = shot.shooter?.tower;
+    if (tower) { tower.damageDealt = (tower.damageDealt ?? 0) + damage; if (killed) tower.kills = (tower.kills ?? 0) + 1; }
     if (gameEvents.has('damage') || (killed && gameEvents.has('kill'))) {
       const tp = target.bodyRef?.current?.translation();
       const sp = shot.shooter?.bodyRef?.current?.translation?.();
@@ -144,8 +156,9 @@ function damageUnit(target, amount, shot) {
       if (shot.player) battle.playerKills++;
       // Tower defense: award scrap when an enemy is killed
       if (target.team === 'enemy') {
-        const reward = TOWER_DEFENSE.scrapRewards[target.type] ?? 10;
-        towerDefenseState.addScrap(reward);
+        const base = target.scrapReward ?? TOWER_DEFENSE.scrapRewards[target.type] ?? 10;
+        towerDefenseState.addScrap(Math.max(1, Math.round(base * (towerDefenseState.difficulty?.scrap ?? 1))));
+        if (target.boss) gameEvents.emit('boss-defeated', { name: target.bossName, player: !!shot.player, x: tp0(target).x, z: tp0(target).z });
       }
     }
     combat.stats.hits++; combat.stats.damage += damage;

@@ -5,11 +5,11 @@ import { useUnitVisuals } from '@/game/3d/objects/useUnitVisuals';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
-import { ENEMY_TYPES, BALANCE, FRONT } from '@/game/config';
+import { ENEMY_TYPES, BALANCE, FRONT, BASE, WAVES } from '@/game/config';
 import { updateEnemy, releaseCrossing } from '@/game/3d/navigation/enemyTraversal';
 import { combat, findNearestEnemy } from '@/game/3d/combat';
 import { fireShot, canSeeTarget } from '@/game/3d/ballistics';
-import { useWavePool } from '@/game/3d/waves';
+import { useWavePool, waveState } from '@/game/3d/waves';
 import { battle, recordRemoval } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { selection, issueAttack } from '@/game/3d/commands';
@@ -47,9 +47,14 @@ class NpcErrorBoundary extends Component {
 }
 
 // --- Single NPC: GLB model + lane movement + independent animation ----------
-const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, spawnOffset, slot, onDespawn }) {
+const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, spawnOffset, slot, onDespawn,
+  elite = null, speedScale = 1, healthScale = 1, damageScale = 1 }) {
   const config = ENEMY_TYPES[type];
-  const profile = BALANCE.units[type];
+  const baseProfile = BALANCE.units[type];
+  const bossScale = elite?.scale ?? 1;
+  // Difficulty and elite status scale damage per unit; range/cadence stay authored.
+  const profile = useMemo(() => ({ ...baseProfile,
+    damage: baseProfile.damage * damageScale * (elite ? WAVES.boss.damage : 1) }), [baseProfile, damageScale, elite]);
   const bodyRef = useRef();
   const groupRef = useRef();
   const currentAnim = useRef(null);
@@ -99,11 +104,17 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
     attackTimer.current = 0;
     resetDeathPose(groupRef.current, actions, config.animIdle, currentAnim);
     if (!active) return;
+    const maxHealth = elite ? elite.health : Math.round(profile.health * healthScale);
+    const moveSpeed = (config.moveSpeed ?? BALANCE.moveSpeed) * speedScale * (elite ? WAVES.boss.speed : 1);
     const entry = { id, team: 'enemy', type, sectorIndex, squadId, profile,
-      bodyRef, aimHeight: config.colliderY, footOffset: config.colliderY-config.colliderHalfHeight-config.colliderRadius,
-      hoverHeight:config.hoverHeight, moveSpeed:config.moveSpeed, heading:0, nav:null, health: profile.health, maxHealth: profile.health,
-      alive: true, bornAt: battle.elapsed, targetScan: 0, shotsFired: 0 };
+      bodyRef, aimHeight: config.colliderY * bossScale, footOffset: (config.colliderY-config.colliderHalfHeight-config.colliderRadius) * bossScale,
+      hoverHeight:config.hoverHeight, moveSpeed, heading:0, nav:null, health: maxHealth, maxHealth,
+      alive: true, bornAt: battle.elapsed, targetScan: 0, shotsFired: 0, visualScale: bossScale,
+      elite: !!elite, boss: !!elite?.boss, bossName: elite?.name ?? null,
+      breachDamage: elite ? BASE.bossBreachDamage : BASE.breachByType[type] ?? BASE.breachDamage,
+      scrapReward: elite ? WAVES.boss.reward : null };
     combat.units.push(entry); combat.byBody.set(body.handle, entry); combatEntryRef.current = entry;
+    if (elite?.boss && waveState.boss && waveState.boss.wave === elite.wave && !waveState.boss.entry) waveState.boss.entry = entry;
     return () => {
       entry.alive = false;
       releaseCrossing(entry);
@@ -112,7 +123,7 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
       if (index >= 0) combat.units.splice(index, 1);
       combatEntryRef.current = null;
     };
-  }, [id, active, type, sectorIndex, squadId, spawnOffset, slot, isFlying, config, profile, actions]);
+  }, [id, active, type, sectorIndex, squadId, spawnOffset, slot, isFlying, config, profile, actions, elite, bossScale, speedScale, healthScale]);
 
   useFrame((_state, delta) => {
     if (!active || gameState.paused) return;
@@ -188,14 +199,14 @@ const NpcBody = memo(function NpcBody({ id, sectorIndex, type, active, squadId, 
     >
       <CapsuleCollider
         friction={0}
-        args={[config.colliderHalfHeight, config.colliderRadius]}
-        position={[0, config.hitboxY ?? config.colliderY, config.hitboxZ ?? 0]}
+        args={[config.colliderHalfHeight * bossScale, config.colliderRadius * bossScale]}
+        position={[0, (config.hitboxY ?? config.colliderY) * bossScale, config.hitboxZ ?? 0]}
         rotation={config.tailGun ? [Math.PI / 2, 0, 0] : undefined}
       />
       <group ref={groupRef} visible={active} onClick={e => {
         if (selection.units.length && issueAttack(combatEntryRef.current)) e.stopPropagation();
       }}>
-        <primitive object={clonedScene} scale={config.scale} />
+        <primitive object={clonedScene} scale={config.scale * bossScale} />
       </group>
     </RigidBody>
   );
