@@ -26,6 +26,7 @@ import { NightIlluminationFlares } from '@/game/3d/objects/NightIlluminationFlar
 import { WinterSnow } from '@/game/3d/objects/WinterSnow';
 import { CinematicEffects } from '@/game/3d/CinematicEffects';
 import { VfxSystem } from '@/game/3d/vfx/VfxSystem';
+import { AudioListenerBridge } from '@/game/audio/AudioListenerBridge';
 
 export function GameScene() {
   const scene = useThree((state) => state.scene);
@@ -51,6 +52,7 @@ export function GameScene() {
       <VfxSystem />
 
       <CameraRig />
+      <AudioListenerBridge />
 
       <Suspense fallback={null}>
         <Physics gravity={[0, -FRONT.gravity, 0]} paused={paused}>
