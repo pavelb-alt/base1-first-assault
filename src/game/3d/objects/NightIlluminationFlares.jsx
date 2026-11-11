@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { MAP, NIGHT_FLARES } from '@/game/config';
+import { flareTrail } from '@/game/3d/vfx/effects';
 
 const flareGeometry = new THREE.SphereGeometry(0.32, 10, 8);
 const haloGeometry = new THREE.SphereGeometry(0.75, 10, 8);
@@ -23,7 +24,7 @@ function nextDelay() {
 export function NightIlluminationFlares() {
   const group = useRef();
   const light = useRef();
-  const state = useRef({ level: gameState.currentLevel, active: false, age: 0, wait: 2, x: 0, z: 0 });
+  const state = useRef({ level: gameState.currentLevel, active: false, age: 0, wait: 2, x: 0, z: 0, trail: 0 });
 
   useEffect(() => {
     const onLevel = level => {
@@ -64,7 +65,16 @@ export function NightIlluminationFlares() {
     const descent = burnT * NIGHT_FLARES.descent;
     group.current.position.set(s.x + Math.sin(s.age * 0.8) * 1.2, height - descent, s.z);
     const fade = launchT * Math.max(0, 1 - Math.pow(burnT, 3));
-    light.current.intensity = NIGHT_FLARES.intensity * fade;
+    // Burning magnesium sputters: layered fast flicker on the parachute flare.
+    const flicker = 0.86 + 0.09 * Math.sin(s.age * 37) * Math.sin(s.age * 23.7) + 0.05 * Math.sin(s.age * 71);
+    light.current.intensity = NIGHT_FLARES.intensity * fade * flicker;
+    // Rising: hot exhaust trail; burning: drifting smoke and falling sparks.
+    s.trail -= delta;
+    if (s.trail <= 0 && fade > 0.05) {
+      s.trail = burnT > 0 ? 0.12 : 0.04;
+      const p = group.current.position;
+      flareTrail(p.x, p.y, p.z, burnT > 0);
+    }
     group.current.scale.setScalar(0.85 + Math.sin(s.age * 22) * 0.12);
 
     if (s.age >= NIGHT_FLARES.riseDuration + NIGHT_FLARES.burnDuration) {

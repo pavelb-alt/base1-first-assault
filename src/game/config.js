@@ -6,6 +6,9 @@ export const ART_STYLE = 'stylized low-poly sci-fi battlefield, muted earth and 
 export const GAME_PERSPECTIVE = 'top-down';
 
 // Rendering only: simulation, spawn budgets and weapon timing are unchanged.
+// NOTE: the quality controller (src/game/3d/vfx/quality.js) overwrites the
+// preset-driven fields below at runtime from QUALITY_PRESETS[settings.quality];
+// these literals are the 'high' defaults used before the controller mounts.
 export const PERFORMANCE = {
   minDpr: 1, maxDpr: 1.25, // stable pixel density avoids repeated HDR buffer reallocations
   shadows: true,
@@ -17,18 +20,26 @@ export const PERFORMANCE = {
   unitShadowDistance: 180,
   minimapHz: 10,
   ambientParticleScale: 0.3,
+  vfxParticleScale: 1,    // multiplier on every pooled VFX spawn count
+  dynamicLights: 4,       // pooled explosion / muzzle point lights (fixed count per preset)
+  governorInterval: 1.5,  // seconds per adaptive-resolution sample window
+  governorHeadroom: 16,   // fps above target required before resolution climbs back
 };
 
 // Visual-only cinematic settings; never used by combat or navigation.
 export const LIGHTING = {
   exposure: 1.1,
   shadowMapSize: 2048, shadowRadius: 3,
-  bloomIntensity: 1, bloomThreshold: 1.25, bloomSmoothing: 0.2,
+  bloomIntensity: 0.85, bloomThreshold: 1.3, bloomSmoothing: 0.25,
   depthOfFieldStrength: 0.5, strategicFocusRange: 85,
   thirdPersonFocus: 10, thirdPersonFocusRange: 35,
   vignetteOffset: 0.3, vignetteDarkness: 0.5,
   muzzleRadiance: 5, tracerRadiance: 3, fireRadiance: 3.2,
   hazeOpacity: 0.085, shaftOpacity: 0.16,
+  sanitizeMaxRadiance: 40, // HDR clamp before bloom: tames sun/flash fireflies
+  // N8AO tuned for ~0.7m soldiers: contact shadows under feet, trench lips, crates.
+  aoRadius: 1.6, aoDistanceFalloff: 0.6, aoIntensity: 2.4,
+  grainIntensity: 0.035, chromaticOffset: 0.0016, // CA is radial: zero at center, ~3px at corners
 };
 
 // --- Map dimensions ---------------------------------------------------------
@@ -259,6 +270,15 @@ export const EXPLOSIONS = {
   flashColor: '#ffdd88', smokeColor: '#5c564c', debrisColor: '#3f3a33', dirtColor: '#7a6a4f',
   flashLife: 0.18, smokeLife: 1.6, debrisLife: 0.9,
   flashCapacity: 8, smokeCapacity: 24, debrisCapacity: 64,
+  // GPU particle pools (src/game/3d/vfx): fixed capacities, ring-buffer reuse.
+  emissiveCapacity: 4096, volumeCapacity: 1536, groundCapacity: 160,
+  scorchCapacity: 48, scorchLife: 28, burnerCapacity: 6,
+  fireColor: '#ffb35c', coreColor: '#fff3d6', emberColor: '#ff6a1f',
+  sparkColor: '#ffc46b', dustColor: '#a99474', scorchColor: '#1b1714',
+  lightColor: '#ffab4c', lightIntensity: 60, lightRange: 16,
+  // Alien energy-dissipation palettes (enemy accents), by enemy type.
+  alienEnergy: { quadshell: '#ff5a4a', spider403: '#ff8a3c', eyedrone: '#c47bff', trilobite: '#ff3d7f' },
+  friendlyImpact: '#ffb04a', enemyImpact: '#ff5c7a',
 };
 
 // --- Cargo ship delivery (friendly reinforcements) ---------------------------
@@ -613,8 +633,7 @@ export function getEnemyRules(level) {
 
 // --- Opening flow (opening cinematic, main menu, mission intro, handoff) -----
 export const OPENING = {
-  menuBackgroundUrl: 'https://media.base44.com/images/public/6aad7caf1cfd574f0bf92f13/14796c05d_9cb31aef-c38b-4790-88ff-e3ff9066e111.png',
-  preMenuVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/88cc475e8_VID-08.mp4',
+  menuBackgroundUrl: 'https://media.base44.com/images/public/6aad7caf1cfd574f0bf92f13/14796c05d_9cb31aef-c38b-4790-88ff-e3ff9066e111.png',  preMenuVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/88cc475e8_VID-08.mp4',
   introVideoUrl: 'https://media.base44.com/videos/public/6aad7caf1cfd574f0bf92f13/2319d7841_VID-07.mp4',
   handoffTimeout: 60000,
   fadeDuration: 800,
@@ -647,4 +666,70 @@ export const CAMERA = {
     fov: 50,             // slightly wider to avoid clipping the model out
     sensitivityMult: 0.5, // reduced mouse sensitivity while aiming
   },
+};
+
+// ============================================================================
+// RENDER QUALITY PRESETS (visual only) — selected by settings.quality.
+// Applied live by src/game/3d/vfx/quality.js; never touches simulation.
+// dpr: [floor, ceiling] device-pixel-ratio range; the adaptive governor moves
+// between them (and, on high/ultra, suspends AO/DoF before dropping further).
+// ============================================================================
+export const QUALITY_PRESETS = {
+  low: {
+    dpr: [0.7, 1], targetFps: 30, shadowMapSize: 1024, shadowType: 'pcf', shadowRadius: 1.5,
+    unitShadowDistance: 45, ambientParticleScale: 0.2, vfxParticleScale: 0.45, dynamicLights: 1,
+    bloom: true, bloomResolution: 0.5, dof: false, ao: false, smaa: false, grain: false, chromatic: false,
+    clouds: false, snowScale: 0.35, foliageWind: false, groundDetail: 0, farAnimationHz: 6,
+  },
+  medium: {
+    dpr: [0.85, 1], targetFps: 40, shadowMapSize: 2048, shadowType: 'pcf', shadowRadius: 2.5,
+    unitShadowDistance: 100, ambientParticleScale: 0.3, vfxParticleScale: 0.7, dynamicLights: 2,
+    bloom: true, bloomResolution: 0.75, dof: false, ao: false, smaa: true, grain: true, chromatic: false,
+    clouds: true, snowScale: 0.65, foliageWind: true, groundDetail: 0.6, farAnimationHz: 8,
+  },
+  high: {
+    dpr: [0.9, 1.25], targetFps: 45, shadowMapSize: 2048, shadowType: 'soft', shadowRadius: 3,
+    unitShadowDistance: 180, ambientParticleScale: 0.4, vfxParticleScale: 1, dynamicLights: 3,
+    bloom: true, bloomResolution: 1, dof: true, ao: true, aoQuality: 'performance', aoHalfRes: true,
+    smaa: true, grain: true, chromatic: true,
+    clouds: true, snowScale: 1, foliageWind: true, groundDetail: 1, farAnimationHz: 8,
+  },
+  ultra: {
+    dpr: [1, 1.5], targetFps: 50, shadowMapSize: 4096, shadowType: 'soft', shadowRadius: 3,
+    unitShadowDistance: 260, ambientParticleScale: 0.55, vfxParticleScale: 1.35, dynamicLights: 4,
+    bloom: true, bloomResolution: 1, dof: true, ao: true, aoQuality: 'medium', aoHalfRes: false,
+    smaa: true, grain: true, chromatic: true,
+    clouds: true, snowScale: 1, foliageWind: true, groundDetail: 1, farAnimationHz: 12,
+  },
+};
+
+// Per-level LUT-free color grade, applied after ACES in display (gamma) space.
+// lift/gamma/gain are per-channel; split toning adds zero-luminance hue offsets
+// to shadows/highlights. Keyed by level id (1 day … 5 city).
+export const GRADING = {
+  1: { lift: [0.012, 0.006, -0.004], gamma: [1, 1, 1.02], gain: [1.04, 1.0, 0.93], saturation: 1.08, contrast: 1.06,
+    shadowTint: '#2a5266', shadowStrength: 0.10, highlightTint: '#ffbe7a', highlightStrength: 0.12, balance: 0.5, ao: 1 },
+  2: { lift: [-0.004, 0.004, 0.016], gamma: [1.02, 1, 0.97], gain: [0.9, 1.0, 1.1], saturation: 0.86, contrast: 1.1,
+    shadowTint: '#0f3f66', shadowStrength: 0.2, highlightTint: '#a9d4ff', highlightStrength: 0.08, balance: 0.42, ao: 0.6 },
+  3: { lift: [-0.004, 0.01, -0.006], gamma: [1, 0.98, 1.02], gain: [0.97, 1.04, 0.92], saturation: 1.05, contrast: 1.07,
+    shadowTint: '#1e4a33', shadowStrength: 0.14, highlightTint: '#e8f0a8', highlightStrength: 0.08, balance: 0.5, ao: 1.1 },
+  4: { lift: [0, 0.006, 0.016], gamma: [1, 1, 0.98], gain: [0.95, 1.0, 1.06], saturation: 0.82, contrast: 1.04,
+    shadowTint: '#2f5a85', shadowStrength: 0.15, highlightTint: '#e2f6ff', highlightStrength: 0.1, balance: 0.55, ao: 0.8 },
+  5: { lift: [0.002, 0.004, 0.01], gamma: [1, 1, 1], gain: [0.98, 1.0, 1.02], saturation: 0.92, contrast: 1.08,
+    shadowTint: '#2e3e4c', shadowStrength: 0.09, highlightTint: '#f2ece0', highlightStrength: 0.05, balance: 0.5, ao: 1.1 },
+};
+
+// Per-level sky dome look. The horizon color always comes from the level's
+// atmosphere so the sky meets the scene fog seamlessly.
+export const SKY = {
+  1: { zenith: '#5f8fb3', glow: '#ffb06a', sunDisc: 6, sunSize: 0.9994, mie: 0.55, clouds: 0.45, cloudColor: '#fff1dc', cloudShade: '#a88f84',
+    cloudSpeed: 0.006, ridge: '#a89380', ridgeHeight: 0.05, ridgeHaze: 0.55, stars: 0, moon: 0, city: 0 },
+  2: { zenith: '#03060f', glow: '#3c5a8a', sunDisc: 0, sunSize: 0.9997, mie: 0.12, clouds: 0.35, cloudColor: '#243450', cloudShade: '#080c16',
+    cloudSpeed: 0.004, ridge: '#0b0f18', ridgeHeight: 0.045, ridgeHaze: 0.25, stars: 1, moon: 1, city: 0 },
+  3: { zenith: '#5d7f7a', glow: '#e6f2b8', sunDisc: 3, sunSize: 0.9993, mie: 0.45, clouds: 0.55, cloudColor: '#e3ead2', cloudShade: '#6c7a64',
+    cloudSpeed: 0.005, ridge: '#2f4430', ridgeHeight: 0.075, ridgeHaze: 0.45, stars: 0, moon: 0, city: 0 },
+  4: { zenith: '#6f93ad', glow: '#f0fbff', sunDisc: 3.5, sunSize: 0.9995, mie: 0.4, clouds: 0.65, cloudColor: '#f4f9fc', cloudShade: '#9aacba',
+    cloudSpeed: 0.008, ridge: '#a7bccb', ridgeHeight: 0.085, ridgeHaze: 0.5, stars: 0, moon: 0, city: 0 },
+  5: { zenith: '#6c8596', glow: '#ffe3b8', sunDisc: 4, sunSize: 0.9994, mie: 0.4, clouds: 0.5, cloudColor: '#eeeae2', cloudShade: '#8e918f',
+    cloudSpeed: 0.006, ridge: '#7d8486', ridgeHeight: 0.04, ridgeHaze: 0.5, stars: 0, moon: 0, city: 1 },
 };

@@ -1,62 +1,53 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Stars } from '@react-three/drei';
-import { getAtmosphere, MAP, PERFORMANCE, LIGHTING } from '@/game/config';
+import { getAtmosphere, MAP, PERFORMANCE, SKY } from '@/game/config';
 import { AtmosphericHaze } from '@/game/3d/objects/AtmosphericHaze';
 import { gameState } from '@/game/3d/world';
-import { EventBus } from '@/game/EventBus';
+import { createSkyMaterial } from '@/game/3d/vfx/skyMaterial';
+import { useRenderQuality } from '@/game/3d/vfx/quality';
+import { useLevel } from '@/game/3d/vfx/useLevel';
+
+const skyGeometry = new THREE.SphereGeometry(1, 48, 24);
+const noRaycast = () => null;
 
 export function GoldenHourAtmosphere() {
-  const [level, setLevel] = useState(gameState.currentLevel);
-  useEffect(() => {
-    const onLevelChanged = () => setLevel(gameState.currentLevel);
-    EventBus.on('level-changed', onLevelChanged);
-    return () => EventBus.off('level-changed', onLevelChanged);
-  }, []);
-
+  const level = useLevel();
+  const { preset } = useRenderQuality();
   const C = getAtmosphere(level);
+  const look = SKY[level] ?? SKY[1];
   const isNight = level === 2;
+  const sun = useRef(null);
 
+  const sky = useMemo(() => createSkyMaterial(C, look), [C, look]);
+  useEffect(() => () => sky.dispose(), [sky]);
+  useEffect(() => { sky.uniforms.clouds.value = preset.clouds ? look.clouds : 0; }, [sky, look, preset]);
+  useFrame((_, delta) => { if (!gameState.paused) sky.uniforms.time.value += delta; });
 
-  const uniforms = useMemo(() => ({
-    sky: { value: new THREE.Color(C.sky) },
-    horizon: { value: new THREE.Color(C.horizon) },
-    sunDirection: { value: new THREE.Vector3(...C.sunPosition).normalize() },
-  }), [level]);
+  // Live shadow quality: resizing requires dropping the old depth target; the
+  // renderer reallocates it on the next shadow pass. Type stays PCF (no recompiles).
+  // mapSize/radius are deliberately not JSX props so only this effect owns them.
+  useLayoutEffect(() => {
+    const light = sun.current;
+    if (!light) return;
+    const size = preset.shadowMapSize;
+    light.shadow.radius = preset.shadowRadius;
+    if (light.shadow.mapSize.x !== size) {
+      light.shadow.mapSize.set(size, size);
+      if (light.shadow.map) { light.shadow.map.dispose(); light.shadow.map = null; }
+    }
+    light.shadow.needsUpdate = true;
+  }, [preset]);
 
   return <>
     <color attach="background" args={[C.horizon]} />
     <fog attach="fog" args={[C.horizon, C.fogNear, C.fogFar]} />
-    <mesh name="Sky dome" raycast={() => null} renderOrder={-100}>
-      <sphereGeometry args={[900, 32, 16]} />
-      <shaderMaterial side={THREE.BackSide} depthWrite={false} uniforms={uniforms}
-        vertexShader={`varying vec3 vDirection; void main(){vDirection=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`}
-        fragmentShader={`uniform vec3 sky;uniform vec3 horizon;uniform vec3 sunDirection;varying vec3 vDirection;
-          void main(){vec3 d=normalize(vDirection);float sun=max(dot(d,sunDirection),0.);
-          vec3 color=mix(horizon,sky,smoothstep(-.03,.65,d.y));
-          ${isNight ? `
-          float stars=pow(max(0.0,1.0-abs(d.x)*8.0),8.0)*pow(fract(sin(dot(floor(d.xy*200.0),vec2(12.9898,78.233)))*43758.5453),0.98);
-          color+=vec3(stars)*vec3(0.8,0.85,1.0)*0.5;
-          color+=vec3(0.6,0.7,0.9)*pow(sun,8.)*0.08;
-          ` : level === 4 ? `
-          color+=vec3(.7,.85,1.)*pow(sun,16.)*.12;
-          color+=vec3(.85,.94,1.)*smoothstep(.9995,.99985,sun)*.7;
-          ` : `
-          color+=vec3(1.,.52,.16)*pow(sun,24.)*.24;
-          color+=vec3(1.,.8,.48)*smoothstep(.99965,.99985,sun)*2.;
-          `}
-          gl_FragColor=vec4(color,1.);
-          #include <tonemapping_fragment>
-          #include <colorspace_fragment>
-        }`} />
-    </mesh>
-    {isNight && <Stars radius={400} depth={50} count={3000} factor={4} saturation={0} fade speed={0.5} />}
+    <mesh name="Procedural sky dome" geometry={skyGeometry} material={sky} raycast={noRaycast} renderOrder={-100} frustumCulled={false} />
     <AtmosphericHaze atmosphere={C} night={isNight} />
     <ambientLight intensity={C.ambient} />
     <hemisphereLight intensity={C.hemisphere} color={C.skyColor} groundColor={C.groundColor} />
-    <directionalLight name={isNight ? "Moonlight" : "Golden-hour sun"} castShadow={PERFORMANCE.shadows} position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
-      shadow-radius={LIGHTING.shadowRadius}
-      shadow-mapSize={[LIGHTING.shadowMapSize, LIGHTING.shadowMapSize]} shadow-camera-left={-MAP.HALF-25} shadow-camera-right={MAP.HALF+25}
+    <directionalLight ref={sun} name={isNight ? "Moonlight" : "Golden-hour sun"} castShadow={PERFORMANCE.shadows} position={C.sunPosition} color={C.sun} intensity={C.sunIntensity}
+      shadow-camera-left={-MAP.HALF-25} shadow-camera-right={MAP.HALF+25}
       shadow-camera-top={MAP.HALF+25} shadow-camera-bottom={-MAP.HALF-25}
       shadow-camera-near={1} shadow-camera-far={450} shadow-bias={-0.0003} shadow-normalBias={0.035} />
   </>;

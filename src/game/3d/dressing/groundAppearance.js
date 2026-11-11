@@ -103,6 +103,9 @@ const cityTint={value:0};
 export function setGroundNightFactor(v){nightTint.value=v;}
 export function setGroundFrostFactor(v){frostTint.value=v;}
 export function setGroundCityFactor(v){cityTint.value=v;}
+// Procedural micro-relief (bump) + roughness breakup strength; 0 on the low preset.
+const groundDetail={value:1};
+export function setGroundDetail(v){groundDetail.value=v;}
 export function createGroundMaterial() {
   const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.96});
   material.onBeforeCompile=shader=>{
@@ -111,6 +114,7 @@ export function createGroundMaterial() {
     shader.uniforms.cityTint=cityTint;
     shader.uniforms.nightTint=nightTint;
     shader.uniforms.frostTint=frostTint;
+    shader.uniforms.groundDetail=groundDetail;
     shader.uniforms.snowColor={value:new THREE.Color(WINTER.snowColor)};
     shader.uniforms.iceColor={value:new THREE.Color(WINTER.iceColor)};
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
@@ -118,8 +122,10 @@ export function createGroundMaterial() {
       attribute float dressingRelief;
       varying vec2 vDressingUv;
       varying float vDressingFlat;
-      varying float vDressingRelief;`)
+      varying float vDressingRelief;
+      varying vec2 vDressingPos;`)
       .replace('#include <begin_vertex>',`#include <begin_vertex>
+      vDressingPos = position.xz;
       vDressingUv = vec2((position.x + ${MAP.HALF.toFixed(1)}) / ${MAP.SIZE.toFixed(1)}, 1.0 - (position.z + ${MAP.HALF.toFixed(1)}) / ${MAP.SIZE.toFixed(1)});
       vDressingFlat = dressingFlat;
       vDressingRelief = dressingRelief;`);
@@ -131,9 +137,14 @@ export function createGroundMaterial() {
       uniform float frostTint;
       uniform vec3 snowColor;
       uniform vec3 iceColor;
+      uniform float groundDetail;
       varying vec2 vDressingUv;
       varying float vDressingFlat;
-      varying float vDressingRelief;`)
+      varying float vDressingRelief;
+      varying vec2 vDressingPos;
+      float dressingHash(vec2 p){vec3 p3=fract(vec3(p.xyx)*.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+      float dressingNoise2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+        return mix(mix(dressingHash(i),dressingHash(i+vec2(1.,0.)),f.x),mix(dressingHash(i+vec2(0.,1.)),dressingHash(i+vec2(1.,1.)),f.x),f.y);}`)
       .replace('#include <color_fragment>',`#include <color_fragment>
       vec3 surface = texture2D(dressingMap,vDressingUv).rgb;
       // Elevation-weighted earth: darker depressions and sun-bleached crests.
@@ -144,8 +155,28 @@ export function createGroundMaterial() {
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.48, 0.65), nightTint);
       vec3 winterColor = mix(iceColor, snowColor, vDressingFlat);
       // Preserve subtle scars and trench contours beneath the snow albedo.
-      diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, winterColor * (0.9 + diffuseColor.r * 0.1), frostTint * mix(0.72, 0.97, vDressingFlat));
+      // Pebble/clod micro-relief: three octaves of value noise in world meters.
+      float dressingDetail = 0.5;
+      if (groundDetail > 0.0) {
+        dressingDetail = dressingNoise2(vDressingPos * 1.7) * 0.5 + dressingNoise2(vDressingPos * 5.3 + 7.1) * 0.32 + dressingNoise2(vDressingPos * 14.9 + 3.3) * 0.18;
+        diffuseColor.rgb *= 1.0 + (dressingDetail - 0.5) * 0.14 * groundDetail;
+      }`)
+      .replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+      // Packed snow and wet trench floors read glossier; dry crests stay matte.
+      roughnessFactor = clamp(roughnessFactor + (dressingDetail - 0.5) * 0.16 * groundDetail
+        - frostTint * vDressingFlat * 0.3 - (1.0 - vDressingFlat) * 0.06 - cityTint * 0.08, 0.35, 1.0);`)
+      .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+      if (groundDetail > 0.0) {
+        // Derivative bump mapping (Mikkelsen) from the procedural height.
+        vec3 dressingDpx = dFdx(-vViewPosition), dressingDpy = dFdy(-vViewPosition);
+        float dressingHx = dFdx(dressingDetail), dressingHy = dFdy(dressingDetail);
+        vec3 dressingR1 = cross(dressingDpy, normal), dressingR2 = cross(normal, dressingDpx);
+        float dressingDet = dot(dressingDpx, dressingR1);
+        vec3 dressingGrad = sign(dressingDet) * (dressingHx * dressingR1 + dressingHy * dressingR2);
+        normal = normalize(abs(dressingDet) * normal - dressingGrad * 0.05 * groundDetail);
+      }`);
   };
-  material.customProgramCacheKey=()=> 'battlefield-albedo-relief-v5';
+  material.customProgramCacheKey=()=> 'battlefield-albedo-relief-v6';
   return material;
 }

@@ -1,10 +1,13 @@
 import { useLayoutEffect, useEffect, useState, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MAP, DRESSING, WINTER, CITY } from '@/game/config';
 import { CityEnvironment } from '@/game/3d/objects/CityEnvironment';
 import { EventBus } from '@/game/EventBus';
 import { gameState } from '@/game/3d/world';
 import { SCENERY } from '@/game/3d/dressing/sceneryLayout';
+import { createWindMaterial, windUniforms } from '@/game/3d/dressing/foliageWind';
+import { useRenderQuality } from '@/game/3d/vfx/quality';
 
 const geometries={
   rock:new THREE.IcosahedronGeometry(.5,0),
@@ -21,6 +24,9 @@ const geometries={
   fern:new THREE.ConeGeometry(.5,1,5),
 };
 const material=new THREE.MeshStandardMaterial({roughness:.94,flatShading:true});
+// Same look plus a vertex-shader sway for crowns, bushes and ferns (no shadows cast).
+const foliageMaterial=createWindMaterial(material);
+const FOLIAGE=new Set(['treeFoliage','pineFoliage','bush','fern']);
 const apronMaterial=new THREE.MeshStandardMaterial({color:MAP.GROUND_COLOR,roughness:1});
 // A literal square ring: no hidden plane beneath any playable trench or ramp.
 const edge=DRESSING.perimeterSize/2, hole=MAP.HALF;
@@ -44,10 +50,13 @@ function SceneryBatch({kind,items,winter}) {
     ref.current.computeBoundingSphere();
   },[items,kind,winter]);
   const noShadow = kind === 'rock' || kind === 'treeFoliage' || kind === 'bush' || kind === 'fern' || kind === 'pineFoliage';
-  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],material,items.length]} raycast={noRaycast} castShadow={!noShadow} receiveShadow />;
+  return <instancedMesh name={`Perimeter ${kind}`} ref={ref} args={[geometries[kind],FOLIAGE.has(kind)?foliageMaterial:material,items.length]} raycast={noRaycast} castShadow={!noShadow} receiveShadow />;
 }
 export function BattlefieldDressing() {
   const [level,setLevel]=useState(gameState.currentLevel);
+  const {preset}=useRenderQuality();
+  useEffect(()=>{windUniforms.windStrength.value=preset.foliageWind?1:0;},[preset]);
+  useFrame((_,delta)=>{if(!gameState.paused)windUniforms.windTime.value+=delta;});
   const winter=level===4, city=level===5;
   useEffect(()=>{
     const update=level=>setLevel(level);
