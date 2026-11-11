@@ -261,10 +261,22 @@ export function onBaseDamage(e) {
     playBuffer(getSound('objective'), bus.gameMix, 0.26, 0, 1, 20000, 0.3, 70, 'ui');
   }
 }
-export function onWaveStart() {
+export function onWaveStart(e) {
   if (!engine.ready || !allow(limHorn, engine.ctx.currentTime)) return;
+  if (e?.boss || e?.final) {
+    // Boss / final wave: a deeper, longer horn with an alarm underneath.
+    playBuffer(getSound('horn'), bus.gameMix, 0.62, 0, 0.72, 20000, 0.55, 97, 'ui');
+    playBuffer(getSound('klaxon'), bus.gameMix, 0.18, 0, 0.85, 20000, 0.4, 96, 'ui', 0.45);
+    duckMusic(0.75, 0.15, 2.6, 2.6);
+    return;
+  }
   playBuffer(getSound('horn'), bus.gameMix, 0.5, 0, 1, 20000, 0.45, 97, 'ui');
   duckMusic(0.55, 0.15, 1.6, 2.0);
+}
+export function onBossDefeated() {
+  if (!engine.ready) return;
+  playBuffer(getSound('objective'), bus.gameMix, 0.4, 0, 0.9, 20000, 0.45, 99, 'ui');
+  duckMusic(0.5, 0.1, 1.5, 1.5);
 }
 export function playStinger(kind) {
   if (!engine.ready) return;

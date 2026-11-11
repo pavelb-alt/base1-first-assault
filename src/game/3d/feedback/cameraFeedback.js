@@ -167,7 +167,7 @@ function onShot(e) {
   if (!e.player) return;
   let key = e.kind;
   if (key === 'tower') key = `tower-${controlledTowerType() ?? 'mg'}`;
-  else if (key !== 'tank') key = 'soldier';
+  else if (!key?.startsWith('tower-') && key !== 'tank') key = 'soldier';
   applyShotFeel(key);
 }
 function onArtilleryFire(e) { if (e.player) applyShotFeel('artillery'); }

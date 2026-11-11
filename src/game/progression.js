@@ -60,12 +60,17 @@ const endPause = () => {
 EventBus.on('resume-game', endPause);
 EventBus.on('reset-game', endPause);
 export function missionAccuracy() {
-  return missionStats.playerShots ? missionStats.playerHits / missionStats.playerShots : 0;
+  return missionStats.playerShots ? Math.min(1, missionStats.playerHits / missionStats.playerShots) : 0;
 }
 
 gameEvents.on('shot', e => { if (e.player) missionStats.playerShots++; });
 gameEvents.on('damage', e => {
-  if (e.player) { missionStats.playerHits++; missionStats.playerDamageDealt += e.amount; }
+  if (e.player) {
+    // Splash (cannon bursts, shells, orbital strike) can hit many units per shot; it
+    // counts as damage dealt but not as extra "hits" for accuracy.
+    if (!e.splash) missionStats.playerHits++;
+    missionStats.playerDamageDealt += e.amount;
+  }
   if (e.playerTarget) {
     missionStats.playerDamageTaken += e.amount;
     if (e.killed) missionStats.killStreak = 0;

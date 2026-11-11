@@ -3,11 +3,12 @@
 // listeners must never mutate gameplay state. Synchronous, allocation-light.
 //
 // Event catalogue (payload fields):
-//  'shot'       { team, kind, player, x, y, z }           kind: soldier|quadshell|spider403|eyedrone|trilobite|tank|tower-mg|tower-cannon|tower-frost
+//  'shot'       { team, kind, player, x, y, z }           kind: soldier|quadshell|spider403|eyedrone|trilobite|tank|tower-mg|tower-cannon|tower-frost (AI or player-manned)
 //  'impact'     { team, player, cover, x, y, z }           a projectile hit a unit or cover
-//  'damage'     { team, targetTeam, targetType, amount, player, playerTarget, killed, x, y, z, fromX, fromZ }
+//  'damage'     { team, targetTeam, targetType, amount, player, playerTarget, killed, splash, x, y, z, fromX, fromZ }
 //               player = shot fired by the player; playerTarget = the player's controlled unit got hit
-//  'kill'       { team, targetTeam, targetType, player, x, y, z } team = killer team
+//  'kill'       { team, targetTeam, targetType, player, weapon, scrap, x, y, z } team = killer team;
+//               weapon: soldier|tank|artillery|orbital|tower-mg|tower-cannon|tower-frost; scrap = reward granted
 //  'artillery-fire'   { player, x, y, z }
 //  'explosion'  { x, y, z, size, kind }                    kind: shell|ambient|vehicle|tower-splash
 //  'tower-built'      { type, x, z }

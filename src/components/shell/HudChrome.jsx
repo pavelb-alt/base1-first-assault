@@ -104,8 +104,9 @@ export function WaveBanner() {
   useEffect(() => {
     let timer;
     const off = gameEvents.on('wave-start', (e) => {
-      if (!e || e.wave >= e.maxWaves) return; // reaching maxWaves clears the level, so no banner
-      const final = e.wave === e.maxWaves - 1;
+      if (!e) return;
+      // The last wave (maxWaves) must be survived; gameplay flags it in the payload.
+      const final = e.final ?? e.wave >= e.maxWaves;
       setBanner({ wave: e.wave, maxWaves: e.maxWaves, final, id: `${e.level}-${e.wave}` });
       clearTimeout(timer);
       timer = setTimeout(() => setBanner(null), final ? 4200 : 2800);

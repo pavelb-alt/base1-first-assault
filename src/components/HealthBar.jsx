@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { EventBus } from '@/game/EventBus';
 import { COMBAT } from '@/game/config';
+import { gameState } from '@/game/3d/world';
+import { controlledEntry } from '@/game/3d/feedback/controlled';
+
+const liveUnit = { health: 0, maxHealth: 0, type: 'soldier' }; // reused every frame
 
 const TYPE_LABEL = {
   soldier: 'Rifleman', tank: 'Battle Tank', artillery: 'Artillery', tower: 'Gun Emplacement',
@@ -38,7 +42,15 @@ export function HealthBar() {
     let shownPresent = false;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const unit = window.game?.getControlledUnit?.();
+      // Cheap per-frame lookup; the full window.game snapshot is only a fallback for
+      // control targets whose registry entry carries no health (e.g. towers).
+      const entry = controlledEntry();
+      let unit;
+      if (entry && Number.isFinite(entry.health)) {
+        liveUnit.health = entry.health; liveUnit.maxHealth = entry.maxHealth;
+        liveUnit.type = gameState.controlledStation?.type ?? 'soldier';
+        unit = liveUnit;
+      } else unit = window.game?.getControlledUnit?.();
       const hp = unit?.health ?? null;
       const has = hp !== null;
       if (has !== shownPresent) { shownPresent = has; setPresent(has); }

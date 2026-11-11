@@ -110,7 +110,7 @@ export function applyImpact(hit, shot) {
 
 // Area damage with distance falloff (artillery shells). Friendly fire is off.
 export function applySplash(shooter, x, z, radius, damage, player = false, exclude = null) {
-  const shot = { team: shooter.team, shooterId: shooter.id, shooter, player, damage };
+  const shot = { team: shooter.team, shooterId: shooter.id, shooter, player, damage, splash: true };
   let hits = 0;
   visitNearby(x, z, radius, (u, _p, d2) => {
     if (u === exclude || u.team === shooter.team || !u.alive || u.seated) return;
@@ -121,6 +121,12 @@ export function applySplash(shooter, x, z, radius, damage, player = false, exclu
 }
 
 const tp0 = u => u.bodyRef?.current?.translation?.() ?? { x: 0, z: 0 };
+// Scrap awarded for an enemy kill (boss bounty or per-type reward, scaled by difficulty).
+function scrapRewardFor(target) {
+  const base = target.scrapReward ?? TOWER_DEFENSE.scrapRewards[target.type] ?? 10;
+  return Math.max(1, Math.round(base * (towerDefenseState.difficulty?.scrap ?? 1)));
+}
+
 function damageUnit(target, amount, shot) {
   {
     let damage = Math.min(target.health, amount);
@@ -142,11 +148,16 @@ function damageUnit(target, amount, shot) {
     if (gameEvents.has('damage') || (killed && gameEvents.has('kill'))) {
       const tp = target.bodyRef?.current?.translation();
       const sp = shot.shooter?.bodyRef?.current?.translation?.();
-      const ev = { team: shot.team, targetTeam: target.team, targetType: target.type, amount: damage, player: !!shot.player,
+      const ev = { team: shot.team, targetTeam: target.team, targetType: target.type, amount: damage, player: !!shot.player, splash: !!shot.splash,
         playerTarget: isPlayerUnit(target), killed, x: tp?.x ?? 0, y: (tp?.y ?? 0) + (target.aimHeight ?? 1), z: tp?.z ?? 0,
         fromX: sp?.x ?? (Array.isArray(shot.origin) ? shot.origin[0] : tp?.x ?? 0), fromZ: sp?.z ?? (Array.isArray(shot.origin) ? shot.origin[2] : tp?.z ?? 0) };
       gameEvents.emit('damage', ev);
-      if (killed) gameEvents.emit('kill', { team: shot.team, targetTeam: target.team, targetType: target.type, player: !!shot.player, x: ev.x, y: ev.y, z: ev.z });
+      if (killed) {
+        const sh = shot.shooter;
+        const weapon = sh?.tower ? `tower-${sh.tower.type}` : (sh?.type ?? 'soldier');
+        gameEvents.emit('kill', { team: shot.team, targetTeam: target.team, targetType: target.type, player: !!shot.player,
+          weapon, scrap: target.team === 'enemy' ? scrapRewardFor(target) : 0, x: ev.x, y: ev.y, z: ev.z });
+      }
     }
     if (killed) {
       target.health = 0;
@@ -156,8 +167,7 @@ function damageUnit(target, amount, shot) {
       if (shot.player) battle.playerKills++;
       // Tower defense: award scrap when an enemy is killed
       if (target.team === 'enemy') {
-        const base = target.scrapReward ?? TOWER_DEFENSE.scrapRewards[target.type] ?? 10;
-        towerDefenseState.addScrap(Math.max(1, Math.round(base * (towerDefenseState.difficulty?.scrap ?? 1))));
+        towerDefenseState.addScrap(scrapRewardFor(target));
         if (target.boss) gameEvents.emit('boss-defeated', { name: target.bossName, player: !!shot.player, x: tp0(target).x, z: tp0(target).z });
       }
     }
@@ -192,7 +202,7 @@ export function fireShot(shooter, origin, aimPoint, clearanceOrigin = origin, pl
   combat.stats.shots++; battle.shots[shooter.team]++; if (player) combat.stats.playerShots++;
   if (combat.muzzleEffects.length < 128) combat.muzzleEffects.push({ position: [...shot.origin], direction: [...shot.direction] });
   combat.stats.muzzleFlashes++;
-  if (gameEvents.has('shot')) gameEvents.emit('shot', { team: shooter.team, kind: shooter.type ?? 'soldier', player: !!player, x: shot.origin[0], y: shot.origin[1], z: shot.origin[2] });
+  if (gameEvents.has('shot')) gameEvents.emit('shot', { team: shooter.team, kind: shooter.tower ? `tower-${shooter.tower.type}` : (shooter.type ?? 'soldier'), player: !!player, x: shot.origin[0], y: shot.origin[1], z: shot.origin[2] });
   combat.lastShot = { origin: [...shot.origin], direction: [...shot.direction], aimPoint: aimPoint.toArray(), team: shot.team, shooterId: shot.shooterId, weaponId: shooter.weaponId ?? null };
   // A long barrel must not poke through cover and spawn its bullet on the far side.
   pathDirection.subVectors(origin, clearanceOrigin);

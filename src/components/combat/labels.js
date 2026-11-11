@@ -16,7 +16,8 @@ export const NOTABLE_ENEMIES = new Set(['trilobite']);
 // Friendly losses worth announcing.
 export const NOTABLE_FRIENDLY = new Set(['tank', 'artillery']);
 
-export const WEAPON_TAGS = { soldier: 'RIFLE', tank: 'TANK', artillery: 'ARTY', tower: 'TURRET' };
+export const WEAPON_TAGS = { soldier: 'RIFLE', tank: 'TANK', artillery: 'ARTY', tower: 'TURRET', orbital: 'ORBITAL',
+  'tower-mg': 'MG TURRET', 'tower-cannon': 'CANNON TURRET', 'tower-frost': 'FROST TURRET' };
 
 export const COLORS = {
   accent: '#f59e0b',

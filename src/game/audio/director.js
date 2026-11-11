@@ -10,7 +10,7 @@ import { cargoShipState } from '@/game/3d/objects/cargoShipState';
 import { engine, listener, updateGates } from '@/game/audio/engine';
 import {
   activity, onShot, onImpact, onDamage, onKill, onExplosion, onArtilleryFire, onScrap, onTowerBuilt,
-  onBaseDamage, onWaveStart, playStinger, playHeartbeat, updateShells, updateSky,
+  onBaseDamage, onWaveStart, onBossDefeated, playStinger, playHeartbeat, updateShells, updateSky,
 } from '@/game/audio/sfx';
 import { setMusicTheme, setMusicIntensity, setMusicAftermath } from '@/game/audio/music';
 import { setAmbience, setBattleDensity, setSkyEngine, setCargoDrone } from '@/game/audio/ambience';
@@ -35,7 +35,8 @@ const h = {
   scrap: (e) => { if (live()) onScrap(e); },
   tower: (e) => { if (live()) onTowerBuilt(e); },
   base: (e) => { if (live()) { onBaseDamage(e); if (e.team === 'friendly') dir.baseBoost = 0.35; } },
-  wave: () => { dir.waveBoost = 0.3; dir.aftermath = false; setMusicAftermath(false); if (live()) onWaveStart(); },
+  wave: (e) => { dir.waveBoost = e?.boss || e?.final ? 0.6 : 0.3; dir.aftermath = false; setMusicAftermath(false); if (live()) onWaveStart(e); },
+  boss: () => { if (live()) onBossDefeated(); },
 };
 
 function stinger(kind) {
@@ -170,6 +171,7 @@ export function initDirector() {
   gameEvents.on('tower-built', h.tower);
   gameEvents.on('base-damage', h.base);
   gameEvents.on('wave-start', h.wave);
+  gameEvents.on('boss-defeated', h.boss);
 
   EventBus.on('game-over', (result) => {
     dir.aftermath = true; setMusicAftermath(true);

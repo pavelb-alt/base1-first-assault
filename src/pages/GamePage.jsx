@@ -17,12 +17,13 @@ import { Minimap } from '@/components/Minimap';
 import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
 import { InControlTowerMenu } from '@/components/InControlTowerMenu';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { tacticalState } from '@/game/3d/abilities/tacticalState';
 import { UnitCommandPanel } from '@/components/UnitCommandPanel';
 import { StationControlHUD } from '@/components/StationControlHUD';
 import { PauseMenu } from '@/components/shell/PauseMenu';
 import { MissionDebrief } from '@/components/shell/MissionDebrief';
 import { LoadingOverlay } from '@/components/shell/LoadingOverlay';
-import { isEditableTarget } from '@/components/shell/keyLayers';
+import { isEditableTarget, consumedByLayer } from '@/components/shell/keyLayers';
 import { uiPrefs } from '@/components/shell/uiPrefs';
 import {
   ObjectiveTracker, WaveBanner, ModeIndicator, ControlsHint, PauseButton, ActionButton, ReinforcementToast, ErrorPanel,
@@ -66,6 +67,9 @@ export default function GamePage() {
   // Mission stats lifecycle: reset when a mission/level starts, record exactly once per outcome.
   const beginMissionStats = useCallback((level) => {
     resetMissionStats(level);
+    // Base damage carries over when the campaign advances in place.
+    const base = window.game?.getBattle?.().baseHealth?.friendly;
+    if (Number.isFinite(base)) missionStats.baseHealth = base;
     recordedRef.current = false;
   }, []);
 
@@ -310,20 +314,23 @@ export default function GamePage() {
   hotkeys.current = { canPause, pauseOpen, phase, openPause };
   useEffect(() => {
     const onKey = (e) => {
-      if (e.repeat || isEditableTarget(e)) return;
+      if (e.repeat || isEditableTarget(e) || consumedByLayer(e)) return;
       const s = hotkeys.current;
       if (s.phase !== 'playing') return;
       if (e.code === 'Slash') { uiPrefs.set({ hintsCollapsed: !uiPrefs.get().hintsCollapsed }); return; }
       if (!s.canPause || s.pauseOpen) return;
       if (e.code === 'KeyP') { e.preventDefault(); s.openPause(); return; }
       // Esc: third-person keeps its release behaviour; strategic pauses unless it is deselecting.
+      // Runs in the capture phase so it sees placement/targeting/pie/tower selection
+      // before the tactical HUD's own Esc handler cancels them.
       if (e.code === 'Escape' && gameState.mode === 'strategic') {
         const sel = window.game?.getSelection?.();
-        if (!sel || !sel.count) s.openPause();
+        const cancelling = !!(sel && sel.count) || !!tacticalState.mode || !!tacticalState.pieAnchor || towerDefenseState.selectedTowerId !== null;
+        if (!cancelling) s.openPause();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   const gameMounted = phase !== 'opening' && phase !== 'menu';

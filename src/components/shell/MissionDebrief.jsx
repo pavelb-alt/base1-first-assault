@@ -97,7 +97,7 @@ export function MissionDebrief({ result, onContinue, onRetry, onMenu, onNext }) 
     if (['ArrowLeft', 'ArrowUp', 'KeyA', 'KeyW'].includes(e.code)) { e.preventDefault(); setFocus(f => (f - 1 + actions.length) % actions.length); }
     else if (['ArrowRight', 'ArrowDown', 'KeyD', 'KeyS', 'Tab'].includes(e.code)) { e.preventDefault(); setFocus(f => (f + 1) % actions.length); }
     else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); actions[focus]?.run?.(); }
-  }, { active: !showCampaign });
+  }, { active: !showCampaign, activationDelay: 1200 }); // buttons fade in at ~1.1s
 
   if (showCampaign) return <CampaignComplete onMenu={onMenu} />;
 
@@ -174,7 +174,7 @@ function CampaignComplete({ onMenu }) {
   const progress = useProgression();
   const totalStars = MISSION_IDS.reduce((sum, id) => sum + (progress.levels[id]?.stars ?? 0), 0);
   const totalTime = MISSION_IDS.reduce((sum, id) => sum + (progress.levels[id]?.bestTime ?? 0), 0);
-  useKeyLayer((e) => { if (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape') { e.preventDefault(); onMenu(); } });
+  useKeyLayer((e) => { if (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape') { e.preventDefault(); onMenu(); } }, { activationDelay: 1200 });
 
   return (
     <motion.div className="hud-root absolute inset-0 z-[45] pointer-events-auto overflow-y-auto hud-scroll bg-black"

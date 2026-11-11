@@ -104,7 +104,7 @@ export function FeedbackCanvas({ modeRef }) {
     };
     const onKill = e => {
       if (modeRef.current !== 'strategic' || e.team !== 'friendly' || e.targetTeam !== 'enemy') return;
-      const reward = TOWER_DEFENSE.scrapRewards?.[e.targetType] ?? 10;
+      const reward = e.scrap ?? TOWER_DEFENSE.scrapRewards?.[e.targetType] ?? 10;
       let s = null;
       for (const r of scraps) if (r.active && r.age < 0.5 && Math.abs(r.x - e.x) < 5 && Math.abs(r.z - e.z) < 5) { s = r; break; }
       if (s) { s.value += reward; s.age = Math.min(s.age, 0.1); }

@@ -67,9 +67,11 @@ export function KillFeed() {
 
     const onKill = e => {
       if (e.player && e.targetTeam === 'enemy') {
+        // Prefer the weapon the kill event reports (orbital/artillery kills from the
+        // strategic view are not the possessed rifle); fall back to the controlled unit.
         const kind = controlledKind() ?? 'soldier';
         const tower = kind === 'tower' ? controlledEntry()?.type : null;
-        const tag = tower ? `${tower.toUpperCase()} TURRET` : WEAPON_TAGS[kind] ?? 'RIFLE';
+        const tag = WEAPON_TAGS[e.weapon] ?? (tower ? `${tower.toUpperCase()} TURRET` : WEAPON_TAGS[kind] ?? 'RIFLE');
         push(`you:${e.targetType}`, el => {
           el.appendChild(span('YOU', { fontFamily: 'var(--font-display)', fontWeight: '800', letterSpacing: '0.12em', color: '#1c1917', background: COLORS.accent, padding: '0 5px', borderRadius: '2px', fontSize: '11px' }));
           el.appendChild(span(tag, { fontFamily: 'var(--font-display)', fontSize: '10px', letterSpacing: '0.18em', color: 'rgba(231,229,228,0.55)' }));
