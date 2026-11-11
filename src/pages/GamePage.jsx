@@ -11,6 +11,7 @@ import { MainMenu } from '@/components/MainMenu';
 import { CampaignMissionBriefing } from '@/components/CampaignMissionBriefing';
 import { IntroVideo } from '@/components/IntroVideo';
 import AimOverlay from '@/components/AimOverlay';
+import { CombatFeedbackLayer } from '@/components/combat/CombatFeedbackLayer';
 import { HealthBar } from '@/components/HealthBar';
 import { Minimap } from '@/components/Minimap';
 import { TowerDefenseHUD } from '@/components/TowerDefenseHUD';
@@ -377,10 +378,7 @@ export default function GamePage() {
             <StationControlHUD visible={mode === 'third_person'} />
             <UnitCommandPanel visible={mode === 'strategic'} />
 
-            {/* COMBAT FEEDBACK MOUNT POINT — lead integration:
-                <CombatFeedbackLayer mode={mode} />
-                (from src/components/combat/**; renders hit markers, kill feed, damage numbers).
-                Mount it here, inside the pointer-events-none HUD and below the shell chrome. */}
+            <CombatFeedbackLayer mode={mode} />
 
             <ModeIndicator mode={mode} level={currentLevel} />
             <ObjectiveTracker level={currentLevel} wave={waveNumber} mode={mode} tankCount={tankCount} artilleryCount={artilleryCount} />
