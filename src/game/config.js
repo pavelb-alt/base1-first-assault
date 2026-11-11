@@ -583,9 +583,9 @@ export const LEVELS = {
     maxWaves: 25,
     atmosphere: {
       sky: '#0a0e1a', horizon: '#1a2030', sun: '#8fa8d0',
-      sunPosition: [-30, 70, 90], sunIntensity: 1.2,
-      fogNear: 65, fogFar: 190,
-      ambient: 0.12, hemisphere: 0.35, skyColor: '#2a3550', groundColor: '#1a1e2a',
+      sunPosition: [-30, 70, 90], sunIntensity: 1.8,
+      fogNear: 75, fogFar: 210,
+      ambient: 0.2, hemisphere: 0.55, skyColor: '#3a4a6e', groundColor: '#1e2433',
     },
   },
   forest: {
@@ -803,7 +803,8 @@ export const QUALITY_PRESETS = {
 export const GRADING = {
   1: { lift: [0.012, 0.006, -0.004], gamma: [1, 1, 1.02], gain: [1.04, 1.0, 0.93], saturation: 1.08, contrast: 1.06,
     shadowTint: '#2a5266', shadowStrength: 0.10, highlightTint: '#ffbe7a', highlightStrength: 0.12, balance: 0.5, ao: 1 },
-  2: { lift: [-0.004, 0.004, 0.016], gamma: [1.02, 1, 0.97], gain: [0.9, 1.0, 1.1], saturation: 0.86, contrast: 1.1,
+  // Night stays blue and moody but keeps units readable from the strategic camera.
+  2: { lift: [0.004, 0.01, 0.024], gamma: [1.16, 1.16, 1.1], gain: [0.98, 1.06, 1.16], saturation: 0.9, contrast: 1.04,
     shadowTint: '#0f3f66', shadowStrength: 0.2, highlightTint: '#a9d4ff', highlightStrength: 0.08, balance: 0.42, ao: 0.6 },
   3: { lift: [-0.004, 0.01, -0.006], gamma: [1, 0.98, 1.02], gain: [0.97, 1.04, 0.92], saturation: 1.05, contrast: 1.07,
     shadowTint: '#1e4a33', shadowStrength: 0.14, highlightTint: '#e8f0a8', highlightStrength: 0.08, balance: 0.5, ao: 1.1 },

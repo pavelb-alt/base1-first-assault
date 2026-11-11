@@ -24,7 +24,7 @@ export function MissionBar({ level, scrap, onFeedback }) {
     if (got) onFeedback?.(`Wave called early: +${got} scrap`, 'good');
   };
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 top-3 pointer-events-auto hud-root flex items-stretch gap-px max-w-[calc(100%-2rem)]" data-testid="mission-bar">
+    <div className="absolute left-1/2 -translate-x-1/2 top-3 pointer-events-auto hud-root flex items-stretch gap-px whitespace-nowrap max-w-[calc(100%-2rem)]" data-testid="mission-bar">
       <div className="hud-panel hud-panel-accent px-3 py-1.5 flex flex-col justify-center">
         <div className="hud-label">{getLevelConfig(level).name} · {towerDefenseState.difficulty.label}</div>
         <div className="hud-value text-lg leading-tight">
