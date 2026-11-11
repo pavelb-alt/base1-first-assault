@@ -31,7 +31,25 @@ function allocateLink(entry) {
   nav.target={x:nav.x,z:row-FRONT.crossingApproach};
   routes.set(entry.id,gate);
 }
+// Watchdog: a hostile that neither moves nor fights for ~15s gets a fresh route, so
+// the final wave can always be cleared (no units parked against cover forever).
+const STUCK_SAMPLE=5, STUCK_STRIKES=3;
+function watchStuck(entry) {
+  const p=entry.bodyRef.current.translation(), w=entry.stuck||(entry.stuck={x:p.x,z:p.z,at:battle.elapsed,strikes:0});
+  if(battle.elapsed-w.at<STUCK_SAMPLE)return;
+  const moved=Math.hypot(p.x-w.x,p.z-w.z);
+  w.strikes=moved<0.6&&!entry.aiTarget?w.strikes+1:0;
+  w.x=p.x;w.z=p.z;w.at=battle.elapsed;
+  if(w.strikes<STUCK_STRIKES)return;
+  w.strikes=0;
+  releaseCrossing(entry);
+  const front=entry.nav.front;
+  entry.nav={front};allocateLink(entry);
+  // Small sideways offset breaks symmetric jams against obstacles.
+  if(entry.nav.target)entry.nav.target={x:entry.nav.target.x+(random()-0.5)*4,z:entry.nav.target.z};
+}
 export function updateEnemy(entry,delta,enemy) {
+  if(entry.nav)watchStuck(entry);
   if(!entry.nav){entry.nav={front:0};allocateLink(entry);}
   const nav=entry.nav, flying=entry.type==='eyedrone';
   if(nav.phase==='base'&&!flying&&updateEnemyBreach(entry,enemy,delta))return false;

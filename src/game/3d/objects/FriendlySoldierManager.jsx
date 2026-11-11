@@ -6,7 +6,7 @@ import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { clonePooledModel } from '@/game/3d/objects/pooledModel';
 import { EventBus } from '@/game/EventBus';
-import { SOLDIER, BALANCE } from '@/game/config';
+import { SOLDIER, BALANCE, PLAYER } from '@/game/config';
 import { isGrounded, applyMovement } from '@/game/3d/navigation/motion';
 import { updateFriendly, releasePosition, suspendFrontline, resumeFrontline } from '@/game/3d/navigation/frontline';
 import { canSeeTarget } from '@/game/3d/ballistics';
@@ -31,6 +31,8 @@ let modelLoaded = false;
 
 // Module-level registry for verification (read by window.game API)
 export const friendlyRegistry = { soldiers: [] };
+// Possessed-soldier status for the third-person HUD (stamina / sprint / regen).
+export const playerStatus = { id: null, stamina: PLAYER.stamina, maxStamina: PLAYER.stamina, sprinting: false, exhausted: false, regenerating: false, health: 0, maxHealth: 0 };
 
 // --- Error boundary so a failed GLB doesn't crash the canvas ----------------
 class SoldierErrorBoundary extends Component {
@@ -68,6 +70,7 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
   const jumpsRemaining = useRef(SOLDIER.maxJumps);
   const wasPossessed = useRef(false);
   const combatEntryRef = useRef(null);
+  const sprint = useRef({ stamina: PLAYER.stamina, lastSprintAt: -Infinity, exhausted: false });
 
 
   // Load the model (cached by useGLTF — one fetch per URL, many clones)
@@ -204,8 +207,26 @@ const FriendlySoldier = memo(function FriendlySoldier({ id, weaponId, sectorInde
 
       const moving = mx !== 0 || mz !== 0;
 
+      // Sprint (Shift) drains stamina; once emptied, it must refill past sprintResume.
+      const sp = sprint.current;
+      const wantsSprint = moving && (keys.ShiftLeft || keys.ShiftRight) && !keys.KeyS;
+      if (sp.exhausted && sp.stamina >= PLAYER.sprintResume) sp.exhausted = false;
+      const sprinting = wantsSprint && !sp.exhausted && sp.stamina > 0 && !input.rightMouseDown;
+      if (sprinting) {
+        sp.stamina = Math.max(0, sp.stamina - PLAYER.staminaDrain * delta);
+        sp.lastSprintAt = battle.elapsed;
+        if (sp.stamina <= 0) sp.exhausted = true;
+      } else if (battle.elapsed - sp.lastSprintAt > PLAYER.staminaRegenDelay) {
+        sp.stamina = Math.min(PLAYER.stamina, sp.stamina + PLAYER.staminaRegen * delta);
+      }
+      // Out-of-combat regeneration after PLAYER.regenDelay seconds without damage.
+      const regenerating = entry.health < entry.maxHealth && battle.elapsed - (entry.lastHitAt ?? -Infinity) > PLAYER.regenDelay;
+      if (regenerating) entry.health = Math.min(entry.maxHealth, entry.health + PLAYER.regenRate * delta);
+      Object.assign(playerStatus, { id, stamina: sp.stamina, sprinting, exhausted: sp.exhausted, regenerating, health: entry.health, maxHealth: entry.maxHealth });
+
       if (moving) {
-        applyMovement(body, mx, mz, verticalVelocity);
+        const speed = BALANCE.moveSpeed * (sprinting ? PLAYER.sprintMultiplier : 1);
+        applyMovement(body, mx, mz, verticalVelocity, speed, speed);
         targetRotation.current = Math.atan2(mx, mz);
         if (grounded && !jumpAnimation) playAnimation('Running');
       } else {

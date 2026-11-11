@@ -1,7 +1,6 @@
-import { BASES, FRONT } from '@/game/config';
+import { FRONT } from '@/game/config';
 import { battle } from '@/game/3d/battleMetrics';
 import { walkRoute, firingPosition } from '@/game/3d/terrain';
-import { visitNearby } from '@/game/3d/spatial';
 import { followRoute, stop } from '@/game/3d/navigation/motion';
 import { releaseCombatCover, updateFriendlyCover } from '@/game/3d/navigation/coverTactics';
 
@@ -67,7 +66,14 @@ export function updateFriendly(entry,delta,enemy) {
   if(enemy && !advancingFromCover) {nav.clearSince=null;stop(entry);entry.aiTarget=enemy;nav.fighting=true;return false;}
   nav.fighting=false;
   if(nav.phase==='base') {
-    if(followRoute(entry,delta))return true;
+    // Overflow troops hold behind the bulwark and retry for a trench slot. Returning
+    // true here used to despawn them as a "breach" the moment they arrived.
+    if(followRoute(entry,delta)){nav.phase='waiting';nav.retryAt=battle.elapsed+2;}
+    return false;
+  }
+  if(nav.phase==='waiting') {
+    stop(entry);
+    if(battle.elapsed>=nav.retryAt && !reservePosition(entry))nav.retryAt=battle.elapsed+2;
     return false;
   }
   if(nav.phase==='entering') {

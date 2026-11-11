@@ -12,8 +12,23 @@
 //  'explosion'  { x, y, z, size, kind }                    kind: shell|ambient|vehicle|tower-splash
 //  'tower-built'      { type, x, z }
 //  'scrap'      { amount, total }
-//  'wave-start' { wave, maxWaves, level }
+//  'wave-start' { wave, maxWaves, level, composition, boss, final }
 //  'base-damage'{ team, health }                           team whose base got breached
+//  --- gameplay depth (lead gameplay) ---
+//  'explosion' is also emitted with kind 'tower-splash' (cannon rounds, size ~1) and
+//               kind 'shell' + source 'orbital' (orbital strike, size 3.2)
+//  'tower-upgraded'   { id, type, level, x, z }
+//  'tower-sold'       { id, type, refund, x, z }
+//  'wave-composition' { wave, composition, label, size, boss, level }  composition: standard|swarm|rush|armored|boss
+//  'wave-called-early'{ wave, bonus, secondsSkipped }
+//  'boss-spawn'       { name, maxHealth, wave, final, level }
+//  'boss-defeated'    { name, player, x, z }
+//  'final-wave'       { wave, level }                        last wave of the level has spawned
+//  'level-cleared'    { level, waves, timeout }              final wave survived (victory/transition follows)
+//  'ability-used'     { id, name, x, z, cost, ...result }    id: orbital|reinforce|repair
+//  'orbital-impact'   { x, z, radius, hits }                 1.5s after 'ability-used' orbital
+//  'base-repair'      { team, amount, health }
+//  'scrap' may carry a negative amount when scrap is spent on abilities.
 const listeners = new Map();
 
 export const gameEvents = {

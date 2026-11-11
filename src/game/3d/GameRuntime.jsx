@@ -8,8 +8,12 @@ import { battle, battleSnapshot, resetBattle } from '@/game/3d/battleMetrics';
 import { gameState } from '@/game/3d/world';
 import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
-import { MAP, FRONT, BALANCE, BASES, BASE, TOWER_DEFENSE, getMaxWaves } from '@/game/config';
+import { MAP, FRONT, BALANCE, BASES, BASE, WAVES, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { waveState, bossSnapshot, callWaveEarly, debugSkipToWave, compositionFor } from '@/game/3d/waves';
+import { getAbilities, activateAbility } from '@/game/3d/abilities/abilities';
+import { tacticalState } from '@/game/3d/abilities/tacticalState';
+import { playerStatus } from '@/game/3d/objects/FriendlySoldierManager';
 import { tankState } from '@/game/3d/objects/tankState';
 import { artilleryState } from '@/game/3d/objects/artilleryState';
 import { winterWeather } from '@/game/3d/objects/WinterSnow';
@@ -42,6 +46,7 @@ export function GameRuntime() {
   const frames = useRef(0);
   const performance = useRef({frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0});
   const levelTransition = useRef({ active: false, timer: 0 });
+  const finalWave = useRef({ active: false, startedAt: 0 });
   useEffect(() => {
     const selected = () => getStation() ?? combat.units.find(u => u.team === 'friendly' && u.type === 'soldier' && u.id === gameState.possessedSoldierId);
     window.game = {
@@ -50,7 +55,7 @@ export function GameRuntime() {
       getCampaign: () => ({ level: gameState.currentLevel, wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), transitioning: levelTransition.current.active, paused: gameState.paused, result: battle.gameOver }),
       getWeather: () => ({ ...winterWeather }),
       getBattlefieldDetail: () => ({ active: gameState.currentLevel !== 5, level: gameState.currentLevel, instances: DETAIL_COUNT, smokeSites: SMOKE_SITES.length, batches: Object.fromEntries(Object.entries(FIELD_DETAIL).map(([kind,items])=>[kind,items.length])), visualOnly: true }),
-      getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
+      getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, level: t.level, targeting: t.targeting, kills: t.kills ?? 0, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
       getFrontline: () => frontlineSnapshot(),
@@ -89,11 +94,39 @@ export function GameRuntime() {
       possessUnit: (type,id) => EventBus.emit('possess-unit',{type,id}),
       interactStation, getStationControl: stationSnapshot,
       setFire, setKey, look,
+      // --- Tower defense depth (additive) ---
+      getTowerUpgrades: () => towerDefenseState.towers.map(t => towerDefenseState.describe(t)),
+      getTowerDetails: id => towerDefenseState.describe(towerDefenseState.getTower(id)),
+      selectTower: id => towerDefenseState.selectTower(id ?? null),
+      getSelectedTower: () => towerDefenseState.describe(towerDefenseState.getTower(towerDefenseState.selectedTowerId)),
+      upgradeTower: id => towerDefenseState.upgrade(id),
+      sellTower: id => towerDefenseState.sell(id),
+      setTowerTargeting: (id, mode) => towerDefenseState.setTargeting(id, mode),
+      placeTower: (type, x, z) => { const problem = towerDefenseState.placementProblem(type, { x, z }); return problem ? { ok: false, problem } : { ok: towerDefenseState.spend(type, { x, z }) }; },
+      getScrap: () => towerDefenseState.scrap,
+      getDifficulty: () => ({ id: towerDefenseState.difficultyId, ...towerDefenseState.difficulty }),
+      // --- Wave director ---
+      getWaveState: () => ({ wave: waveState.wave, maxWaves: waveState.maxWaves, level: waveState.level, nextWaveIn: waveState.nextWaveIn,
+        interval: waveState.interval, holding: waveState.holding, finalWaveSpawned: waveState.finalWaveSpawned, finalWaveActive: finalWave.current.active,
+        composition: waveState.composition, nextComposition: waveState.nextComposition, difficulty: waveState.difficulty }),
+      getWavePlan: (level = gameState.currentLevel) => Array.from({ length: getMaxWaves(level) }, (_, i) => compositionFor(i + 1, level)),
+      getBoss: bossSnapshot,
+      callWaveEarly,
+      // --- Commander abilities ---
+      getAbilities,
+      useAbility: (id, x, z) => activateAbility(id, x, z),
+      getTactical: () => ({ mode: tacticalState.mode, placeType: tacticalState.placeType, abilityId: tacticalState.abilityId, cursor: { ...tacticalState.cursor } }),
+      getPlayerStatus: () => ({ ...playerStatus }),
+      // --- Dev / QA helpers ---
+      debugSkipToWave, debugAddScrap: n => { towerDefenseState.addScrap(Number(n) || 0); return towerDefenseState.scrap; },
+      debugKillEnemies: () => { let n = 0; for (const u of combat.units) if (u.team === 'enemy' && u.alive) { u.health = 0; u.alive = false; u.playDeathAnimation = true; n++; } return n; },
+      debugSetBaseHealth: h => { battle.baseHealth.friendly = Math.max(1, Math.min(BASE.health, Number(h) || 1)); return battle.baseHealth.friendly; },
       reset: () => EventBus.emit('reset-game'),
       pause: () => EventBus.emit('pause-game'), resume: () => EventBus.emit('resume-game'),
     };
     const advanceToNight = () => {
       levelTransition.current = { active: false, timer: 0 };
+      finalWave.current = { active: false, startedAt: 0 };
       gameState.currentLevel = 2;
       towerDefenseState.transitionLevel();
       battle.waves.enemy = 0;
@@ -101,6 +134,7 @@ export function GameRuntime() {
     };
     const advanceToForest = () => {
       levelTransition.current = { active: false, timer: 0 };
+      finalWave.current = { active: false, startedAt: 0 };
       gameState.currentLevel = 3;
       towerDefenseState.transitionLevel();
       battle.waves.enemy = 0;
@@ -109,6 +143,7 @@ export function GameRuntime() {
     const advanceFromBriefing = (nextLevel) => {
       if (gameState.currentLevel !== nextLevel - 1 || !levelTransition.current.active) return;
       levelTransition.current = { active: false, timer: 0 };
+      finalWave.current = { active: false, startedAt: 0 };
       gameState.currentLevel = nextLevel;
       towerDefenseState.transitionLevel();
       battle.waves.enemy = 0;
@@ -124,6 +159,7 @@ export function GameRuntime() {
       tankState.reset();
       artilleryState.reset();
       levelTransition.current = { active: false, timer: 0 };
+      finalWave.current = { active: false, startedAt: 0 };
       gameState.currentLevel = 1;
       EventBus.emit('level-changed', 1);
       performance.current={frames:0,seconds:0,maxFrameMs:0,drawCalls:0,triangles:0};
@@ -132,12 +168,14 @@ export function GameRuntime() {
       EventBus.emit('release-soldier');
       EventBus.emit('reset-camera');
     };
+    const onLevelChanged = () => { if (!levelTransition.current.active) finalWave.current = { active: false, startedAt: 0 }; };
+    EventBus.on('level-changed', onLevelChanged);
     EventBus.on('reset-game', reset);
     EventBus.on('proceed-to-night', advanceToNight);
     EventBus.on('proceed-to-forest', advanceToForest);
     EventBus.on('proceed-to-frost', advanceToFrost);
     EventBus.on('proceed-to-city', advanceToCity);
-    return () => { EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); EventBus.off('proceed-to-frost', advanceToFrost); EventBus.off('proceed-to-city', advanceToCity); delete window.game; };
+    return () => { EventBus.off('level-changed', onLevelChanged); EventBus.off('reset-game', reset); EventBus.off('proceed-to-night', advanceToNight); EventBus.off('proceed-to-forest', advanceToForest); EventBus.off('proceed-to-frost', advanceToFrost); EventBus.off('proceed-to-city', advanceToCity); delete window.game; };
   }, []);
   useFrame(({gl}, delta) => {
     if (!gameState.paused) {
@@ -154,10 +192,21 @@ export function GameRuntime() {
       if (battle.waves.enemy > towerDefenseState.wave) {
         towerDefenseState.wave = battle.waves.enemy;
         EventBus.emit('wave-changed', towerDefenseState.wave);
-        gameEvents.emit('wave-start', { wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), level: gameState.currentLevel });
-        // Victory after surviving all waves — day level transitions to night
-        const maxWaves = getMaxWaves(gameState.currentLevel);
-        if (towerDefenseState.wave >= maxWaves && !battle.gameOver) {
+        gameEvents.emit('wave-start', { wave: towerDefenseState.wave, maxWaves: getMaxWaves(gameState.currentLevel), level: gameState.currentLevel,
+          composition: waveState.composition, boss: waveState.composition === 'boss', final: towerDefenseState.wave >= getMaxWaves(gameState.currentLevel) });
+        // The final wave must be survived: victory once every hostile on the field is gone.
+        if (towerDefenseState.wave >= getMaxWaves(gameState.currentLevel) && !finalWave.current.active) {
+          finalWave.current = { active: true, startedAt: battle.elapsed };
+          gameEvents.emit('final-wave', { wave: towerDefenseState.wave, level: gameState.currentLevel });
+        }
+      }
+      if (finalWave.current.active && !battle.gameOver) {
+        const since = battle.elapsed - finalWave.current.startedAt;
+        // Short grace lets the freshly spawned wave register before counting survivors.
+        const cleared = since > 3 && !combat.units.some(u => u.team === 'enemy' && u.alive);
+        if (cleared || since > WAVES.finalWaveTimeout) {
+          finalWave.current.active = false;
+          gameEvents.emit('level-cleared', { level: gameState.currentLevel, waves: towerDefenseState.wave, timeout: !cleared });
           if (gameState.currentLevel < 5) {
             levelTransition.current.active = true;
             levelTransition.current.timer = 0;
@@ -185,7 +234,7 @@ export function GameRuntime() {
           if (dist < BASE.breachRadius) {
             u.breached = true;
             const target = u.team === 'enemy' ? 'friendly' : 'enemy';
-            battle.baseHealth[target] -= BASE.breachDamage;
+            battle.baseHealth[target] -= u.team === 'enemy' ? (u.breachDamage ?? BASE.breachDamage) : BASE.breachDamage;
             gameEvents.emit('base-damage', { team: target, health: Math.max(0, battle.baseHealth[target]) });
             if (battle.baseHealth[target] <= 0) {
               battle.baseHealth[target] = 0;

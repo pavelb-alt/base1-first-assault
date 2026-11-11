@@ -252,6 +252,70 @@ export const BASE = {
   health: 100,
   breachDamage: 10,
   breachRadius: 6, // distance from base center to count as a breach
+  // Heavier hostiles crack the base harder when they reach it.
+  breachByType: { trilobite: 15 },
+  bossBreachDamage: 35,
+};
+
+// --- Difficulty (settings.difficulty, snapshotted when a mission/level begins) ---
+// count/interval scale enemy wave size and wave cadence; health/damage scale every
+// hostile; scrap scales kill rewards; startingScrap multiplies TOWER_DEFENSE.startingScrap.
+export const DIFFICULTY = {
+  easy:   { label: 'EASY',   count: 0.75, interval: 1.2,  health: 0.8,  damage: 0.75, scrap: 1.25, startingScrap: 1.5 },
+  normal: { label: 'NORMAL', count: 1,    interval: 1,    health: 1,    damage: 1,    scrap: 1,    startingScrap: 1 },
+  hard:   { label: 'HARD',   count: 1.25, interval: 0.85, health: 1.25, damage: 1.2,  scrap: 0.85, startingScrap: 0.75 },
+};
+export function getDifficultyProfile(id) {
+  return DIFFICULTY[id] ?? DIFFICULTY.normal;
+}
+
+// --- Wave design -------------------------------------------------------------
+// Each wave picks a composition. Every bossEvery-th wave and the final wave field an
+// elite trilobite boss. Patterns per level cycle after the opening waves.
+export const WAVES = {
+  bossEvery: 10,
+  bossBreather: 8,          // extra seconds of breather after a boss wave spawns
+  callEarlyScrapPerSecond: 3, // bonus scrap per second skipped with CALL WAVE EARLY
+  finalWaveTimeout: 180,    // safety: final wave counts as survived after this long
+  compositions: {
+    standard: { label: 'ASSAULT', weights: { quadshell: 4, spider403: 2, eyedrone: 2 } },
+    swarm:    { label: 'AIR SWARM', weights: { eyedrone: 6, quadshell: 1, spider403: 1 } },
+    rush:     { label: 'SPIDER RUSH', weights: { spider403: 7, quadshell: 1 }, speed: 1.15 },
+    armored:  { label: 'ARMORED COLUMN', weights: { quadshell: 4, spider403: 1 }, trilobitesPerSquad: 2 },
+    boss:     { label: 'BOSS', weights: { quadshell: 3, spider403: 2, eyedrone: 2 }, sizeScale: 0.6 },
+  },
+  // Opening waves are always standard; afterwards the level's cycle repeats.
+  openingWaves: { 1: 3, 2: 2, 3: 1, 4: 1, 5: 1 },
+  cycles: {
+    1: ['standard', 'swarm', 'standard', 'rush', 'armored', 'standard'],
+    2: ['standard', 'swarm', 'rush', 'standard', 'armored'],
+    3: ['rush', 'standard', 'armored', 'swarm', 'rush'],
+    4: ['armored', 'swarm', 'standard', 'rush', 'armored'],
+    5: ['armored', 'rush', 'swarm', 'armored', 'standard', 'swarm'],
+  },
+  boss: {
+    names: { 1: 'GOLIATH', 2: 'NIGHTMAW', 3: 'THORNBACK', 4: 'RIMEHULK', 5: 'OVERLORD' },
+    finalSuffix: ' PRIME',
+    health: 12,          // x trilobite health at level 1 (scaled by level + difficulty)
+    healthPerLevel: 4,
+    finalHealthBonus: 1.5,
+    damage: 2.5, scale: 1.6, finalScale: 2, speed: 0.7, reward: 400,
+  },
+};
+
+// --- Commander abilities (strategic view) -----------------------------------
+export const ABILITIES = {
+  orbital: { name: 'ORBITAL STRIKE', key: 'KeyQ', label: 'Q', cost: 120, cooldown: 50, radius: 10, damage: 520, telegraph: 1.5, color: '#f87171' },
+  reinforce: { name: 'REINFORCEMENTS', key: 'KeyR', label: 'R', cost: 80, cooldown: 60, squad: 8, color: '#5eead4' },
+  repair: { name: 'FIELD REPAIR', key: 'KeyF', label: 'F', cost: 60, cooldown: 35, radius: 14, heal: 0.6, baseRepair: 15, color: '#86efac' },
+};
+
+// --- Possessed soldier (third-person) ----------------------------------------
+export const PLAYER = {
+  regenDelay: 4,        // seconds without taking damage before health regenerates
+  regenRate: 14,        // health per second
+  sprintMultiplier: 1.6,
+  stamina: 100, staminaDrain: 28, staminaRegen: 20, staminaRegenDelay: 0.8, sprintResume: 25,
 };
 
 // Golden-hour art direction; visual only, no gameplay tuning.
@@ -386,10 +450,18 @@ export const TOWER_DEFENSE = {
   startingScrap: 100,
   // Wave survival: survive this many enemy waves to win.
   maxWaves: 20,
+  sellRefund: 0.6,       // fraction of total scrap invested returned on SELL
+  maxLevel: 3,
+  targetingModes: ['first', 'strongest', 'closest'],
   // Tower types — distinct stats, colors, and shapes.
+  // upgrades[i] upgrades level i+1 → i+2; multipliers apply to the base stats.
   towers: {
     mg: {
       name: 'MG Turret',
+      upgrades: [
+        { cost: 60, damage: 1.45, range: 1.12, cooldown: 0.85 },
+        { cost: 130, damage: 2.1, range: 1.25, cooldown: 0.7 },
+      ],
       cost: 50,
       range: 12,
       damage: 5,
@@ -401,6 +473,10 @@ export const TOWER_DEFENSE = {
     },
     cannon: {
       name: 'Cannon',
+      upgrades: [
+        { cost: 140, damage: 1.5, range: 1.1, cooldown: 0.85, splash: 1.2 },
+        { cost: 260, damage: 2.2, range: 1.2, cooldown: 0.7, splash: 1.45 },
+      ],
       cost: 150,
       range: 25,
       damage: 30,
@@ -413,6 +489,10 @@ export const TOWER_DEFENSE = {
     },
     frost: {
       name: 'Frost Tower',
+      upgrades: [
+        { cost: 90, damage: 1.6, range: 1.12, cooldown: 0.85, slow: 0.8 },
+        { cost: 180, damage: 2.4, range: 1.25, cooldown: 0.7, slow: 0.6 },
+      ],
       cost: 100,
       range: 15,
       damage: 3,
@@ -584,7 +664,21 @@ export const NIGHT_FLARES = {
   radius: 58,
 };
 
-export function getEnemyRules(level) {
+// Level rules scaled by a difficulty id ('easy' | 'normal' | 'hard'). Normal is the
+// untouched baseline, so existing balance (and the idle-loss guarantee) holds.
+export function getEnemyRules(level, difficulty = 'normal') {
+  const base = baseEnemyRules(level);
+  const d = getDifficultyProfile(difficulty);
+  return {
+    ...base,
+    difficulty: DIFFICULTY[difficulty] ? difficulty : 'normal',
+    interval: base.interval * d.interval,
+    spawnScale: (base.spawnScale ?? 1) * d.count,
+    healthScale: d.health,
+    damageScale: d.damage,
+  };
+}
+function baseEnemyRules(level) {
   if (level === 1) {
     // Level 1 must still be lost if the player never intervenes.
     return {

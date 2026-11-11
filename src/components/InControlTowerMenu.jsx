@@ -3,6 +3,7 @@ import { EventBus } from '@/game/EventBus';
 import { TOWER_DEFENSE } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
 import { gameState } from '@/game/3d/world';
+import { TOWER_ICONS } from '@/components/tactical/icons';
 
 const TOWER_SLOTS = [
   { key: '1', type: 'mg' },
@@ -13,6 +14,7 @@ const TOWER_SLOTS = [
 export function InControlTowerMenu({ visible }) {
   const [open, setOpen] = useState(false);
   const [inStation, setInStation] = useState(false);
+  const [notice, setNotice] = useState(null);
   useEffect(() => {
     const update = s => { setInStation(!!s); setOpen(false); };
     EventBus.on('station-changed', update);
@@ -22,6 +24,11 @@ export function InControlTowerMenu({ visible }) {
   const openRef = useRef(false);
 
   useEffect(() => { openRef.current = open; }, [open]);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 2000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   useEffect(() => {
     const onCurrency = (amt) => setScrap(amt);
@@ -34,12 +41,12 @@ export function InControlTowerMenu({ visible }) {
     const pos = gameState.soldierPosition;
     if (!pos) return;
     const position = { x: pos.x, z: pos.z };
-    if (position.z <= TOWER_DEFENSE.friendlyHalfZ) return;
-    for (const t of towerDefenseState.towers) {
-      if (Math.hypot(t.position.x - position.x, t.position.z - position.z) < TOWER_DEFENSE.minSpacing) return;
-    }
+    // Report why a deployment is refused instead of silently ignoring the key.
+    const problem = towerDefenseState.placementProblem(type, position);
+    if (problem) { setNotice({ text: problem, tone: 'bad' }); return; }
     if (towerDefenseState.spend(type, position)) {
       setScrap(towerDefenseState.scrap);
+      setNotice({ text: `${TOWER_DEFENSE.towers[type].name} inbound`, tone: 'good' });
       setOpen(false);
     }
   }, []);
@@ -66,39 +73,34 @@ export function InControlTowerMenu({ visible }) {
 
   return (
     <>
-      {/* E hint when menu closed */}
+      {notice && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-[208px] pointer-events-none hud-root">
+          <div className={`hud-panel px-3 py-1 text-xs font-semibold ${notice.tone === 'good' ? 'text-teal-300' : 'text-red-300'}`}>{notice.text}</div>
+        </div>
+      )}
       {!open && (
-        <div className="absolute bottom-20 right-4 px-4 py-2 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 pointer-events-none">
-          <div className="text-slate-300 text-xs">
-            <span className="text-white font-semibold">B</span> Deploy Tower
-          </div>
+        <div className="absolute bottom-20 right-4 hud-root hud-panel px-3 py-1.5 pointer-events-none flex items-center gap-2 text-xs text-stone-300">
+          <span className="hud-key">B</span> Deploy tower
         </div>
       )}
 
-      {/* Tower selection panel */}
       {open && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 pointer-events-none z-40">
-          <div className="flex gap-3 p-4 rounded-xl bg-black/80 backdrop-blur-md border border-orange-500/30 shadow-2xl">
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 pointer-events-none z-40 hud-root">
+          <div className="hud-panel hud-panel-accent flex gap-2 p-3">
             {TOWER_SLOTS.map(({ key, type }) => {
-              const cfg = TOWER_DEFENSE.towers[type];
+              const cfg = TOWER_DEFENSE.towers[type], Icon = TOWER_ICONS[type];
               const affordable = scrap >= cfg.cost;
               return (
-                <div
-                  key={type}
-                  className={`flex flex-col items-center justify-center w-28 h-24 rounded-lg border ${
-                    affordable ? 'border-orange-500/50 bg-orange-950/30' : 'border-slate-700 bg-slate-900/50 opacity-40'
-                  }`}
-                >
-                  <div className="text-white font-bold text-sm">{cfg.name.split(' ')[0]}</div>
-                  <div className="text-orange-400 text-xs mt-1">◈ {cfg.cost}</div>
-                  <div className="mt-2 px-2 py-0.5 rounded bg-white/10 text-white text-xs font-mono">{key}</div>
+                <div key={type} className={`flex flex-col items-center justify-center w-24 h-24 rounded-sm border ${affordable ? 'border-amber-400/50 bg-amber-500/10' : 'border-white/10 bg-black/30 opacity-50'}`}>
+                  <Icon size={18} className={affordable ? 'text-amber-300' : 'text-stone-500'} />
+                  <div className="hud-title text-xs mt-1">{cfg.name.split(' ')[0]}</div>
+                  <div className={`text-xs ${affordable ? 'text-amber-200' : 'text-red-400'}`}>{cfg.cost}</div>
+                  <span className="hud-key mt-1">{key}</span>
                 </div>
               );
             })}
           </div>
-          <div className="text-center text-slate-400 text-xs mt-2">
-            Press 1/2/3 to deploy at your position · B or Esc to close
-          </div>
+          <div className="text-center hud-label mt-2">1 / 2 / 3 deploy at your position · B or Esc to close</div>
         </div>
       )}
     </>
