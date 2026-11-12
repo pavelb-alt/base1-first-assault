@@ -12,6 +12,7 @@ const geometries={
   rim:new THREE.TorusGeometry(1,.14,5,20).rotateX(-Math.PI/2),
   basin:new THREE.SphereGeometry(.5,16,6),bag:new THREE.SphereGeometry(.5,8,5),
   ember:new THREE.IcosahedronGeometry(.5,0),
+  tuft:new THREE.ConeGeometry(.5,1,5).translate(0,.5,0),
 };
 const material=new THREE.MeshStandardMaterial({roughness:.98,flatShading:true});
 const embers=new THREE.MeshStandardMaterial({color:BATTLEFIELD_DETAIL.ember,emissive:BATTLEFIELD_DETAIL.ember,emissiveIntensity:BATTLEFIELD_DETAIL.emberIntensity,roughness:1});

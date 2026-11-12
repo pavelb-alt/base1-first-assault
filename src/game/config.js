@@ -61,6 +61,9 @@ export const DRESSING = {
 export const BATTLEFIELD_DETAIL = {
   reliefAmplitude: 0.22, reliefTriangleSize: 3.5,
   craters: 18, wrecks: 8, rockPieces: 96, bagClusters: 12, shells: 32,
+  // Small ground clutter (instanced, no colliders).
+  tuftClusters: 90, pebbleClusters: 70, debrisPiles: 16, barrelGroups: 12,
+  tuft: '#7c8058', tuftDry: '#a3976a', plank: '#6b5a44', crate: '#7d6d4c', barrel: '#5c6a58',
   // Props cover the whole field; interiorWeight is the center acceptance floor and
   // perimeterFalloff (>1) concentrates the remaining density toward the edges.
   interiorWeight: 0.3, perimeterFalloff: 2.2,

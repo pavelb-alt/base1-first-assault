@@ -3,7 +3,7 @@ import { trenchCenter, crossingDistance, terrainHeight } from '@/game/3d/trenchS
 import { dressingNoise as noise } from '@/game/3d/dressing/dressingNoise';
 import { reliefHeight } from '@/game/3d/dressing/terrainRelief';
 
-export const FIELD_DETAIL = { rock:[], box:[], cylinder:[], rim:[], basin:[], bag:[], ember:[] };
+export const FIELD_DETAIL = { rock:[], box:[], cylinder:[], rim:[], basin:[], bag:[], ember:[], tuft:[] };
 export const WRECK_SITES=[];
 const occupied=[];
 export function detailClearance(x,z,r) {
@@ -68,6 +68,41 @@ for(let i=0;i<DETAIL.rockPieces;i++) {
 for(let i=0;i<DETAIL.shells;i++) {
   const s=site(102000+i*67,.22);if(!s)continue;
   add('cylinder',s.x,.1,s.z,.17,.55,.17,'#a18b51',[Math.PI/2,0,noise(102100+i)*6]);
+}
+// Small ground clutter: each cluster scatters a few pieces around one cleared site.
+function scatter(seed,count,radius,place) {
+  for(let j=0;j<count;j++) {
+    const a=noise(seed+j*3)*6.28,d=Math.sqrt(noise(seed+j*3+1))*radius;
+    place(Math.cos(a)*d,Math.sin(a)*d,noise(seed+j*3+2),j);
+  }
+}
+for(let i=0;i<DETAIL.tuftClusters;i++) {
+  const s=site(110000+i*61,.9);if(!s)continue;
+  scatter(111000+i*40,5+Math.floor(noise(110500+i)*5),.9,(dx,dz,n)=>{
+    const h=.22+n*.3;
+    add('tuft',s.x+dx,0,s.z+dz,.2+n*.16,h,.2+n*.16,n>.6?DETAIL.tuftDry:DETAIL.tuft,[(n-.5)*.5,n*6,(n-.5)*.4]);
+  });
+}
+for(let i=0;i<DETAIL.pebbleClusters;i++) {
+  const s=site(120000+i*59,.8);if(!s)continue;
+  scatter(121000+i*40,5+Math.floor(noise(120500+i)*4),.8,(dx,dz,n)=>{
+    const r=.1+n*.16;
+    add('rock',s.x+dx,r*.2,s.z+dz,r*1.4,r*.6,r,n>.5?DRESSING.rock:DRESSING.earth,[n,n*6,.2]);
+  });
+}
+for(let i=0;i<DETAIL.debrisPiles;i++) {
+  const s=site(130000+i*53,1.5);if(!s)continue;
+  scatter(131000+i*40,4,.8,(dx,dz,n,j)=>
+    add('box',s.x+dx,.05+j*.05,s.z+dz,.2,.06,1.3+n*.9,DETAIL.plank,[(n-.5)*.2,n*6,0]));
+  add('box',s.x,.3,s.z,.65,.6,.65,DETAIL.crate,[0,noise(130500+i)*3,0]);
+  add('box',s.x+.75,.18,s.z+.3,.55,.4,.55,DETAIL.crate,[.5,noise(130600+i)*3,.2]);
+}
+for(let i=0;i<DETAIL.barrelGroups;i++) {
+  const s=site(140000+i*47,1.2);if(!s)continue;
+  const col=i%3?DETAIL.barrel:DRESSING.rust;
+  add('cylinder',s.x,.45,s.z,.6,.9,.6,col);
+  add('cylinder',s.x+.7,.45,s.z+.15,.6,.9,.6,DETAIL.barrel);
+  add('cylinder',s.x-.2,.3,s.z+.9,.6,.9,.6,col,[Math.PI/2,0,noise(140500+i)*6]);
 }
 // Tall silhouettes outside the map boundary: never obscure traversal or spawn exits.
 for(let i=0;i<DETAIL.ruins;i++) {

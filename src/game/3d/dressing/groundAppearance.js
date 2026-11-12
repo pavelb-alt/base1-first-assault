@@ -77,6 +77,24 @@ export function groundTexture() {
     if(FRONT.rows.some((_,row)=>Math.abs(z-trenchCenter(row,x))<FRONT.rampReach+1))continue;
     for(const dx of [-.75,.75]) path([{x:x+dx-.22,z},{x:x+dx+.22,z:z+.12}],.1,.24,DRESSING.earth);
   }
+  // Dry-earth cracks and small damp patches break up the open ground.
+  for(let i=0;i<110;i++) {
+    const x=(dressingNoise(30000+i*4)-.5)*MAP.SIZE*.94,z=(dressingNoise(30001+i*4)-.5)*MAP.SIZE*.9;
+    if(FRONT.rows.some((_,row)=>Math.abs(z-trenchCenter(row,x))<FRONT.rampReach+1))continue;
+    for(let b=0;b<3;b++) {
+      let a=dressingNoise(31000+i*7+b)*Math.PI*2,px=x,pz=z;const crack=[{x:px,z:pz}];
+      for(let k=0;k<5;k++) {
+        a+=(dressingNoise(32000+i*31+b*7+k)-.5)*1.4;
+        px+=Math.cos(a)*.7;pz+=Math.sin(a)*.7;crack.push({x:px,z:pz});
+      }
+      path(crack,.06,.3,'#6e604c');
+    }
+  }
+  for(let i=0;i<220;i++) {
+    const x=(dressingNoise(34000+i*3)-.5)*MAP.SIZE*.96,z=(dressingNoise(34001+i*3)-.5)*MAP.SIZE*.96;
+    const r=.4+dressingNoise(34002+i*3)*1.1;
+    stain(x,z,r*1.4,r,i%4===0?DRESSING.olive:DRESSING.earth,.3,dressingNoise(35000+i)*Math.PI);
+  }
   for(let i=0;i<18000;i++) {
     const u=dressingNoise(21000+i*2)*size,v=dressingNoise(21001+i*2)*size;
     ctx.fillStyle=i%3===0?'#dac3a1':'#716451';ctx.globalAlpha=.14;
