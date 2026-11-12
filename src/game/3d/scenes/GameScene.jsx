@@ -15,6 +15,7 @@ import { BattlefieldExplosions } from '@/game/3d/objects/BattlefieldExplosions';
 import { HealthBars } from '@/game/3d/objects/HealthBars';
 import { CargoShipManager } from '@/game/3d/objects/CargoShipManager';
 import { SkyBattle } from '@/game/3d/objects/SkyBattle';
+import { BackgroundBattle } from '@/game/3d/objects/BackgroundBattle';
 import { TowerManager } from '@/game/3d/objects/TowerManager';
 import { TankDeliveryManager, TankEntityManager } from '@/game/3d/objects/TankManager';
 import { ArtilleryDeliveryManager, ArtilleryEntityManager, ArtilleryShells } from '@/game/3d/objects/ArtilleryManager';
@@ -74,6 +75,7 @@ export function GameScene() {
         <TankDeliveryManager />
         <ArtilleryDeliveryManager />
         <SkyBattle />
+        <BackgroundBattle />
         <TowerManager />
         <CinematicEffects />
       </Suspense>

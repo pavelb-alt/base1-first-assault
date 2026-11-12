@@ -10,6 +10,7 @@ import { explosionVisuals } from '@/game/3d/objects/BattlefieldExplosions';
 import { input, clearInput, setFire, setKey, look } from '@/game/3d/input';
 import { MAP, FRONT, BALANCE, BASES, BASE, WAVES, getMaxWaves } from '@/game/config';
 import { towerDefenseState } from '@/game/3d/towerDefenseState';
+import { backgroundBattleSnapshot } from '@/game/3d/objects/BackgroundBattle';
 import { waveState, bossSnapshot, callWaveEarly, debugSkipToWave, compositionFor } from '@/game/3d/waves';
 import { getAbilities, activateAbility } from '@/game/3d/abilities/abilities';
 import { tacticalState } from '@/game/3d/abilities/tacticalState';
@@ -58,6 +59,7 @@ export function GameRuntime() {
       getTowers: () => towerDefenseState.towers.map(t => ({ id: t.id, type: t.type, level: t.level, targeting: t.targeting, kills: t.kills ?? 0, position: { ...t.position }, targetId: t.targetId, shotsFired: t.shotsFired || 0, visual: t.visual ? { ...t.visual } : null })), 
       getVisualEffects: () => ({ ...explosionVisuals }),
       getBattle: () => battleSnapshot(combat.units),
+      getBackgroundBattle: backgroundBattleSnapshot,
       getFrontline: () => frontlineSnapshot(),
       getOutposts: () => coverSnapshot(),
       getMap: () => ({width:MAP.SIZE,length:MAP.SIZE,fronts:[...FRONT.rows],crossings:[...FRONT.crossings],crossingWidth:FRONT.crossingHalfWidth*2,sections:[...FRONT.sectionCenters],capPerTeam:BALANCE.friendly.maxAlive}),
