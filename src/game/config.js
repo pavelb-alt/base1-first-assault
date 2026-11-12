@@ -445,14 +445,15 @@ export const TOWER_VISUALS = {
 // --- Background battle (visual only, outside the playable map on both flanks) ---
 // Same unit models as the real fight; no physics, combat registry or navigation.
 export const BACKGROUND_BATTLE = {
-  soldiersPerFlank: 7,
-  enemyTypes: ['quadshell', 'spider403', 'quadshell', 'eyedrone', 'spider403', 'quadshell', 'eyedrone', 'trilobite'],
-  innerX: MAP.HALF + 6, outerX: MAP.HALF + 30, cityOuterX: MAP.HALF + 11, // city streets are narrower
-  friendlyLine: [14, 30], enemyLine: [-14, 2], // z bands each side holds
+  soldiersPerFlank: 13,
+  enemyTypes: ['quadshell', 'spider403', 'quadshell', 'eyedrone', 'spider403', 'quadshell', 'eyedrone', 'trilobite',
+    'quadshell', 'spider403', 'eyedrone', 'quadshell', 'spider403', 'trilobite'],
+  innerX: MAP.HALF + 6, outerX: MAP.HALF + 42, cityOuterX: MAP.HALF + 11, // city streets are narrower
+  friendlyLine: [10, 34], enemyLine: [-22, 2], // z bands each side holds
   approach: 26,                 // distance reinforcements walk in from the rear
-  fireInterval: [0.35, 1.1], lifetime: [14, 40], respawn: [2, 7],
-  boltSpeed: 45, boltsPerTeam: 40, spread: 1.2,
-  blastInterval: [5, 10], blastZ: [-22, 36],
+  fireInterval: [0.3, 0.9], lifetime: [14, 40], respawn: [2, 6],
+  boltSpeed: 45, boltsPerTeam: 80, spread: 1.2,
+  blastInterval: [2, 5], blastZ: [-30, 40],
 };
 
 // --- Tower defense ----------------------------------------------------------
